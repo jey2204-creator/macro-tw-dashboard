@@ -1,7 +1,7 @@
 import { toLocalDate } from '../../../src/shared/dates';
 import { isValidBar } from '../../../src/shared/timeseries';
 import type { Bar } from '../../../src/shared/types';
-import { getJson, type HttpOptions } from '../http';
+import { getJson, getText, HttpError, USER_AGENT, type HttpOptions } from '../http';
 import type { SourceFetchResult } from './types';
 
 /**
@@ -29,8 +29,39 @@ interface YahooChart {
   };
 }
 
-export function yahooUrl(symbol: string, period1: number, period2: number): string {
-  return `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${period1}&period2=${period2}&interval=1d&includePrePost=false&events=`;
+export function yahooUrl(symbol: string, period1: number, period2: number, crumb?: string): string {
+  const base = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${period1}&period2=${period2}&interval=1d&includePrePost=false&events=`;
+  return crumb ? `${base}&crumb=${encodeURIComponent(crumb)}` : base;
+}
+
+/** Yahoo 的 cookie + crumb 工作階段；遇到 401/429 時才取得，整次執行共用 */
+interface YahooSession {
+  cookie: string;
+  crumb: string;
+}
+let sessionPromise: Promise<YahooSession> | null = null;
+
+export function resetYahooSession(): void {
+  sessionPromise = null;
+}
+
+async function getYahooSession(http: HttpOptions): Promise<YahooSession> {
+  sessionPromise ??= (async () => {
+    // fc.yahoo.com 會回 404，但帶有 Set-Cookie
+    const res = await http.fetchImpl('https://fc.yahoo.com', { redirect: 'manual', headers: { 'User-Agent': USER_AGENT } });
+    const h = res.headers as Headers & { getSetCookie?: () => string[] };
+    const raw = h.getSetCookie?.() ?? (h.get('set-cookie') ?? '').split(/,(?=\s*\w+=)/);
+    const cookie = raw
+      .map((c) => c.split(';')[0]!.trim())
+      .filter(Boolean)
+      .join('; ');
+    if (!cookie) throw new Error('Yahoo 未回傳 cookie');
+    const crumb = (await getText('https://query2.finance.yahoo.com/v1/test/getcrumb', { ...http, retries: 1 }, { headers: { Cookie: cookie } })).trim();
+    if (!crumb || crumb.length > 64 || /[<{]/.test(crumb)) throw new Error('Yahoo crumb 取得失敗');
+    return { cookie, crumb };
+  })();
+  sessionPromise.catch(() => (sessionPromise = null));
+  return sessionPromise;
 }
 
 export function parseYahooChart(json: YahooChart, nowSec: number): { bars: Bar[]; partial: boolean; timeZone: string } {
@@ -75,7 +106,15 @@ export async function fetchYahoo(
 ): Promise<SourceFetchResult> {
   const nowSec = Math.floor(now.getTime() / 1000);
   const period1 = since ? Math.floor(Date.parse(`${since}T00:00:00Z`) / 1000) : 0;
-  const json = await getJson<YahooChart>(yahooUrl(symbol, period1, nowSec + 86_400), http);
+  let json: YahooChart;
+  try {
+    json = await getJson<YahooChart>(yahooUrl(symbol, period1, nowSec + 86_400), { ...http, retries: 0 });
+  } catch (e) {
+    // 被限流或要求驗證時，改用 cookie + crumb 再試
+    if (!(e instanceof HttpError) || (e.status !== 429 && e.status !== 401)) throw e;
+    const s = await getYahooSession(http);
+    json = await getJson<YahooChart>(yahooUrl(symbol, period1, nowSec + 86_400, s.crumb), http, { headers: { Cookie: s.cookie } });
+  }
   const { bars, partial } = parseYahooChart(json, nowSec);
   return { bars, closeOnly: false, partial, incremental: since !== null };
 }

@@ -3,7 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runPipeline, updateIndicator } from '../scripts/fetch-data/pipeline';
-import type { HttpOptions } from '../scripts/fetch-data/http';
+import { USER_AGENT, type HttpOptions } from '../scripts/fetch-data/http';
+import { resetYahooSession } from '../scripts/fetch-data/sources/yahoo';
 import { getIndicator } from '../src/shared/indicators';
 import type { SeriesFile, SummaryFile } from '../src/shared/types';
 
@@ -120,6 +121,48 @@ describe('updateIndicator 備援與快取', () => {
     expect(f.status).toBe('fallback');
     expect(f.data.map((b) => b[0])).toEqual(['2026-10-05', '2026-10-06']);
     expect(f.source.provider).toBe('twse');
+  });
+
+  it('Yahoo 回 429 時改用 cookie + crumb 重試', async () => {
+    resetYahooSession();
+    let chartCalls = 0;
+    const h: HttpOptions & { calls: string[] } = {
+      calls: [],
+      retries: 0,
+      retryDelayMs: 0,
+      fetchImpl: async (url, init) => {
+        h.calls.push(url);
+        if (url.startsWith('https://fc.yahoo.com')) return new Response('', { status: 404, headers: { 'set-cookie': 'A3=abc; Domain=.yahoo.com; Path=/' } });
+        if (url.includes('getcrumb')) {
+          expect((init?.headers as Record<string, string>).Cookie).toBe('A3=abc');
+          return new Response('CRUMB123');
+        }
+        if (url.includes('CL%3DF')) {
+          chartCalls++;
+          if (!url.includes('crumb=CRUMB123')) return new Response('Edge: Too Many Requests', { status: 429 });
+          return new Response(yahooBody([88, 89]));
+        }
+        return new Response('', { status: 404 });
+      },
+    };
+    const f = await updateIndicator(wti, null, h, NOW, true);
+    expect(f.status).toBe('ok');
+    expect(chartCalls).toBe(2);
+    expect(h.calls.some((u) => u.includes('query2.finance.yahoo.com'))).toBe(true);
+  });
+
+  it('送出誠實標示的 User-Agent（FRED 會擋偽裝瀏覽器的 UA）', async () => {
+    let ua = '';
+    const h: HttpOptions = {
+      retries: 0,
+      fetchImpl: async (_url, init) => {
+        ua = (init?.headers as Record<string, string>)['User-Agent']!;
+        return new Response('observation_date,DGS10\n2026-10-02,5.28\n');
+      },
+    };
+    await updateIndicator(getIndicator('us10y'), null, h, NOW, true);
+    expect(ua).toBe(USER_AGENT);
+    expect(ua).not.toMatch(/Mozilla|Chrome/);
   });
 
   it('拒絕未來日期與無效資料', async () => {
