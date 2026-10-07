@@ -1,0 +1,56 @@
+name: 資料來源連線診斷
+
+on:
+  workflow_dispatch:
+  push:
+    paths: ['.github/workflows/diag.yml']
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 測試各資料來源
+        shell: bash
+        run: |
+          set +e
+          CH="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
+          ME="macro-tw-dashboard/0.1 (+https://github.com/jey2204-creator/macro-tw-dashboard)"
+          NOW=$(date +%s)
+          t(){ n=$1; shift; r=$(curl -s -o /tmp/o -w "code=%{http_code} t=%{time_total}s size=%{size_download}" -m 40 "$@"); echo "RESULT $n | $r | $(head -c 90 /tmp/o | tr '\n' ' ')"; }
+          F="https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS10"
+          t fred-curl "$F"
+          t fred-chromeUA -A "$CH" "$F"
+          t fred-customUA -A "$ME" "$F"
+          t fred-cosd -A "$ME" "$F&cosd=2026-09-01"
+          t fred-api-nokey "https://api.stlouisfed.org/fred/series/observations?series_id=DGS10&file_type=json"
+          t fred-alfred -A "$ME" "https://alfred.stlouisfed.org/graph/alfredgraph.csv?id=DGS10"
+          Y="v8/finance/chart/%5EGSPC?range=5d&interval=1d"
+          t y1-curl "https://query1.finance.yahoo.com/$Y"
+          t y2-curl "https://query2.finance.yahoo.com/$Y"
+          t y1-chrome -A "$CH" "https://query1.finance.yahoo.com/$Y"
+          t y2-chrome -A "$CH" "https://query2.finance.yahoo.com/$Y"
+          t y2-custom -A "$ME" "https://query2.finance.yahoo.com/$Y"
+          curl -s -c /tmp/cj -A "$CH" -m 20 -o /dev/null https://fc.yahoo.com
+          CR=$(curl -s -b /tmp/cj -A "$CH" -m 20 https://query2.finance.yahoo.com/v1/test/getcrumb)
+          echo "RESULT crumb | ${CR:0:30} | cookies=$(grep -c yahoo /tmp/cj)"
+          t y2-crumb -b /tmp/cj -A "$CH" "https://query2.finance.yahoo.com/$Y&crumb=$CR"
+          t y2-crumb-full -b /tmp/cj -A "$CH" "https://query2.finance.yahoo.com/v8/finance/chart/%5ESOX?period1=0&period2=$NOW&interval=1d&crumb=$CR"
+          sleep 5
+          t y2-chrome-after5s -A "$CH" "https://query2.finance.yahoo.com/$Y"
+          t stooq "https://stooq.com/q/d/l/?s=%5Espx&i=d"
+          t nasdaq-sox -A "$CH" -H "Accept: application/json" "https://api.nasdaq.com/api/quote/SOX/historical?assetclass=index&fromdate=2026-09-01&limit=5"
+          t cboe-spx "https://cdn.cboe.com/api/global/delayed_quotes/charts/historical/_SPX.json"
+          t ecb-usd "https://data-api.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?lastNObservations=2&format=csvdata"
+          t treasury "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/2026/all?type=daily_treasury_yield_curve&field_tdr_date_value=2026&page&_format=csv"
+          t bls "https://api.bls.gov/publicAPI/v2/timeseries/data/CUUR0000SA0"
+          t atlfed "https://www.atlantafed.org/cqer/research/gdpnow"
+          t twse -A "$ME" "https://www.twse.com.tw/rwd/zh/TAIEX/MI_5MINS_HIST?date=20261001&response=json"
+          t tpex -A "$ME" "https://www.tpex.org.tw/www/zh-tw/indexInfo/inx?date=2026%2F10%2F01&response=json"
+      - name: Node fetch 測試（與正式程式相同的 HTTP 堆疊）
+        run: |
+          node -e '
+          const CH="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
+          const ME="macro-tw-dashboard/0.1 (+https://github.com/jey2204-creator/macro-tw-dashboard)";
+          const tests=[["node-fred-me","https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS10",ME],["node-fred-ch","https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS10",CH],["node-y2-ch","https://query2.finance.yahoo.com/v8/finance/chart/%5EGSPC?range=5d&interval=1d",CH],["node-y1-ch","https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?range=5d&interval=1d",CH]];
+          (async()=>{for(const [n,u,ua] of tests){const t0=Date.now();try{const r=await fetch(u,{headers:{"User-Agent":ua},signal:AbortSignal.timeout(40000)});const b=await r.text();console.log("RESULT",n,"|",r.status,(Date.now()-t0)+"ms",b.length,"|",b.slice(0,80).replace(/\n/g," "))}catch(e){console.log("RESULT",n,"| ERR",(Date.now()-t0)+"ms",String(e))}}})();'
