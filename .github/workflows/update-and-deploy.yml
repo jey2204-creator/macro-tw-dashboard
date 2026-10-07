@@ -1,0 +1,62 @@
+name: 更新資料並部署
+
+on:
+  schedule:
+    # 皆為 UTC。台北時間：05:40（美股收盤後）、13:40（美國經濟數據公布後）、15:10（台股/櫃買收盤後）
+    - cron: '40 21 * * 1-5'
+    - cron: '40 13 * * 1-5'
+    - cron: '10 7 * * 1-5'
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # 上次成功的資料作為快取：來源故障時沿用，並讓 Yahoo/櫃買只需增量更新
+      - name: 還原資料快取
+        uses: actions/cache@v4
+        with:
+          path: public/data
+          key: market-data-${{ github.run_id }}
+          restore-keys: market-data-
+
+      - name: 抓取資料
+        run: npm run data:fetch
+
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test
+      - run: npm run build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
