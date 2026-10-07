@@ -1,0 +1,6 @@
+node_modules
+dist
+*.local
+.DS_Store
+# 行情資料由 GitHub Actions 產生並以 actions/cache 保存；本機請執行 npm run data:fetch
+public/data/
