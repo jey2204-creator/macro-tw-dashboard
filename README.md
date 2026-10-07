@@ -97,6 +97,8 @@ npm run check               # lint + typecheck + test + build
 1. Repo → Settings → Pages → Source 選「GitHub Actions」。
 2. 推送到 `main` 或手動執行 workflow「更新資料並部署」。
 3. 排程：週一至週五台北時間 05:40、13:40、15:10 自動更新。
+4. 保活：`排程保活` workflow 每月 1、16 日檢查，若 25 天內沒有 commit 就自動寫入一筆紀錄，避免 GitHub 在 60 天無活動後停用排程。
+5. 診斷：資料抓不到時，到 Actions 手動執行 `資料來源連線診斷`，可看出哪個來源被擋。
 
 ## 免責聲明
 

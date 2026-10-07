@@ -1,0 +1,45 @@
+name: 排程保活
+
+# GitHub 會在公開 repo 連續 60 天沒有活動時自動停用排程（schedule）。
+# 這個 workflow 每月檢查一次：最近 25 天內沒有任何 commit，才寫入一筆保活紀錄。
+# 使用 GITHUB_TOKEN 推送的 commit 不會觸發其他 workflow，不會造成多餘的部署。
+
+on:
+  schedule:
+    - cron: '17 3 1,16 * *' # 每月 1 日、16 日 UTC 03:17（台北 11:17）
+  workflow_dispatch:
+    inputs:
+      force:
+        description: '不論最近是否有 commit，都寫入一筆（測試用）'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: 必要時寫入保活紀錄
+        env:
+          FORCE: ${{ inputs.force }}
+        run: |
+          last=$(git log -1 --format=%ct)
+          now=$(date +%s)
+          days=$(( (now - last) / 86400 ))
+          echo "距離上次 commit：${days} 天"
+          if [ "$FORCE" != "true" ] && [ "$days" -lt 25 ]; then
+            echo "最近有活動，不需保活"
+            exit 0
+          fi
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > .github/keepalive.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/keepalive.txt
+          git commit -m "chore: 排程保活（距上次 commit ${days} 天）"
+          git push
