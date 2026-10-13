@@ -11,7 +11,7 @@ export type SourceSpec =
   | { provider: 'tpex'; symbol: 'TPEX_INDEX' }
   | { provider: 'twse'; symbol: 'TAIEX' }
   | { provider: 'taifex'; symbol: 'TXF_FOREIGN_OI' | 'MXF_RETAIL_OI' }
-  | { provider: 'twse_chips'; symbol: 'FOREIGN' | 'TRUST' | 'DEALER' | 'MARGIN' };
+  | { provider: 'twse_chips'; symbol: 'FOREIGN' | 'TRUST' | 'DEALER' | 'MARGIN' | 'MARGIN_BALANCE' | 'MARGIN_RATIO' };
 
 /** 原始資料 → 顯示用數列的轉換 */
 export type Transform =
@@ -81,6 +81,10 @@ export interface IndicatorDef {
   flow?: boolean;
   /** 圖表型式（非市場型預設依 transform 決定） */
   chart?: 'line' | 'histogram';
+  /** 圖表參考線（例如融資維持率 130%／140%／170%） */
+  refLines?: { value: number; label: string }[];
+  /** 依數值分區的說明（由低到高，取第一個 value < max 的區間） */
+  zones?: { max: number; label: string }[];
 }
 
 export const CATEGORY_LABEL: Record<Category, string> = {
@@ -283,6 +287,30 @@ export const INDICATORS: IndicatorDef[] = [
     unit: '億', decimals: 2, sources: [{ provider: 'twse_chips', symbol: 'DEALER' }], transform: 'none',
     market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, flow: true, chart: 'histogram',
     note: '自營商（自行買賣＋避險）買賣差額（億元）；避險部位多與權證、期權相關',
+  },
+  {
+    id: 'margin_balance', name: '融資餘額（上市）', short: '融資餘額', category: 'tw_chips', frequency: 'daily',
+    unit: '億', decimals: 1, sources: [{ provider: 'twse_chips', symbol: 'MARGIN_BALANCE' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, chart: 'line',
+    note: '上市融資金額今日餘額（億元）；餘額持續創高代表散戶槓桿累積',
+  },
+  {
+    id: 'margin_ratio', name: '大盤融資維持率（上市，推算）', short: '融資維持率', category: 'tw_chips', frequency: 'daily',
+    unit: '%', decimals: 2, sources: [{ provider: 'twse_chips', symbol: 'MARGIN_RATIO' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, chart: 'line',
+    refLines: [
+      { value: 130, label: '追繳 130%' },
+      { value: 140, label: '警戒 140%' },
+      { value: 170, label: '過熱 170%' },
+    ],
+    zones: [
+      { max: 130, label: '低於追繳線' },
+      { max: 140, label: '斷頭警戒區' },
+      { max: 160, label: '偏低' },
+      { max: 170, label: '正常' },
+      { max: Infinity, label: '偏熱' },
+    ],
+    note: '推算值＝Σ(逐檔融資餘額×收盤價)÷融資金額，上市含ETF。跌破140%常伴隨斷頭賣壓、接近階段低點；不代表會立刻反彈',
   },
   {
     id: 'margin_chg', name: '融資餘額增減（上市）', short: '融資增減', category: 'tw_chips', frequency: 'daily',

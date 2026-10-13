@@ -15,7 +15,7 @@ export function formatValue(def: Pick<IndicatorDef, 'unit' | 'decimals'>, v: num
   const s = num(v, def.decimals);
   if (def.unit === '%') return `${s}%`;
   if (def.unit === 'k') return `${v >= 0 ? '+' : ''}${s}k`;
-  if (def.unit === '億') return `${v > 0 ? '+' : ''}${s}億`;
+  if (def.unit === '億') return `${s}億`;
   if (def.unit === '口') return `${s}口`;
   return s;
 }

@@ -104,7 +104,7 @@ export function ChartPanel({ def, ev, entry, version, prefs, onPrefs, onClose, t
         {series?.status === 'error' && <div className="cp-msg warn">無法載入歷史資料：{series.error}</div>}
         {data && bars.length === 0 && <div className="cp-msg warn">此指標目前沒有資料</div>}
         {data && bars.length > 0 && (
-          <PriceChart bars={bars} kind={kind} mas={mas} range={prefs.range} decimals={def.decimals} showPct={def.unit !== '%' && def.unit !== 'k'} themeKey={themeKey} />
+          <PriceChart bars={bars} kind={kind} mas={mas} range={prefs.range} decimals={def.decimals} showPct={def.unit !== '%' && def.unit !== 'k'} themeKey={themeKey} refLines={def.refLines} />
         )}
       </div>
 

@@ -4,6 +4,7 @@ import {
   CrosshairMode,
   HistogramSeries,
   LineSeries,
+  LineStyle,
   createChart,
   type IChartApi,
   type ISeriesApi,
@@ -27,6 +28,8 @@ interface Props {
   showPct: boolean;
   /** 讀取 CSS 變數的觸發鍵（主題或漲跌色改變時重新套用） */
   themeKey: string;
+  /** 水平參考線 */
+  refLines?: { value: number; label: string }[];
 }
 
 function cssVar(name: string): string {
@@ -39,7 +42,7 @@ interface Hover {
   ma: Partial<Record<MaPeriod, number | null>>;
 }
 
-export function PriceChart({ bars, kind, mas, range, decimals, showPct, themeKey }: Props) {
+export function PriceChart({ bars, kind, mas, range, decimals, showPct, themeKey, refLines }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<SeriesType>[]>([]);
@@ -136,6 +139,19 @@ export function PriceChart({ bars, kind, mas, range, decimals, showPct, themeKey
       seriesRef.current.push(s);
     }
 
+    // 參考線（例如融資維持率 130／140／170%），以文字標籤標示，不單靠顏色
+    const main = seriesRef.current[0];
+    for (const r of refLines ?? []) {
+      main?.createPriceLine({
+        price: r.value,
+        color: cssVar('--text-3'),
+        lineWidth: 1,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: r.label,
+      });
+    }
+
     for (const p of mas) {
       const vals = maData[p];
       const s = chart.addSeries(LineSeries, {
@@ -151,7 +167,7 @@ export function PriceChart({ bars, kind, mas, range, decimals, showPct, themeKey
       );
       seriesRef.current.push(s);
     }
-  }, [bars, kind, mas, maData, decimals, themeKey]);
+  }, [bars, kind, mas, maData, decimals, themeKey, refLines]);
 
   // 時間區間
   useEffect(() => {

@@ -8,8 +8,11 @@ import type { HttpOptions } from '../scripts/fetch-data/http';
 import { runPipeline } from '../scripts/fetch-data/pipeline';
 import { fetchTaifex, parseTaifexCsv, splitRange, taifexToBars } from '../scripts/fetch-data/sources/taifex';
 import {
+  computeMarginRatio,
   fetchTwseChips,
   parseBfi82u,
+  parseMiIndexPrices,
+  parseMiMargnAll,
   parseMiMargn,
   resetTwseChipsCache,
   weekdaysBackward,
@@ -189,10 +192,64 @@ describe('證交所三大法人買賣超／融資', () => {
   });
 });
 
+describe('融資餘額與大盤融資維持率', () => {
+  beforeEach(() => resetTwseChipsCache());
+  // 2026-10-12 證交所實際回應（逐檔資料已截去不需要的欄位）
+  const mAll = JSON.parse(fx('twse-margin-all-20261012.json'));
+  const idx = JSON.parse(fx('twse-mi-index-20261012.json'));
+
+  it('維持率試算＝196.16%（與愛玩股 2026-10-12 公布值一致）', () => {
+    const m = parseMiMargnAll(mAll)!;
+    expect(m.lots.size).toBeGreaterThan(500);
+    expect(m.balance).toBeCloseTo(6533.3, 1);
+    const prices = parseMiIndexPrices(idx)!;
+    expect(prices.get('2330')).toBeGreaterThan(0);
+    expect(computeMarginRatio(m, prices)).toBe(196.16);
+  });
+
+  it('彙總版（MS）也能解析出增減與餘額；休市回傳 null', () => {
+    const m = parseMiMargnAll(margin)!;
+    expect(m.change).toBe(-83.51);
+    expect(m.balance).toBe(6449.79);
+    expect(m.lots.size).toBe(0);
+    expect(computeMarginRatio(m, new Map())).toBeNull();
+    expect(parseMiMargnAll({ stat: '很抱歉' })).toBeNull();
+    expect(parseMiIndexPrices({ stat: '很抱歉' })).toBeNull();
+  });
+
+  it('同一天：融資增減／餘額／維持率共用一次 MI_MARGN，維持率另加一次 MI_INDEX', async () => {
+    const urls: string[] = [];
+    const http: HttpOptions = {
+      retries: 0,
+      fetchImpl: async (url) => {
+        urls.push(url);
+        return new Response(JSON.stringify(url.includes('MI_INDEX') ? idx : mAll));
+      },
+    };
+    const cached = cacheEnding('2026-10-09', 25);
+    for (const sym of ['MARGIN', 'MARGIN_BALANCE', 'MARGIN_RATIO'] as const) {
+      const r = await fetchTwseChips(sym, cached, '2026-10-12', http, true);
+      if (sym === 'MARGIN_RATIO') expect(r.bars.at(-1)![4]).toBe(196.16);
+    }
+    const margins = urls.filter((u) => u.includes('MI_MARGN'));
+    const prices = urls.filter((u) => u.includes('MI_INDEX'));
+    expect(margins).toHaveLength(new Set(margins).size);
+    expect(prices).toHaveLength(new Set(prices).size);
+    expect(margins.every((u) => u.includes('selectType=ALL'))).toBe(true);
+  });
+
+  it('維持率說明文字標示所在區間', () => {
+    const def = getIndicator('margin_ratio');
+    expect(evaluateSignal(def, dailySeries('2026-10-01', [190, 192, 195, 197, 196, 196.16])).reason).toBe('偏熱，近5日 +6.16pp');
+    expect(evaluateSignal(def, dailySeries('2026-10-01', [150, 145, 142, 139, 138, 137.5])).reason).toContain('斷頭警戒區');
+    expect(def.refLines!.map((r) => r.value)).toEqual([130, 140, 170]);
+  });
+});
+
 describe('籌碼指標的顯示與計分', () => {
   it('全部為「僅供參考」：權重 0、規則 info，不影響綜合判斷', () => {
     const chips = INDICATORS.filter((d) => d.category === 'tw_chips');
-    expect(chips).toHaveLength(8);
+    expect(chips).toHaveLength(10);
     expect(chips.every((d) => d.weight === 0 && d.rule.kind === 'info')).toBe(true);
     const r = computeRegime({ schemaVersion: 1, generatedAt: '', entries: {} }, '2026-10-13');
     expect(r.evals.filter((e) => e.def.category === 'tw_chips').every((e) => !e.counted)).toBe(true);

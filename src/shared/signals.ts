@@ -177,7 +177,10 @@ export function infoReason(def: IndicatorDef, pts: readonly Point[]): string {
       .join('，') || '資料不足';
   }
   const ch = changeOver(pts, 5);
-  return ch ? `近5日變化 ${unitText(def, ch.abs)}` : '資料不足';
+  const last = pts.at(-1);
+  const zone = last && def.zones ? def.zones.find((z) => last[1] < z.max)?.label : undefined;
+  const chText = ch ? (def.unit === '%' ? `近5日 ${signed(ch.abs, 2)}pp` : `近5日變化 ${unitText(def, ch.abs)}`) : null;
+  return [zone, chText].filter(Boolean).join('，') || '資料不足';
 }
 
 /** Sahm 值：最近 3 個月平均失業率 − 前 12 個月內 3 個月平均的最低值 */
