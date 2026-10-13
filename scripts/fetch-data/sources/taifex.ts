@@ -65,6 +65,18 @@ export function taifexToBars(rows: TaifexRow[], symbol: TaifexSymbol): Bar[] {
 
 const slash = (d: string) => d.replace(/-/g, '/');
 
+/** 把 [start, end] 切成每段最多 maxDays 天，最後一段結束於 end */
+export function splitRange(start: string, end: string, maxDays: number): [string, string][] {
+  const out: [string, string][] = [];
+  let s = start;
+  while (s <= end) {
+    const e = addDays(s, maxDays - 1) < end ? addDays(s, maxDays - 1) : end;
+    out.push([s, e]);
+    s = addDays(e, 1);
+  }
+  return out;
+}
+
 export async function fetchTaifex(
   symbol: TaifexSymbol,
   since: string | null,
@@ -72,22 +84,29 @@ export async function fetchTaifex(
   http: HttpOptions,
   fast = false,
 ): Promise<SourceFetchResult> {
-  // 有快取：回抓最近 10 天（涵蓋修正與連假）；無快取：回補 2 年，每段 1 年
-  const ranges: [string, string][] = since
-    ? [[addDays(since, -10), today]]
-    : [
-        [addDays(today, -TAIFEX_BACKFILL_DAYS), addDays(today, -366)],
-        [addDays(today, -365), today],
-      ];
+  // 有快取：從快取最後一天前 10 天抓到今天（涵蓋修正與連假）；無快取：回補 2 年。
+  // 期交所單次查詢上限約 1 年，因此切成每段最多 300 天。
+  const start = since ? addDays(since, -10) : addDays(today, -TAIFEX_BACKFILL_DAYS);
+  const ranges = splitRange(start, today, 300);
   const rows: TaifexRow[] = [];
-  for (const [s, e] of ranges) {
-    const text = await getText('https://www.taifex.com.tw/cht/3/futContractsDateDown', http, {
-      method: 'POST',
-      form: { queryStartDate: slash(s), queryEndDate: slash(e), commodityId: COMMODITY[symbol] },
-      encoding: 'big5',
-    });
-    rows.push(...parseTaifexCsv(text));
-    if (!fast) await sleep(500);
+  for (const [s, e0] of ranges) {
+    // 實測：結束日晚於「最新已公布日」（例如盤後資料尚未公布、週末）時，期交所回傳錯誤頁。
+    // 因此查無資料時把結束日逐日往前退，最多 7 天。
+    let e = e0;
+    for (let tries = 0; tries < 8 && e >= s; tries++) {
+      const text = await getText('https://www.taifex.com.tw/cht/3/futContractsDateDown', http, {
+        method: 'POST',
+        form: { queryStartDate: slash(s), queryEndDate: slash(e), commodityId: COMMODITY[symbol] },
+        encoding: 'big5',
+      });
+      if (!fast) await sleep(500);
+      const got = parseTaifexCsv(text);
+      if (got.length > 0) {
+        rows.push(...got);
+        break;
+      }
+      e = addDays(e, -1);
+    }
   }
   const bars = taifexToBars(rows, symbol);
   if (bars.length === 0) throw new Error('期交所沒有回傳任何資料');

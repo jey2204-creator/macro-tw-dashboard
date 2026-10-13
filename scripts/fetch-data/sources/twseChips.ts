@@ -130,7 +130,7 @@ export async function fetchTwseChips(
   const first = cached?.[0]?.[0] ?? null;
   const last = cached?.at(-1)?.[0] ?? null;
   // 最新：自上次最後一天（含）起；無快取則從今天往回
-  const recent = weekdaysBackward(today, last ?? addDays(today, -1), last ? 30 : BACKFILL_PER_RUN);
+  const recent = last ? weekdaysBackward(today, last, 30) : weekdaysBackward(today, target, BACKFILL_PER_RUN);
   // 回補：從快取最早一天往前
   const older = first && first > target ? weekdaysBackward(addDays(first, -1), target, BACKFILL_PER_RUN) : [];
   const dates = [...recent, ...older];

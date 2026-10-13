@@ -6,7 +6,7 @@ import path from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { HttpOptions } from '../scripts/fetch-data/http';
 import { runPipeline } from '../scripts/fetch-data/pipeline';
-import { fetchTaifex, parseTaifexCsv, taifexToBars } from '../scripts/fetch-data/sources/taifex';
+import { fetchTaifex, parseTaifexCsv, splitRange, taifexToBars } from '../scripts/fetch-data/sources/taifex';
 import {
   fetchTwseChips,
   parseBfi82u,
@@ -57,7 +57,16 @@ describe('期交所三大法人期貨部位', () => {
     expect(() => parseTaifexCsv('日期,商品名稱,身份別,abc\n2026/10/13,x,y,1')).toThrow(/欄位異常/);
   });
 
-  it('以 POST 表單查詢並以 Big5 解碼；無快取時分兩段回補 2 年', async () => {
+  it('splitRange 切段', () => {
+    expect(splitRange('2026-01-01', '2026-01-10', 4)).toEqual([
+      ['2026-01-01', '2026-01-04'],
+      ['2026-01-05', '2026-01-08'],
+      ['2026-01-09', '2026-01-10'],
+    ]);
+    expect(splitRange('2026-10-03', '2026-10-13', 300)).toEqual([['2026-10-03', '2026-10-13']]);
+  });
+
+  it('以 POST 表單查詢並以 Big5 解碼；無快取時分三段回補 2 年', async () => {
     const calls: { url: string; body: string }[] = [];
     const http: HttpOptions = {
       retries: 0,
@@ -67,11 +76,29 @@ describe('期交所三大法人期貨部位', () => {
       },
     };
     const r = await fetchTaifex('TXF_FOREIGN_OI', null, '2026-10-13', http, true);
-    expect(calls).toHaveLength(2);
-    expect(calls[1]!.body).toContain('commodityId=TXF');
-    expect(calls[1]!.body).toContain('queryEndDate=2026%2F10%2F13');
+    expect(calls).toHaveLength(3);
+    expect(calls[2]!.body).toContain('commodityId=TXF');
+    expect(calls[2]!.body).toContain('queryEndDate=2026%2F10%2F13');
     expect(r.bars.at(-1)![4]).toBe(-87239);
     expect(r.incremental).toBe(false);
+  });
+});
+
+describe('期交所：結束日尚無資料時往前退', () => {
+  it('結束日晚於最新公布日 → 回傳 HTML → 自動改用前一天', async () => {
+    const ends: string[] = [];
+    const http: HttpOptions = {
+      retries: 0,
+      fetchImpl: async (_url, init) => {
+        const end = new URLSearchParams(String(init?.body)).get('queryEndDate')!;
+        ends.push(end);
+        if (end > '2026/10/13') return new Response(new Uint8Array(iconv.encode('<!DOCTYPE HTML><html></html>', 'big5')));
+        return new Response(new Uint8Array(iconv.encode(txf, 'big5')));
+      },
+    };
+    const r = await fetchTaifex('TXF_FOREIGN_OI', '2026-10-12', '2026-10-15', http, true);
+    expect(ends).toEqual(['2026/10/15', '2026/10/14', '2026/10/13']);
+    expect(r.bars.at(-1)![0]).toBe('2026-10-13');
   });
 });
 
@@ -113,6 +140,15 @@ describe('證交所三大法人買賣超／融資', () => {
     // 投信沿用外資那次的回應：總請求數＝不重複日期數（最新 4 天＋回補 60 天）
     expect(urls).toHaveLength(new Set(urls).size);
     expect(urls).toHaveLength(64);
+  });
+
+  it('無快取時從今天往前抓 60 個工作日', async () => {
+    let n = 0;
+    const http: HttpOptions = { retries: 0, fetchImpl: async () => (n++, new Response(JSON.stringify(margin))) };
+    const r = await fetchTwseChips('MARGIN', null, '2026-10-13', http, true);
+    expect(n).toBe(60);
+    expect(r.bars).toHaveLength(60);
+    expect(r.bars.at(-1)![0]).toBe('2026-10-13');
   });
 
   it('快取不足一年時往前漸進回補，每次最多 60 個工作日', async () => {
@@ -170,7 +206,7 @@ describe('籌碼指標的顯示與計分', () => {
       fast: true,
       indicators: [getIndicator('fut_foreign_oi'), getIndicator('fut_foreign_oi_chg')],
     });
-    expect(posts).toBe(2); // 只有 fut_foreign_oi 抓取（兩段回補）
+    expect(posts).toBe(3); // 只有 fut_foreign_oi 抓取（三段回補）
     expect(summary.entries.fut_foreign_oi_chg!.tail).toEqual(summary.entries.fut_foreign_oi!.tail);
     expect(summary.entries.fut_foreign_oi_chg!.status).toBe('ok');
   });
