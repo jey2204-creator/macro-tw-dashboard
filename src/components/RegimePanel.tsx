@@ -125,7 +125,7 @@ export function RegimePanel({
                   <tr key={e.def.id} className={e.counted ? '' : 'excluded'} onClick={() => onSelect(e.def.id)}>
                     <td>{e.def.short}</td>
                     <td>
-                      <SignalBadge signal={e.signal.signal} muted={!e.counted} />
+                      <SignalBadge signal={e.signal.signal} muted={!e.counted} info={e.def.rule.kind === 'info'} />
                     </td>
                     <td>
                       <div>{e.signal.reason}</div>

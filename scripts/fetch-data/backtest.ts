@@ -97,7 +97,7 @@ export function runBacktest(
   const tClose = taiex.map((b) => b[4]);
 
   const prepared: Prepared[] = defs
-    .filter((d) => !d.hidden && series[d.id]?.length)
+    .filter((d) => !d.hidden && d.rule.kind !== 'info' && series[d.id]?.length)
     .map((def) => {
       const pts = transformPoints(def, closes(series[def.id]!));
       return { def, pts, avail: pts.map((p) => addDays(p[0], PUBLICATION_LAG[def.frequency])) };

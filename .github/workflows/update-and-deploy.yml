@@ -2,10 +2,10 @@ name: 更新資料並部署
 
 on:
   schedule:
-    # 皆為 UTC。台北時間：05:40（美股收盤後）、13:40（美國經濟數據公布後）、15:10（台股/櫃買收盤後）
+    # 皆為 UTC。台北時間：05:40（美股收盤後）、16:40（台股收盤、期交所法人資料公布後）、21:40（美國經濟數據與融資餘額公布後）
     - cron: '40 21 * * 1-5'
     - cron: '40 13 * * 1-5'
-    - cron: '10 7 * * 1-5'
+    - cron: '40 8 * * 1-5'
   workflow_dispatch:
   push:
     branches: [main]
@@ -22,7 +22,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

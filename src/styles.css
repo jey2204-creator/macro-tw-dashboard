@@ -375,6 +375,10 @@ code {
 .sig-neutral {
   color: var(--neutral);
 }
+.sig-info {
+  color: var(--text-3);
+  border-style: dotted;
+}
 .sig-muted {
   opacity: 0.45;
   border-style: dashed;

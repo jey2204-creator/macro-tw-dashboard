@@ -9,7 +9,9 @@ export type SourceSpec =
   | { provider: 'yahoo'; symbol: string }
   | { provider: 'fred'; symbol: string }
   | { provider: 'tpex'; symbol: 'TPEX_INDEX' }
-  | { provider: 'twse'; symbol: 'TAIEX' };
+  | { provider: 'twse'; symbol: 'TAIEX' }
+  | { provider: 'taifex'; symbol: 'TXF_FOREIGN_OI' | 'MXF_RETAIL_OI' }
+  | { provider: 'twse_chips'; symbol: 'FOREIGN' | 'TRUST' | 'DEALER' | 'MARGIN' };
 
 /** 原始資料 → 顯示用數列的轉換 */
 export type Transform =
@@ -41,7 +43,9 @@ export type SignalRule =
   /** 非農就業 3 個月平均新增（千人）；bullAt=null 表示不判偏多 */
   | { kind: 'payrolls'; bullAt: number | null; bearAt: number }
   /** 經濟成長率（年化季增 %） */
-  | { kind: 'growth'; bullAt: number; bearAt: number };
+  | { kind: 'growth'; bullAt: number; bearAt: number }
+  /** 僅供參考：不判多空，只顯示近期累計（台股籌碼，待回測驗證） */
+  | { kind: 'info' };
 
 export interface IndicatorDef {
   id: string;
@@ -51,7 +55,7 @@ export interface IndicatorDef {
   category: Category;
   frequency: Frequency;
   /** 顯示單位 */
-  unit: '%' | 'pt' | 'USD' | 'TWD' | 'k';
+  unit: '%' | 'pt' | 'USD' | 'TWD' | 'k' | '口' | '億';
   decimals: number;
   /** 依優先順序排列；第一個失敗會嘗試下一個 */
   sources: SourceSpec[];
@@ -71,6 +75,12 @@ export interface IndicatorDef {
   hidden?: boolean;
   /** 搭配顯示的另一個指標（Fed 區間下緣） */
   pairId?: string;
+  /** 不另外抓取，沿用此指標的資料（再套用 transform） */
+  derivedFrom?: string;
+  /** 每日流量型（買賣超、增減）：近期方向看「N 日累計」 */
+  flow?: boolean;
+  /** 圖表型式（非市場型預設依 transform 決定） */
+  chart?: 'line' | 'histogram';
 }
 
 export const CATEGORY_LABEL: Record<Category, string> = {
@@ -80,9 +90,10 @@ export const CATEGORY_LABEL: Record<Category, string> = {
   macro: '美國總經',
   us_equity: '美股',
   tw_equity: '台股',
+  tw_chips: '台股籌碼',
 };
 
-export const CATEGORY_ORDER: Category[] = ['tw_equity', 'us_equity', 'rates', 'fx', 'energy', 'macro'];
+export const CATEGORY_ORDER: Category[] = ['tw_equity', 'tw_chips', 'us_equity', 'rates', 'fx', 'energy', 'macro'];
 
 /**
  * 權重與規則依 2010–2026 回測審查後調整（2026-10，scripts/fetch-data/backtest.ts）：
@@ -230,6 +241,55 @@ export const INDICATORS: IndicatorDef[] = [
     market: true, rule: { kind: 'trend' }, weight: 0.25, maxAgeDays: 5,
     note: '中小型股風險偏好',
   },
+  // ── 台股籌碼（僅供參考，權重 0；待回測驗證後再決定是否計分） ──
+  {
+    id: 'fut_foreign_oi', name: '外資台指期淨未平倉', short: '外資期淨OI', category: 'tw_chips', frequency: 'daily',
+    unit: '口', decimals: 0, sources: [{ provider: 'taifex', symbol: 'TXF_FOREIGN_OI' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, chart: 'line',
+    note: '外資在臺股期貨（大台）的多空未平倉口數淨額；負值為淨空單。外資空單常是現貨避險，不等於看空',
+  },
+  {
+    id: 'fut_foreign_oi_chg', name: '外資台指期淨未平倉增減', short: '外資期增減', category: 'tw_chips', frequency: 'daily',
+    unit: '口', decimals: 0, sources: [{ provider: 'taifex', symbol: 'TXF_FOREIGN_OI' }], transform: 'diff',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, derivedFrom: 'fut_foreign_oi', flow: true,
+    chart: 'histogram', note: '與前一交易日相比的淨未平倉變化；正值＝多單增加或空單回補',
+  },
+  {
+    id: 'retail_oi', name: '散戶小台淨未平倉（推算）', short: '散戶小台OI', category: 'tw_chips', frequency: 'daily',
+    unit: '口', decimals: 0, sources: [{ provider: 'taifex', symbol: 'MXF_RETAIL_OI' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, chart: 'line',
+    note: '推算值：−（三大法人小台淨未平倉合計）。常被當作反向指標：散戶大量偏多時需留意',
+  },
+  {
+    id: 'retail_oi_chg', name: '散戶小台淨未平倉增減（推算）', short: '散戶增減', category: 'tw_chips', frequency: 'daily',
+    unit: '口', decimals: 0, sources: [{ provider: 'taifex', symbol: 'MXF_RETAIL_OI' }], transform: 'diff',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, derivedFrom: 'retail_oi', flow: true,
+    chart: 'histogram', note: '與前一交易日相比的散戶小台淨未平倉變化',
+  },
+  {
+    id: 'net_foreign', name: '外資買賣超（上市）', short: '外資買賣超', category: 'tw_chips', frequency: 'daily',
+    unit: '億', decimals: 2, sources: [{ provider: 'twse_chips', symbol: 'FOREIGN' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, flow: true, chart: 'histogram',
+    note: '外資及陸資＋外資自營商買賣差額（億元，上市市場）',
+  },
+  {
+    id: 'net_trust', name: '投信買賣超（上市）', short: '投信買賣超', category: 'tw_chips', frequency: 'daily',
+    unit: '億', decimals: 2, sources: [{ provider: 'twse_chips', symbol: 'TRUST' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, flow: true, chart: 'histogram',
+    note: '投信買賣差額（億元，上市市場）；季底常有作帳行情',
+  },
+  {
+    id: 'net_dealer', name: '自營商買賣超（上市）', short: '自營商買賣超', category: 'tw_chips', frequency: 'daily',
+    unit: '億', decimals: 2, sources: [{ provider: 'twse_chips', symbol: 'DEALER' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, flow: true, chart: 'histogram',
+    note: '自營商（自行買賣＋避險）買賣差額（億元）；避險部位多與權證、期權相關',
+  },
+  {
+    id: 'margin_chg', name: '融資餘額增減（上市）', short: '融資增減', category: 'tw_chips', frequency: 'daily',
+    unit: '億', decimals: 2, sources: [{ provider: 'twse_chips', symbol: 'MARGIN' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, flow: true, chart: 'histogram',
+    note: '融資金額今日餘額 − 前日餘額（億元）；融資快速增加代表散戶槓桿升溫',
+  },
 ];
 
 export const INDICATOR_MAP: Record<string, IndicatorDef> = Object.fromEntries(
@@ -253,6 +313,10 @@ export function sourceUrl(spec: SourceSpec): string {
       return 'https://www.tpex.org.tw/openapi/'; // 官方 OpenAPI 文件（櫃買指數歷史資料）
     case 'twse':
       return 'https://www.twse.com.tw/zh/';
+    case 'taifex':
+      return 'https://www.taifex.com.tw/cht/3/futContractsDate';
+    case 'twse_chips':
+      return 'https://www.twse.com.tw/zh/';
   }
 }
 
@@ -261,4 +325,6 @@ export const PROVIDER_LABEL: Record<SourceSpec['provider'], string> = {
   fred: 'FRED（St. Louis Fed）',
   tpex: '櫃買中心 TPEx',
   twse: '臺灣證交所 TWSE',
+  taifex: '臺灣期交所 TAIFEX',
+  twse_chips: '臺灣證交所 TWSE',
 };

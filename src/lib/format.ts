@@ -15,6 +15,8 @@ export function formatValue(def: Pick<IndicatorDef, 'unit' | 'decimals'>, v: num
   const s = num(v, def.decimals);
   if (def.unit === '%') return `${s}%`;
   if (def.unit === 'k') return `${v >= 0 ? '+' : ''}${s}k`;
+  if (def.unit === '億') return `${v > 0 ? '+' : ''}${s}億`;
+  if (def.unit === '口') return `${s}口`;
   return s;
 }
 
@@ -29,6 +31,8 @@ export function formatChange(
   if (def.changeInBp) return { main: `${sign}${num(abs * 100, 0)}bp`, sub: null };
   if (def.unit === '%') return { main: `${sign}${num(abs, def.decimals)}pp`, sub: null };
   if (def.unit === 'k') return { main: `${sign}${num(abs, 0)}k`, sub: null };
+  if (def.unit === '口') return { main: `${sign}${num(abs, 0)}口`, sub: null };
+  if (def.unit === '億') return { main: `${sign}${num(abs, def.decimals)}億`, sub: null };
   const p = pct === null ? null : `${pct > 0 ? '+' : pct < 0 ? '' : '±'}${num(pct, 2)}%`;
   return { main: p ?? `${sign}${num(abs, def.decimals)}`, sub: `${sign}${num(abs, def.decimals)}` };
 }
@@ -39,4 +43,11 @@ export function shortDate(d: string | null | undefined, today?: string): string 
   const [y, m, day] = d.split('-');
   if (today && today.slice(0, 4) === y) return `${m}/${day}`;
   return `${y!.slice(2)}/${m}/${day}`;
+}
+
+/** 帶正負號與單位（流量型累計值） */
+export function formatSigned(def: Pick<IndicatorDef, 'unit' | 'decimals'>, v: number | null): string {
+  if (v === null || !Number.isFinite(v)) return '—';
+  const u = def.unit === '億' || def.unit === '口' ? def.unit : '';
+  return `${v > 0 ? '+' : ''}${num(v, def.decimals)}${u}`;
 }

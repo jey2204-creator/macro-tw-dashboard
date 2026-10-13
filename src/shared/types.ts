@@ -8,7 +8,7 @@ export type Bar = [date: string, open: number, high: number, low: number, close:
 
 export type Frequency = 'daily' | 'weekly' | 'monthly' | 'quarterly';
 
-export type Category = 'rates' | 'fx' | 'energy' | 'macro' | 'us_equity' | 'tw_equity';
+export type Category = 'rates' | 'fx' | 'energy' | 'macro' | 'us_equity' | 'tw_equity' | 'tw_chips';
 
 export type Signal = 'bull' | 'neutral' | 'bear';
 

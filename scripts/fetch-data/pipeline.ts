@@ -7,7 +7,9 @@ import { isValidBar, mergeBars } from '../../src/shared/timeseries';
 import type { Bar, SeriesFile, SourceRef, SummaryEntry, SummaryFile } from '../../src/shared/types';
 import type { FetchLike, HttpOptions } from './http';
 import { fetchFred } from './sources/fred';
+import { fetchTaifex } from './sources/taifex';
 import { fetchTpex, fetchTwse } from './sources/twExchanges';
+import { fetchTwseChips } from './sources/twseChips';
 import type { SourceFetchResult } from './sources/types';
 import { fetchYahoo } from './sources/yahoo';
 
@@ -83,6 +85,10 @@ async function fetchFromSource(
       return fetchTpex(cacheLast, today, http, fast ? 0 : 300);
     case 'twse':
       return fetchTwse(today, http, fast ? 0 : 300);
+    case 'taifex':
+      return fetchTaifex(spec.symbol, cacheLast, today, http, fast);
+    case 'twse_chips':
+      return fetchTwseChips(spec.symbol, cacheLast ? cached!.data : null, today, http, fast);
   }
 }
 
@@ -178,9 +184,13 @@ export async function runPipeline(opts: PipelineOptions): Promise<SummaryFile> {
   };
 
   const entries: Record<string, SummaryEntry> = {};
+  const results = new Map<string, SeriesFile>();
+  // 衍生指標（例如「淨未平倉增減」）不另外抓取，直接沿用來源指標的資料
+  const derived = defs.filter((d) => d.derivedFrom);
+  const fetched = defs.filter((d) => !d.derivedFrom);
   // 依來源分組並行：不同網站同時抓，同一網站內循序以免觸發限流
   const groups = new Map<string, IndicatorDef[]>();
-  for (const d of defs) {
+  for (const d of fetched) {
     const k = d.sources[0]!.provider;
     groups.set(k, [...(groups.get(k) ?? []), d]);
   }
@@ -210,6 +220,7 @@ export async function runPipeline(opts: PipelineOptions): Promise<SummaryFile> {
           };
         }
         await writeJsonAtomic(file, result);
+        results.set(def.id, result);
         entries[def.id] = toSummaryEntry(def, result);
         log(
           `${result.status.padEnd(8)} ${def.id.padEnd(10)} ${result.source.provider}:${result.source.symbol} last=${result.lastDate} n=${result.data.length}${result.errors.length ? ` errors=${result.errors.join(' | ')}` : ''}`,
@@ -217,6 +228,15 @@ export async function runPipeline(opts: PipelineOptions): Promise<SummaryFile> {
       }
     }),
   );
+
+  for (const def of derived) {
+    const base = results.get(def.derivedFrom!);
+    if (!base) continue;
+    const result: SeriesFile = { ...base, id: def.id };
+    await writeJsonAtomic(path.join(seriesDir, `${def.id}.json`), result);
+    entries[def.id] = toSummaryEntry(def, result);
+    log(`${result.status.padEnd(8)} ${def.id.padEnd(10)} ← ${def.derivedFrom}`);
+  }
 
   const summary: SummaryFile = {
     schemaVersion: 1,

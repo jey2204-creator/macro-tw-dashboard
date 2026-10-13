@@ -77,7 +77,7 @@ export function ChartPanel({ def, ev, entry, version, prefs, onPrefs, onClose, t
       <header className="cp-head">
         <div className="cp-title">
           <h2>{def.name}</h2>
-          <SignalBadge signal={ev.signal.signal} muted={!ev.counted} />
+          <SignalBadge signal={ev.signal.signal} muted={!ev.counted} info={def.rule.kind === 'info'} />
         </div>
         <button type="button" className="iconbtn" onClick={onClose} aria-label="關閉圖表">
           ✕

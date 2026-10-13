@@ -42,6 +42,8 @@ export function describeRule(rule: SignalRule, def?: Pick<IndicatorDef, 'changeI
       return `3個月平均新增 < ${rule.bearAt}k 偏空${rule.bullAt === null ? '' : `、≥ ${rule.bullAt}k 偏多`}、其餘中性`;
     case 'growth':
       return `≥ ${rule.bullAt}% 偏多、< ${rule.bearAt}% 偏空、其餘中性`;
+    case 'info':
+      return '僅供參考，不判多空、不計分（待回測驗證）';
   }
 }
 
@@ -150,7 +152,32 @@ export function evaluateSignal(def: IndicatorDef, pts: readonly Point[]): Signal
       const signal: Signal = last[1] >= rule.bullAt ? 'bull' : last[1] < rule.bearAt ? 'bear' : 'neutral';
       return result(signal, `${quarterLabel(last[0])} ${signed(last[1], 1)}%`, rule, def);
     }
+
+    case 'info':
+      return result('neutral', infoReason(def, pts), rule, def);
   }
+}
+
+const unitText = (def: Pick<IndicatorDef, 'unit' | 'decimals'>, v: number) =>
+  `${v > 0 ? '+' : ''}${v.toLocaleString('en-US', { minimumFractionDigits: def.decimals, maximumFractionDigits: def.decimals })}${def.unit === '億' ? '億' : def.unit === '口' ? '口' : ''}`;
+
+/** N 期合計（流量型） */
+export function sumLast(pts: readonly Point[], n: number): number | null {
+  if (pts.length < n) return null;
+  return pts.slice(-n).reduce((s, p) => s + p[1], 0);
+}
+
+/** 參考型指標的說明文字：流量看 5／20 日累計，存量看 5 日變化 */
+export function infoReason(def: IndicatorDef, pts: readonly Point[]): string {
+  if (def.flow) {
+    const s5 = sumLast(pts, 5);
+    const s20 = sumLast(pts, 20);
+    return [s5 !== null ? `5日累計 ${unitText(def, s5)}` : null, s20 !== null ? `20日累計 ${unitText(def, s20)}` : null]
+      .filter(Boolean)
+      .join('，') || '資料不足';
+  }
+  const ch = changeOver(pts, 5);
+  return ch ? `近5日變化 ${unitText(def, ch.abs)}` : '資料不足';
 }
 
 /** Sahm 值：最近 3 個月平均失業率 − 前 12 個月內 3 個月平均的最低值 */
@@ -173,6 +200,12 @@ export type Direction = 'up' | 'down' | 'flat';
 
 /** 近期方向：日資料看 20 期、月資料看 3 期、季資料看 1 期 */
 export function recentDirection(def: IndicatorDef, pts: readonly Point[]): { dir: Direction; text: string } {
+  if (def.flow) {
+    const s = sumLast(pts, 20) ?? sumLast(pts, pts.length);
+    const n = Math.min(20, pts.length);
+    if (s === null || n === 0) return { dir: 'flat', text: '—' };
+    return { dir: s > 0 ? 'up' : s < 0 ? 'down' : 'flat', text: `${n}日計 ${unitText(def, s)}` };
+  }
   const n = def.frequency === 'daily' ? 20 : def.frequency === 'weekly' ? 4 : def.frequency === 'monthly' ? 3 : 1;
   const ch = changeOver(pts, n);
   if (!ch) return { dir: 'flat', text: '—' };
@@ -180,6 +213,7 @@ export function recentDirection(def: IndicatorDef, pts: readonly Point[]): { dir
   // 判斷持平的門檻：價格類 0.5%、利率類 5bp、其他 1% 相對值
   let dir: Direction;
   if (def.changeInBp) dir = Math.abs(ch.abs) < 0.05 ? 'flat' : ch.abs > 0 ? 'up' : 'down';
+  else if (def.unit === '口') dir = ch.abs === 0 ? 'flat' : ch.abs > 0 ? 'up' : 'down';
   else if (def.unit === '%' || def.unit === 'k')
     dir = Math.abs(ch.abs) < (def.unit === 'k' ? 25 : 0.1) ? 'flat' : ch.abs > 0 ? 'up' : 'down';
   else dir = ch.pct === null || Math.abs(ch.pct) < 0.5 ? 'flat' : ch.pct > 0 ? 'up' : 'down';
@@ -189,7 +223,9 @@ export function recentDirection(def: IndicatorDef, pts: readonly Point[]): { dir
       ? `${signed(ch.abs, 1)}pp`
       : def.unit === 'k'
         ? `${signed(ch.abs, 0)}k`
-        : `${signed(ch.pct ?? 0, 1)}%`;
+        : def.unit === '口'
+          ? unitText(def, ch.abs)
+          : `${signed(ch.pct ?? 0, 1)}%`;
   return { dir, text: `${label} ${amount}` };
 }
 

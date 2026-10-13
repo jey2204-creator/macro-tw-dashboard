@@ -11,6 +11,11 @@ export interface HttpOptions {
 export interface RequestOptions {
   /** 額外標頭（例如 Cookie） */
   headers?: Record<string, string>;
+  method?: 'GET' | 'POST';
+  /** POST 表單內容 */
+  form?: Record<string, string>;
+  /** 回應編碼（期交所 CSV 為 big5） */
+  encoding?: string;
 }
 
 /**
@@ -32,7 +37,7 @@ export class HttpError extends Error {
 
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** 具逾時與重試（指數退避）的 GET；回傳文字內容 */
+/** 具逾時與重試（指數退避）的 HTTP 請求；回傳文字內容 */
 export async function getText(url: string, opts: HttpOptions, req: RequestOptions = {}): Promise<string> {
   const { fetchImpl, timeoutMs = 20_000, retries = 2, retryDelayMs = 1_500 } = opts;
   let lastErr: unknown;
@@ -42,7 +47,14 @@ export async function getText(url: string, opts: HttpOptions, req: RequestOption
     try {
       const res = await fetchImpl(url, {
         signal: ctrl.signal,
-        headers: { 'User-Agent': USER_AGENT, Accept: '*/*', ...req.headers },
+        method: req.method ?? 'GET',
+        headers: {
+          'User-Agent': USER_AGENT,
+          Accept: '*/*',
+          ...(req.form ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}),
+          ...req.headers,
+        },
+        body: req.form ? new URLSearchParams(req.form).toString() : undefined,
       });
       if (!res.ok) {
         // 4xx（429 除外）不重試
@@ -50,7 +62,8 @@ export async function getText(url: string, opts: HttpOptions, req: RequestOption
         if (res.status >= 400 && res.status < 500 && res.status !== 429) throw err;
         lastErr = err;
       } else {
-        return await res.text();
+        if (!req.encoding) return await res.text();
+        return new TextDecoder(req.encoding).decode(await res.arrayBuffer());
       }
     } catch (e) {
       lastErr = e;

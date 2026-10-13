@@ -1,7 +1,7 @@
-import { formatChange, formatValue, shortDate } from '../lib/format';
+import { formatChange, formatSigned, formatValue, shortDate } from '../lib/format';
 import { statusTags, type RowModel } from '../lib/rows';
 import { CATEGORY_LABEL, CATEGORY_ORDER } from '../shared/indicators';
-import { quarterLabel } from '../shared/signals';
+import { quarterLabel, sumLast } from '../shared/signals';
 import { SignalBadge } from './SignalBadge';
 import { Sparkline } from './Sparkline';
 
@@ -10,8 +10,13 @@ const ARROW = { up: '▲', down: '▼', flat: '▶' } as const;
 function Row({ row, today, selected, onSelect }: { row: RowModel; today: string; selected: boolean; onSelect: (id: string) => void }) {
   const { def } = row.ev;
   const last = row.change.last;
-  const ch = formatChange(def, row.change.abs, row.change.pct);
-  const chDir = row.change.abs === null ? '' : row.change.abs > 0 ? 'up' : row.change.abs < 0 ? 'down' : '';
+  // 流量型（買賣超、增減）：變化欄改顯示 5 日累計，比單日差值更有意義
+  const sum5 = def.flow ? sumLast(row.ev.points, 5) : null;
+  const ch = def.flow
+    ? { main: formatSigned(def, sum5), sub: '5日計' }
+    : formatChange(def, row.change.abs, row.change.pct);
+  const chVal = def.flow ? sum5 : row.change.abs;
+  const chDir = chVal === null ? '' : chVal > 0 ? 'up' : chVal < 0 ? 'down' : '';
   const dateText = def.frequency === 'quarterly' && last ? quarterLabel(last[0]) : shortDate(last?.[0], today);
   const value =
     def.pairId && row.pairValue !== null && last
@@ -51,6 +56,7 @@ function Row({ row, today, selected, onSelect }: { row: RowModel; today: string;
         <span className="c-sig">
           <SignalBadge
             signal={row.ev.signal.signal}
+            info={def.rule.kind === 'info'}
             muted={!row.ev.counted}
             title={`${row.ev.signal.reason}\n規則：${row.ev.signal.ruleText}${row.ev.excludedReason ? `\n不計分：${row.ev.excludedReason}` : ''}`}
           />
@@ -82,7 +88,7 @@ export function IndicatorTable({
               <span>{CATEGORY_LABEL[cat]}</span>
               <span className="cols muted" aria-hidden="true">
                 <span>數值</span>
-                <span>{cat === 'macro' ? '前期變化' : '日變化'}</span>
+                <span>{cat === 'macro' ? '前期變化' : cat === 'tw_chips' ? '前日比/5日計' : '日變化'}</span>
                 <span>近期</span>
                 <span>判斷</span>
               </span>

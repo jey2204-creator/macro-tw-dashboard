@@ -68,7 +68,7 @@ describe('UI（真實資料快照）', () => {
     const r = computeRegime(broken, TODAY);
     const rows = r.evals.map((e) => buildRow(e, broken));
     render(<IndicatorTable rows={rows} today={TODAY} selectedId={null} onSelect={() => {}} />);
-    expect(screen.getByText('失敗')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /費城半導體指數/ }).textContent).toContain('失敗');
     expect(r.evals.find((e) => e.def.id === 'sox')!.counted).toBe(false);
   });
 });

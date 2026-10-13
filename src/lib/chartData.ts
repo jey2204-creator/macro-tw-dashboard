@@ -18,7 +18,7 @@ export const MA_COLOR_VAR: Record<MaPeriod, string> = {
 export function chartBars(def: IndicatorDef, data: Bar[], closeOnly: boolean, period: Period): { bars: Bar[]; kind: ChartKind } {
   if (!def.market) {
     const pts = transformPoints(def, closes(data));
-    return { bars: pts.map(([d, v]) => [d, v, v, v, v]), kind: def.transform === 'diff' ? 'histogram' : 'line' };
+    return { bars: pts.map(([d, v]) => [d, v, v, v, v]), kind: def.chart ?? (def.transform === 'diff' ? 'histogram' : 'line') };
   }
   return { bars: resample(data, period), kind: closeOnly ? 'line' : 'candle' };
 }
