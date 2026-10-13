@@ -21,7 +21,9 @@ function Row({ row, today, selected, onSelect }: { row: RowModel; today: string;
   const value =
     def.pairId && row.pairValue !== null && last
       ? `${row.pairValue.toFixed(2)}–${last[1].toFixed(2)}%`
-      : formatValue(def, last?.[1]);
+      : def.flow
+        ? formatSigned(def, last?.[1] ?? null)
+        : formatValue(def, last?.[1]);
   const tags = statusTags(row);
   return (
     <li>
