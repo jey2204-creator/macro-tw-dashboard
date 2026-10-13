@@ -102,6 +102,12 @@ describe('期交所：結束日尚無資料時往前退', () => {
   });
 });
 
+/** 以 last 結尾、n 個工作日的快取 */
+const cacheEnding = (last: string, n = 25): Bar[] =>
+  weekdaysBackward(last, '2000-01-01', n)
+    .reverse()
+    .map((d): Bar => [d, 1, 1, 1, 1]);
+
 describe('證交所三大法人買賣超／融資', () => {
   beforeEach(() => resetTwseChipsCache());
 
@@ -131,33 +137,55 @@ describe('證交所三大法人買賣超／融資', () => {
         return new Response(JSON.stringify(bfi));
       },
     };
-    const cached: Bar[] = [['2026-10-08', 1, 1, 1, 1]];
+    const cached = cacheEnding('2026-10-08');
     const a = await fetchTwseChips('FOREIGN', cached, '2026-10-13', http, true);
     const b = await fetchTwseChips('TRUST', cached, '2026-10-13', http, true);
     expect(a.bars.slice(-3).map((x) => x[0])).toEqual(['2026-10-08', '2026-10-12', '2026-10-13']);
     expect(a.bars.map((x) => x[0])).not.toContain('2026-10-09'); // 休市
     expect(b.bars.at(-1)![4]).toBe(246.25);
-    // 投信沿用外資那次的回應：總請求數＝不重複日期數（最新 4 天＋回補 60 天）
+    // 投信沿用外資那次的回應：總請求數＝不重複日期數（最新 4 天＋回補 40 天）
     expect(urls).toHaveLength(new Set(urls).size);
-    expect(urls).toHaveLength(64);
+    expect(urls).toHaveLength(44);
   });
 
-  it('無快取時從今天往前抓 60 個工作日', async () => {
+  it('快取過少（< 20 筆）時重新抓最近 40 個工作日以補洞', async () => {
+    let n = 0;
+    const http: HttpOptions = { retries: 0, fetchImpl: async () => (n++, new Response(JSON.stringify(margin))) };
+    await fetchTwseChips('MARGIN', [['2026-10-13', 1, 1, 1, 1]], '2026-10-13', http, true);
+    expect(n).toBe(40);
+  });
+
+  it('無快取時從今天往前抓 40 個工作日', async () => {
     let n = 0;
     const http: HttpOptions = { retries: 0, fetchImpl: async () => (n++, new Response(JSON.stringify(margin))) };
     const r = await fetchTwseChips('MARGIN', null, '2026-10-13', http, true);
-    expect(n).toBe(60);
-    expect(r.bars).toHaveLength(60);
+    expect(n).toBe(40);
+    expect(r.bars).toHaveLength(40);
     expect(r.bars.at(-1)![0]).toBe('2026-10-13');
   });
 
-  it('快取不足一年時往前漸進回補，每次最多 60 個工作日', async () => {
+  it('中途失敗即停止該段，不留缺洞', async () => {
+    const http: HttpOptions = {
+      retries: 0,
+      fetchImpl: async (url) =>
+        url.includes('date=20261008') ? new Response('blocked', { status: 403 }) : new Response(JSON.stringify(margin)),
+    };
+    const cached = cacheEnding('2026-10-07');
+    const r = await fetchTwseChips('MARGIN', cached, '2026-10-13', http, true);
+    // 10/07 → 10/08 失敗 → 不抓 10/09 之後；回補段照常
+    const dates = r.bars.map((b) => b[0]);
+    expect(dates).toContain('2026-10-07');
+    expect(dates.some((d) => d > '2026-10-07')).toBe(false);
+    expect(dates.some((d) => d < cached[0]![0])).toBe(true);
+  });
+
+  it('快取不足一年時往前漸進回補，每次最多 40 個工作日', async () => {
     let n = 0;
     const http: HttpOptions = { retries: 0, fetchImpl: async () => (n++, new Response(JSON.stringify(margin))) };
-    const cached: Bar[] = [['2026-10-12', 1, 1, 1, 1], ['2026-10-13', 1, 1, 1, 1]];
+    const cached = cacheEnding('2026-10-13');
     const r = await fetchTwseChips('MARGIN', cached, '2026-10-13', http, true);
-    expect(r.bars[0]![0] < '2026-10-12').toBe(true);
-    expect(n).toBe(1 + 60); // 最新 1 天 + 回補 60 天
+    expect(r.bars[0]![0] < cached[0]![0]).toBe(true);
+    expect(n).toBe(1 + 40); // 最新 1 天 + 回補 40 天
   });
 });
 

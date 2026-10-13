@@ -16,8 +16,19 @@ import type { SourceFetchResult } from './types';
 export type TwseChipSymbol = 'FOREIGN' | 'TRUST' | 'DEALER' | 'MARGIN';
 
 export const TWSE_CHIPS_BACKFILL_DAYS = 365;
-export const BACKFILL_PER_RUN = 60;
-const DELAY_MS = 700; // 證交所對頻繁請求會暫時封鎖 IP
+export const BACKFILL_PER_RUN = 40;
+/**
+ * 證交所對頻繁請求會暫時封鎖 IP（實測 GitHub Actions 上每 0.7 秒一次會被擋），
+ * 所有證交所籌碼請求共用節流：兩次請求至少間隔 2 秒。
+ */
+const MIN_INTERVAL_MS = 2000;
+let lastRequestAt = 0;
+async function throttle(fast: boolean): Promise<void> {
+  if (fast) return;
+  const wait = lastRequestAt + MIN_INTERVAL_MS - Date.now();
+  if (wait > 0) await sleep(wait);
+  lastRequestAt = Date.now();
+}
 
 const num = (s: string | undefined) => Number(String(s ?? '').replace(/,/g, ''));
 const yi = (v: number) => Math.round((v / 1e8) * 100) / 100; // 元 → 億元，取 2 位
@@ -95,11 +106,11 @@ async function dayValue(symbol: TwseChipSymbol, date: string, http: HttpOptions,
     let p = marginCache.get(date);
     if (!p) {
       p = (async () => {
+        await throttle(fast);
         const j = await getJson<MiMargn>(
           `https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?date=${ymd}&selectType=MS&response=json`,
           http,
         );
-        if (!fast) await sleep(DELAY_MS);
         return parseMiMargn(j);
       })();
       marginCache.set(date, p);
@@ -109,8 +120,8 @@ async function dayValue(symbol: TwseChipSymbol, date: string, http: HttpOptions,
   let p = bfiCache.get(date);
   if (!p) {
     p = (async () => {
+      await throttle(fast);
       const j = await getJson<Bfi82u>(`https://www.twse.com.tw/rwd/zh/fund/BFI82U?type=day&dayDate=${ymd}&response=json`, http);
-      if (!fast) await sleep(DELAY_MS);
       return parseBfi82u(j);
     })();
     bfiCache.set(date, p);
@@ -127,29 +138,33 @@ export async function fetchTwseChips(
   fast = false,
 ): Promise<SourceFetchResult> {
   const target = addDays(today, -TWSE_CHIPS_BACKFILL_DAYS);
+  // 快取太少（例如早期版本被限流而留下缺洞）時，視同無快取重新抓最近 40 個工作日；結果仍會與舊快取合併
+  if (cached && cached.length < 20) cached = null;
   const first = cached?.[0]?.[0] ?? null;
   const last = cached?.at(-1)?.[0] ?? null;
   // 最新：自上次最後一天（含）起；無快取則從今天往回
-  const recent = last ? weekdaysBackward(today, last, 30) : weekdaysBackward(today, target, BACKFILL_PER_RUN);
-  // 回補：從快取最早一天往前
+  // 為避免資料出現「中間缺洞」：最新段由舊到新、回補段由新到舊，遇到錯誤就停在該處，下次執行從斷點繼續。
+  const recent = (last ? weekdaysBackward(today, last, 30) : weekdaysBackward(today, target, BACKFILL_PER_RUN)).reverse();
   const older = first && first > target ? weekdaysBackward(addDays(first, -1), target, BACKFILL_PER_RUN) : [];
-  const dates = [...recent, ...older];
 
   const bars: Bar[] = [];
-  let failures = 0;
-  for (const d of dates) {
-    try {
-      const v = await dayValue(symbol, d, http, fast);
-      if (v !== null && Number.isFinite(v)) bars.push([d, v, v, v, v]);
-    } catch (e) {
-      failures++;
-      if (failures > 5) {
-        if (bars.length === 0) throw e;
-        break; // 已取得部分資料就先保存，下次再補
+  let lastError: unknown = null;
+  for (const segment of [recent, older]) {
+    for (const d of segment) {
+      try {
+        const v = await dayValue(symbol, d, http, fast);
+        if (v !== null && Number.isFinite(v)) bars.push([d, v, v, v, v]);
+      } catch (e) {
+        lastError = e;
+        console.warn(`  [twse_chips] ${symbol} ${d} 失敗，本段停止：${e instanceof Error ? e.message : String(e)}`);
+        break;
       }
     }
   }
-  if (bars.length === 0) throw new Error('證交所沒有回傳任何資料（可能休市或尚未公布）');
+  if (bars.length === 0) {
+    if (lastError) throw lastError;
+    throw new Error('證交所沒有回傳任何資料（可能休市或尚未公布）');
+  }
   bars.sort((a, b) => (a[0] < b[0] ? -1 : 1));
   return { bars, closeOnly: true, partial: false, incremental: true };
 }
