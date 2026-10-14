@@ -1,4 +1,4 @@
-import { addMonths, daysBetween, monthKey, weekKey } from './dates';
+import { addDays, addMonths, daysBetween, monthKey, weekKey } from './dates';
 import type { IndicatorDef } from './indicators';
 import type { Bar } from './types';
 
@@ -113,6 +113,19 @@ export function changeOver(
   if (pts.length <= n) return null;
   const last = pts.at(-1)!;
   const from = pts.at(-1 - n)!;
+  const abs = last[1] - from[1];
+  return { abs, pct: from[1] !== 0 ? (abs / Math.abs(from[1])) * 100 : null, from };
+}
+
+/** 與 n 個日曆天前比較的變化（取 ≤ 該日期的最後一筆，適用公布頻率不固定的資料） */
+export function changeOverDays(
+  pts: readonly Point[],
+  days: number,
+): { abs: number; pct: number | null; from: Point } | null {
+  const last = pts.at(-1);
+  if (!last) return null;
+  const from = valueAtOrBefore(pts, addDays(last[0], -days));
+  if (!from || from[0] === last[0]) return null;
   const abs = last[1] - from[1];
   return { abs, pct: from[1] !== 0 ? (abs / Math.abs(from[1])) * 100 : null, from };
 }

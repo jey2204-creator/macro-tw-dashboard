@@ -1,6 +1,7 @@
 import { formatChange, formatSigned, formatValue, shortDate } from '../lib/format';
 import { statusTags, type RowModel } from '../lib/rows';
 import { CATEGORY_LABEL, CATEGORY_ORDER } from '../shared/indicators';
+import { SIGNAL_LABEL } from '../shared/regime';
 import { quarterLabel, sumLast } from '../shared/signals';
 import { SignalBadge } from './SignalBadge';
 import { Sparkline } from './Sparkline';
@@ -63,6 +64,13 @@ function Row({ row, today, selected, onSelect }: { row: RowModel; today: string;
             title={`${row.ev.signal.reason}\n規則：${row.ev.signal.ruleText}${row.ev.excludedReason ? `\n不計分：${row.ev.excludedReason}` : ''}`}
           />
         </span>
+        {/* 判斷依據直接寫在列上：手機沒有 hover，不必點開就知道為什麼是偏多／偏空 */}
+        {def.rule.kind !== 'info' && (
+          <span className="c-reason">
+            {row.ev.signal.reason} → {SIGNAL_LABEL[row.ev.signal.signal]}
+            {row.ev.excludedReason && <span className="warn">（不計分：{row.ev.excludedReason}）</span>}
+          </span>
+        )}
       </button>
     </li>
   );

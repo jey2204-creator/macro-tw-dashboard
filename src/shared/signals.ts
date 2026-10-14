@@ -1,6 +1,6 @@
 import { addDays, daysBetween } from './dates';
 import type { IndicatorDef, SignalRule } from './indicators';
-import { changeOver, sma, valueAtOrBefore, type Point } from './timeseries';
+import { changeOver, changeOverDays, sma, valueAtOrBefore, type Point } from './timeseries';
 import type { Signal } from './types';
 
 /**
@@ -201,7 +201,37 @@ export function quarterLabel(date: string): string {
 
 export type Direction = 'up' | 'down' | 'flat';
 
-/** 近期方向：日資料看 20 期、月資料看 3 期、季資料看 1 期 */
+/**
+ * 「近期」欄的回看期間。
+ * 以**判斷規則自己用的期間**為準（例如 Fed 看 120 天、通膨看 3 個月），
+ * 避免欄位數字與判斷結果看起來互相矛盾（Fed 9 月升息、20 日變化卻是 0bp）。
+ * 規則沒有明確期間時（利差、成長率、參考型）才依資料頻率給預設值。
+ */
+export function recentWindow(def: IndicatorDef): { periods?: number; days?: number; label: string } {
+  const periodLabel = (n: number) =>
+    def.frequency === 'daily' ? `${n}日` : def.frequency === 'weekly' ? `${n}週` : def.frequency === 'monthly' ? `${n}月` : `${n}期`;
+  const rule = def.rule;
+  switch (rule.kind) {
+    case 'policyRate':
+      // 日資料但只在會議後變動，用日曆天回推才對得上規則
+      return { days: rule.lookbackDays, label: `${rule.lookbackDays}天` };
+    case 'risingIsBearish':
+    case 'inflationTrend':
+      return { periods: rule.lookback, label: periodLabel(rule.lookback) };
+    case 'trend':
+      // MA60 與 20 日前比較
+      return { periods: 20, label: periodLabel(20) };
+    case 'payrolls':
+      // 規則看 3 個月平均
+      return { periods: 3, label: periodLabel(3) };
+    default: {
+      const n = def.frequency === 'daily' ? 20 : def.frequency === 'weekly' ? 4 : def.frequency === 'monthly' ? 3 : 1;
+      return { periods: n, label: periodLabel(n) };
+    }
+  }
+}
+
+/** 近期變化：回看期間與判斷規則一致（見 recentWindow） */
 export function recentDirection(def: IndicatorDef, pts: readonly Point[]): { dir: Direction; text: string } {
   if (def.flow) {
     const s = sumLast(pts, 20) ?? sumLast(pts, pts.length);
@@ -209,10 +239,10 @@ export function recentDirection(def: IndicatorDef, pts: readonly Point[]): { dir
     if (s === null || n === 0) return { dir: 'flat', text: '—' };
     return { dir: s > 0 ? 'up' : s < 0 ? 'down' : 'flat', text: `${n}日計 ${unitText(def, s)}` };
   }
-  const n = def.frequency === 'daily' ? 20 : def.frequency === 'weekly' ? 4 : def.frequency === 'monthly' ? 3 : 1;
-  const ch = changeOver(pts, n);
+  const w = recentWindow(def);
+  const ch = w.days !== undefined ? changeOverDays(pts, w.days) : changeOver(pts, w.periods!);
   if (!ch) return { dir: 'flat', text: '—' };
-  const label = def.frequency === 'daily' ? `${n}日` : def.frequency === 'monthly' ? `${n}月` : `${n}期`;
+  const label = w.label;
   // 判斷持平的門檻：價格類 0.5%、利率類 5bp、其他 1% 相對值
   let dir: Direction;
   if (def.changeInBp) dir = Math.abs(ch.abs) < 0.05 ? 'flat' : ch.abs > 0 ? 'up' : 'down';

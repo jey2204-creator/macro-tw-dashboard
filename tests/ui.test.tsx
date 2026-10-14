@@ -62,6 +62,17 @@ describe('UI（真實資料快照）', () => {
     expect(onSelect).toHaveBeenCalledWith('taiex');
   });
 
+  it('每一列直接顯示判斷依據（手機沒有 hover 也看得到）', () => {
+    const rows = regime.evals.map((e) => buildRow(e, summary));
+    render(<IndicatorTable rows={rows} today={TODAY} selectedId={null} onSelect={() => {}} />);
+    // Fed：規則看 120 天，依據與近期欄都要指向同一次升息
+    const fed = screen.getByRole('button', { name: /^Fed 政策利率/ });
+    expect(fed.textContent).toContain('120天內升息 25bp → 偏空');
+    expect(fed.textContent).toContain('120天 +25bp');
+    // 參考型指標（籌碼）不重複顯示依據，維持列表密度
+    expect(screen.getByRole('button', { name: /^外資買賣超（上市）/ }).textContent).not.toContain('→');
+  });
+
   it('指標資料缺失時仍能渲染並標示失敗', () => {
     const broken: SummaryFile = { ...summary, entries: { ...summary.entries } };
     delete broken.entries.sox;

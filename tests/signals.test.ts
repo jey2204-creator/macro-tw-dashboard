@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getIndicator } from '../src/shared/indicators';
-import { describeRule, evaluateSignal, isStale, recentDirection, sahmValue } from '../src/shared/signals';
-import { transformPoints } from '../src/shared/timeseries';
+import { describeRule, evaluateSignal, isStale, recentDirection, recentWindow, sahmValue } from '../src/shared/signals';
+import { changeOver, transformPoints } from '../src/shared/timeseries';
 import { dailySeries, linear, monthlySeries } from './helpers';
 
 describe('trend（股價指數）', () => {
@@ -121,6 +121,22 @@ describe('輔助', () => {
     expect(d.text).toBe('20日 +20bp');
     const p = recentDirection(getIndicator('sox'), dailySeries('2026-01-01', linear(30, 100, 0)));
     expect(p.dir).toBe('flat');
+  });
+  it('近期欄的回看期間與判斷規則一致', () => {
+    // Fed 規則看 120 天：9 月升息後第 20 日變化為 0，但近期欄要顯示 120 天內 +25bp
+    const fed = getIndicator('fed');
+    expect(recentWindow(fed)).toEqual({ days: 120, label: '120天' });
+    const hike = dailySeries('2026-06-01', [...Array(100).fill(3.75), ...Array(100).fill(4.0)]);
+    const d = recentDirection(fed, hike);
+    expect(d.text).toBe('120天 +25bp');
+    expect(d.dir).toBe('up');
+    // 同一組資料用舊的 20 日視窗會顯示 0bp，與「偏空」矛盾
+    expect(changeOver(hike, 20)!.abs).toBeCloseTo(0, 9);
+    expect(evaluateSignal(fed, hike).signal).toBe('bear');
+    // 通膨規則看 3 個月、趨勢規則看 20 日
+    expect(recentWindow(getIndicator('core_cpi'))).toEqual({ periods: 3, label: '3月' });
+    expect(recentWindow(getIndicator('sox'))).toEqual({ periods: 20, label: '20日' });
+    expect(recentWindow(getIndicator('nfp'))).toEqual({ periods: 3, label: '3月' });
   });
   it('規則參數可重新開啟偏多判斷（向後相容）', () => {
     const def = { ...getIndicator('nfp'), rule: { kind: 'payrolls' as const, bullAt: 100, bearAt: 0 } };

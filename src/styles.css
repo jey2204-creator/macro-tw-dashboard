@@ -578,6 +578,25 @@ th {
 .c-sig {
   text-align: center;
 }
+/* 判斷依據：橫跨整列的第二行小字 */
+.c-reason {
+  grid-column: 1 / -1;
+  font-size: 10.5px;
+  line-height: 1.3;
+  color: var(--text-3);
+  padding-bottom: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.c-reason .warn {
+  margin-left: 2px;
+}
+.row:has(.c-reason) {
+  align-content: center;
+  padding-top: 4px;
+}
 @media (max-width: 360px) {
   .group-head,
   .row {
