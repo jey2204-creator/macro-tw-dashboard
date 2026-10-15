@@ -31,7 +31,7 @@ interface Props {
   /** 讀取 CSS 變數的觸發鍵（主題或漲跌色改變時重新套用） */
   themeKey: string;
   /** 水平參考線 */
-  refLines?: { value: number; label: string; tone?: 'bull' | 'neutral' | 'bear' }[];
+  refLines?: { value: number; label: string }[];
   /** 數值越大越偏空（跌停家數等）：柱狀圖與圖例改用空方色 */
   bearish?: boolean;
 }
@@ -148,7 +148,7 @@ export function PriceChart({ bars, kind, mas, range, decimals, showPct, themeKey
     for (const r of refLines ?? []) {
       main?.createPriceLine({
         price: r.value,
-        color: cssVar(r.tone === 'bull' ? '--up' : r.tone === 'bear' ? '--down' : r.tone === 'neutral' ? '--neutral' : '--text-3'),
+        color: cssVar('--text-3'),
         lineWidth: 1,
         lineStyle: LineStyle.Dashed,
         axisLabelVisible: true,

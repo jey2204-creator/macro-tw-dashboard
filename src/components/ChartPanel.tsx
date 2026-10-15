@@ -9,9 +9,6 @@ import { chartBars, MA_COLOR_VAR, type ChartKind } from '../lib/chartData';
 import { PriceChart } from './PriceChart';
 import { BacktestTable } from './BacktestTable';
 import { SignalBadge } from './SignalBadge';
-import type { DailyOutlook } from '../shared/dailyOutlook';
-import { SIGNAL_LABEL } from '../shared/regime';
-import { fmtLevel } from '../lib/outlookText';
 
 const STATUS_TEXT: Record<SummaryEntry['status'], string> = {
   ok: '正常（主要來源）',
@@ -50,8 +47,6 @@ interface Props {
   themeKey: string;
   backtest?: BacktestStats;
   backtestRange?: string;
-  /** 每日指標的翻轉門檻：畫成虛線 */
-  daily?: DailyOutlook;
 }
 
 function Seg<T extends string>({ items, value, onChange, label }: { items: { k: T; label: string }[]; value: T; onChange: (v: T) => void; label: string }) {
@@ -66,7 +61,7 @@ function Seg<T extends string>({ items, value, onChange, label }: { items: { k: 
   );
 }
 
-export function ChartPanel({ def, ev, entry, version, prefs, onPrefs, onClose, themeKey, backtest, backtestRange, daily }: Props) {
+export function ChartPanel({ def, ev, entry, version, prefs, onPrefs, onClose, themeKey, backtest, backtestRange }: Props) {
   const series = useSeries(def.id, version);
   const data = series?.status === 'ready' ? series.data : null;
   const { bars, kind } = useMemo(
@@ -77,14 +72,6 @@ export function ChartPanel({ def, ev, entry, version, prefs, onPrefs, onClose, t
     onPrefs({ ...prefs, mas: prefs.mas.includes(p) ? prefs.mas.filter((x) => x !== p) : [...prefs.mas, p].sort((a, b) => a - b) });
   const mas = def.market ? prefs.mas : [];
   const src = data?.source ?? entry?.source;
-  // 參考線：指標自己的（融資維持率 130／140／170%）＋翻轉門檻（轉中性／轉偏空…）
-  const refLines = useMemo(() => {
-    const lines = [...(def.refLines ?? [])].map((r) => ({ ...r, tone: undefined as 'bull' | 'neutral' | 'bear' | undefined }));
-    for (const f of daily?.flips ?? []) {
-      lines.push({ value: f.at, label: `轉${SIGNAL_LABEL[f.signal]} ${fmtLevel(def, f.at, daily!.decimals)}`, tone: f.signal });
-    }
-    return lines.length ? lines : undefined;
-  }, [def, daily]);
 
   return (
     <section className="chartpanel" aria-label={`${def.name} 圖表`}>
@@ -118,7 +105,7 @@ export function ChartPanel({ def, ev, entry, version, prefs, onPrefs, onClose, t
         {series?.status === 'error' && <div className="cp-msg warn">無法載入歷史資料：{series.error}</div>}
         {data && bars.length === 0 && <div className="cp-msg warn">此指標目前沒有資料</div>}
         {data && bars.length > 0 && (
-          <PriceChart bars={bars} kind={kind} mas={mas} range={prefs.range} decimals={def.decimals} showPct={def.unit !== '%' && def.unit !== 'k'} themeKey={themeKey} refLines={refLines} bearish={def.bearish} />
+          <PriceChart bars={bars} kind={kind} mas={mas} range={prefs.range} decimals={def.decimals} showPct={def.unit !== '%' && def.unit !== 'k'} themeKey={themeKey} refLines={def.refLines} bearish={def.bearish} />
         )}
       </div>
 
