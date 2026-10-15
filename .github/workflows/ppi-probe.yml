@@ -1,0 +1,39 @@
+name: PPI 回測資料探測
+
+# 一次性：抓取回測所需的指標歷史（含 PPI 各版本），存進 data/ppi-probe/ 供離線回測。不部署網站。
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: 抓取計分指標歷史
+        run: npm run data:fetch -- --out data/ppi-probe --only us2y,us10y,spread,dxy,usdtwd,fed,fed_lower,cpi,core_cpi,unrate,nfp,gdp,gdpnow,spx,nasdaq,sox,taiex,tpex
+      - name: 抓取 PPI（FRED CSV）
+        run: |
+          mkdir -p data/ppi-probe/ppi
+          UA='macro-tw-dashboard/0.1 (+https://github.com/jey2204-creator/macro-tw-dashboard)'
+          for id in PPIFIS PPIFES WPUFD4 WPUFD49104 WPUFD49116 WPSFD49116 PCEPILFE; do
+            curl -sS -A "$UA" --max-time 60 "https://fred.stlouisfed.org/graph/fredgraph.csv?id=$id" -o "data/ppi-probe/ppi/$id.csv" || echo "失敗 $id"
+            head -2 "data/ppi-probe/ppi/$id.csv"; wc -l "data/ppi-probe/ppi/$id.csv"
+          done
+      - name: 提交
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f data/ppi-probe/*.tmp
+          git add data/ppi-probe
+          git commit -m "data: PPI 回測探測資料" || echo "沒有新資料"
+          git push
