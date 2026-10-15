@@ -1,0 +1,60 @@
+name: 資料快照（測試版網頁用）
+
+# 把目前的行情資料（含該分支新增的指標）存到 preview-data 分支，讓 Claude 的工作環境可以用 git 取得
+# 真實資料來做測試版網頁（工作環境讀不到 github.io 與 Actions artifact）。
+# 觸發：Actions 頁手動 Run workflow（可選分支），或非 main 分支上 commit 訊息含 [snapshot] 的 push。
+# 不會動到正式網站：只讀取資料快取、只寫 preview-data 分支。
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore: [main, preview-data]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: data-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[snapshot]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # 只還原、不寫入快取：正式部署的快取不受測試資料影響
+      - name: 還原資料快取
+        uses: actions/cache/restore@v4
+        with:
+          path: public/data
+          key: market-data-${{ github.run_id }}
+          restore-keys: market-data-
+
+      - name: 抓取資料（含本分支新增的指標）
+        run: npm run data:fetch
+
+      - name: 推送到 preview-data 分支
+        env:
+          SRC_REF: ${{ github.ref_name }}
+          SRC_SHA: ${{ github.sha }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          rm -rf /tmp/snap && mkdir -p /tmp/snap
+          cp -r public/data /tmp/snap/data
+          cd /tmp/snap
+          git init -q -b preview-data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          printf '{"ref":"%s","sha":"%s","at":"%s"}\n' "$SRC_REF" "$SRC_SHA" "$(date -u +%FT%TZ)" > snapshot.json
+          git add -A
+          git commit -q -m "資料快照 ${SRC_REF}@${SRC_SHA:0:7}"
+          git push -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}" preview-data
+          echo "::notice title=資料快照::已推送 preview-data（來源 ${SRC_REF}@${SRC_SHA:0:7}，$(ls data/series | wc -l) 個序列）"

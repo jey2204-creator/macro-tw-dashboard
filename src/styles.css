@@ -850,6 +850,24 @@ th {
 .ms-pane-labels {
   margin: 2px 0 4px;
 }
+/* 跨市場對照：加權窗格 + N 個對照窗格，高度隨窗格數增加 */
+.cm-host {
+  height: calc(190px + var(--cm-panes, 3) * 120px);
+}
+.wide .cm-host {
+  height: calc(240px + var(--cm-panes, 3) * 150px);
+}
+.cm-legend {
+  min-height: 0;
+  line-height: 1.5;
+}
+.cm .cp-mas {
+  align-items: center;
+}
+.cm .ma-chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
 .ms-state {
   padding: 0 4px;
   border-radius: 3px;

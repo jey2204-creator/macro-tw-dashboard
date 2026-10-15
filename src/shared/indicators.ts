@@ -117,11 +117,12 @@ export const CATEGORY_LABEL: Record<Category, string> = {
   energy: '能源',
   macro: '美國總經',
   us_equity: '美股',
+  asia_equity: '亞股',
   tw_equity: '台股',
   tw_chips: '台股籌碼',
 };
 
-export const CATEGORY_ORDER: Category[] = ['tw_equity', 'tw_chips', 'us_equity', 'rates', 'fx', 'energy', 'macro'];
+export const CATEGORY_ORDER: Category[] = ['tw_equity', 'tw_chips', 'us_equity', 'asia_equity', 'rates', 'fx', 'energy', 'macro'];
 
 /**
  * 權重與規則依 2010–2026 回測審查後調整（2026-10，scripts/fetch-data/backtest.ts）：
@@ -315,6 +316,21 @@ export const INDICATORS: IndicatorDef[] = [
     unit: 'pt', decimals: 2, sources: [{ provider: 'yahoo', symbol: '^SOX' }], transform: 'none',
     market: true, rule: { kind: 'trend' }, weight: 0.5, maxAgeDays: 5,
     note: '與台股（半導體權重高）連動最直接',
+  },
+  // ── 亞股（跨市場對照面板用；只抓取、不列入指標表與計分） ──
+  {
+    id: 'nikkei', name: '日經 225', short: '日經225', category: 'asia_equity', frequency: 'daily',
+    subtitle: '日本股市｜與台股同時段',
+    unit: 'pt', decimals: 2, sources: [{ provider: 'yahoo', symbol: '^N225' }], transform: 'none',
+    market: true, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true,
+    note: '與台股同時段交易的亞洲主要市場；跨市場對照面板用，不計分',
+  },
+  {
+    id: 'kospi', name: '韓國 KOSPI', short: 'KOSPI', category: 'asia_equity', frequency: 'daily',
+    subtitle: '韓國股市｜半導體、記憶體',
+    unit: 'pt', decimals: 2, sources: [{ provider: 'yahoo', symbol: '^KS11' }], transform: 'none',
+    market: true, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true,
+    note: '三星、SK 海力士占比高，產業結構與台股最接近且同時段交易；跨市場對照面板用，不計分',
   },
   // ── 台股 ──────────────────────────────────
   {
