@@ -513,6 +513,10 @@ th {
   color: var(--text-3);
   line-height: 1.25;
   white-space: normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 .c-name .date {
   font-size: 10.5px;
