@@ -112,16 +112,19 @@ function Row({
         aria-label={`${def.name} ${value}，開啟圖表`}
       >
         <span className="c-name">
-          <span className="name">{def.short}</span>
-          {def.subtitle && <span className="subtitle">{def.subtitle}</span>}
-          <span className="date">
-            {dateText}
-            {tags.map((t) => (
-              <span key={t.text} className={`tag ${t.cls}`} title={t.title}>
-                {t.text}
-              </span>
-            ))}
+          {/* 日期接在短名後同一行，名稱格少一行；過時等標籤仍跟著日期 */}
+          <span className="head">
+            <span className="name">{def.short}</span>
+            <span className="date">
+              {dateText}
+              {tags.map((t) => (
+                <span key={t.text} className={`tag ${t.cls}`} title={t.title}>
+                  {t.text}
+                </span>
+              ))}
+            </span>
           </span>
+          {def.subtitle && <span className="subtitle">{def.subtitle}</span>}
         </span>
         <span className="c-val num">{value}</span>
         <span className={`c-chg num ${chDir}`}>
