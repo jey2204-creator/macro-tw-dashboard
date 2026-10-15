@@ -142,7 +142,7 @@ function changePct(rows: StressRow[], i: number): number | null {
   return Number.isFinite(chg) && Number.isFinite(prev) && prev > 0 ? (chg / prev) * 100 : null;
 }
 
-function percentile(sorted: number[], p: number): number {
+export function percentile(sorted: number[], p: number): number {
   const idx = Math.min(sorted.length - 1, Math.max(0, Math.floor(p * (sorted.length - 1))));
   return sorted[idx]!;
 }
@@ -167,13 +167,16 @@ function flushFlags(rows: StressRow[]): boolean[] {
   });
 }
 
-function forward(rows: StressRow[], i: number, n: number): number | null {
+/** 以第 2 欄（加權收盤）計算的列 */
+export type PriceRow = readonly [string, number, ...unknown[]];
+
+export function forward(rows: readonly PriceRow[], i: number, n: number): number | null {
   const j = i + n;
   if (j >= rows.length) return null;
   return r2((rows[j]![1] / rows[i]![1] - 1) * 100);
 }
 
-function mdd(rows: StressRow[], i: number, n: number): number | null {
+export function mdd(rows: readonly PriceRow[], i: number, n: number): number | null {
   if (i + n >= rows.length) return null;
   let low = Infinity;
   for (let k = i + 1; k <= i + n; k++) low = Math.min(low, rows[k]![1]);
@@ -234,7 +237,7 @@ export function detectEvents(rows: StressRow[]): StressEvent[] {
   return events;
 }
 
-function stats(list: { ret20: number | null; ret60: number | null; mdd60: number | null }[]): EventStats {
+export function stats(list: { ret20: number | null; ret60: number | null; mdd60: number | null }[]): EventStats {
   const avg = (xs: (number | null)[]) => {
     const v = xs.filter((x): x is number => x !== null);
     return v.length ? r2(v.reduce((a, b) => a + b, 0) / v.length) : null;

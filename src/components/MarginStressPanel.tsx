@@ -19,11 +19,12 @@ import {
   WARN_DROP_5D,
   WARN_RATIO,
   ZONE_RATIO,
-  type EventStats,
   type MarginStressFile,
   type StressEventType,
 } from '../shared/marginStress';
 import { rangeStart, type RangeKey } from '../shared/timeseries';
+import { cssVar, f2, pctCell } from '../lib/stressFormat';
+import { StatsRow } from './StatsRow';
 
 const RANGES: { k: RangeKey; label: string }[] = [
   { k: '1Y', label: '1年' },
@@ -32,26 +33,6 @@ const RANGES: { k: RangeKey; label: string }[] = [
 ];
 const EVENT_TYPES: StressEventType[] = ['below150', 'below140', 'flush', 'cleared'];
 const MARKER_TEXT: Record<StressEventType, string> = { below150: '150', below140: '140', flush: '斷頭', cleared: '清洗完成' };
-
-function cssVar(name: string): string {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#888';
-}
-const f2 = (v: number | null | undefined, sign = false) =>
-  v === null || v === undefined || !Number.isFinite(v) ? '—' : `${sign && v > 0 ? '+' : ''}${v.toFixed(2)}`;
-const pctCell = (v: number | null, sign = true) => (v === null ? '—' : `${sign && v > 0 ? '+' : ''}${v.toFixed(1)}%`);
-
-function StatsRow({ label, s, hl }: { label: string; s: EventStats; hl?: boolean }) {
-  return (
-    <tr className={hl ? 'all' : ''}>
-      <td>{label}</td>
-      <td className="r">{s.n}</td>
-      <td className="r">{pctCell(s.avg20)}</td>
-      <td className="r">{pctCell(s.avg60)}</td>
-      <td className="r">{pctCell(s.win60, false)}</td>
-      <td className="r">{pctCell(s.avgMdd60)}</td>
-    </tr>
-  );
-}
 
 function StressChart({ data, range, themeKey }: { data: MarginStressFile; range: RangeKey; themeKey: string }) {
   const hostRef = useRef<HTMLDivElement>(null);

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { CalendarFile } from '../shared/calendar';
+import type { BreadthStressFile } from '../shared/breadthStress';
 import type { MarginStressFile } from '../shared/marginStress';
 import type { BacktestFile, SeriesFile, SummaryFile } from '../shared/types';
 
@@ -100,6 +101,22 @@ export function useMarginStress(version: string | null): MarginStressFile | null
     if (!version) return;
     const ctrl = new AbortController();
     getJson<MarginStressFile>(`${DATA_BASE}/margin-stress.json?v=${encodeURIComponent(version)}`, ctrl.signal)
+      .then((data) => setState({ v: version, data: data.schemaVersion === 1 && Array.isArray(data.rows) ? data : null }))
+      .catch(() => {
+        if (!ctrl.signal.aborted) setState({ v: version, data: null });
+      });
+    return () => ctrl.abort();
+  }, [version]);
+  return state && state.v === version ? state.data : null;
+}
+
+/** 漲跌停家數監測（選用資料）：載入失敗時回傳 null */
+export function useBreadthStress(version: string | null): BreadthStressFile | null {
+  const [state, setState] = useState<{ v: string; data: BreadthStressFile | null } | null>(null);
+  useEffect(() => {
+    if (!version) return;
+    const ctrl = new AbortController();
+    getJson<BreadthStressFile>(`${DATA_BASE}/breadth-stress.json?v=${encodeURIComponent(version)}`, ctrl.signal)
       .then((data) => setState({ v: version, data: data.schemaVersion === 1 && Array.isArray(data.rows) ? data : null }))
       .catch(() => {
         if (!ctrl.signal.aborted) setState({ v: version, data: null });

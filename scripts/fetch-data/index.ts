@@ -7,7 +7,7 @@ import path from 'node:path';
 import { INDICATORS } from '../../src/shared/indicators';
 import { updateCalendar } from './calendar';
 import { writeBacktest } from './writeBacktest';
-import { writeMarginStress } from './writeMarginStress';
+import { lastBreadth, writeMarginStress } from './writeMarginStress';
 import { runPipeline } from './pipeline';
 
 function arg(name: string): string | undefined {
@@ -52,6 +52,7 @@ async function main() {
   try {
     const ms = await writeMarginStress(outDir);
     console.log(`[margin-stress] ${ms.start}～${ms.end}，${ms.rows.length} 天，事件 ${ms.events.length} 筆，最新 ${JSON.stringify(ms.latest)}`);
+    console.log(`[breadth-stress] ${lastBreadth?.start}～${lastBreadth?.end}，事件 ${lastBreadth?.events.length}，最新 ${JSON.stringify(lastBreadth?.latest)}`);
   } catch (e) {
     console.warn('[margin-stress] 略過：', e instanceof Error ? e.message : e);
   }

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { ChartPanel, type ChartPrefs } from './components/ChartPanel';
 import { IndicatorTable } from './components/IndicatorTable';
+import { BreadthPanel } from './components/BreadthPanel';
 import { MarginStressPanel } from './components/MarginStressPanel';
 import { RegimePanel } from './components/RegimePanel';
 import { SourceStatus } from './components/SourceStatus';
-import { useBacktest, useCalendar, useMarginStress, useSummary } from './hooks/useData';
+import { useBacktest, useCalendar, useBreadthStress, useMarginStress, useSummary } from './hooks/useData';
 import { buildRow } from './lib/rows';
 import { loadList, loadPref, savePref } from './lib/storage';
 import { formatTaipeiDateTime, todayInTaipei } from './shared/dates';
@@ -75,6 +76,7 @@ export default function App() {
   const rows = useMemo(() => (regime && summary ? regime.evals.map((ev) => buildRow(ev, summary)) : []), [regime, summary]);
   const calendar = useCalendar(summary?.generatedAt ?? null);
   const marginStress = useMarginStress(summary?.generatedAt ?? null);
+  const breadthStress = useBreadthStress(summary?.generatedAt ?? null);
   const releases = useMemo(
     () => (summary ? releasesByIndicator(calendar, summary, new Date(nowMs)) : {}),
     [calendar, summary, nowMs],
@@ -152,6 +154,7 @@ export default function App() {
             <RegimePanel regime={regime} onSelect={setSelected} backtest={backtest} />
             <IndicatorTable rows={rows} today={today} selectedId={activeId} onSelect={setSelected} releases={releases} />
             <MarginStressPanel data={marginStress} themeKey={themeKey} />
+            <BreadthPanel data={breadthStress} themeKey={themeKey} />
             <SourceStatus summary={summary} />
           </div>
           {activeDef && activeEval && (
