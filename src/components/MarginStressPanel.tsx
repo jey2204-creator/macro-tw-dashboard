@@ -144,9 +144,13 @@ function StressChart({ data, range, themeKey }: { data: MarginStressFile; range:
     const chart = chartRef.current;
     const last = data.rows.at(-1);
     if (!chart || !last) return;
+    // 以 K 棒索引設定可視範圍（不受圖表初次排版時寬度為 0 的影響）
     const start = rangeStart(last[0], range);
-    if (!start || start <= data.rows[0]![0]) chart.timeScale().fitContent();
-    else chart.timeScale().setVisibleRange({ from: start as Time, to: last[0] as Time });
+    const from = start ? Math.max(0, data.rows.findIndex((r) => r[0] >= start)) : 0;
+    const apply = () => chart.timeScale().setVisibleLogicalRange({ from, to: data.rows.length + 1 });
+    apply();
+    const raf = requestAnimationFrame(apply);
+    return () => cancelAnimationFrame(raf);
   }, [data, range, themeKey]);
 
   useEffect(() => {
