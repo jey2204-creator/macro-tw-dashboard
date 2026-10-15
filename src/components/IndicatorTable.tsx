@@ -8,7 +8,7 @@ import { quarterLabel, sumLast } from '../shared/signals';
 import { SignalBadge } from './SignalBadge';
 import { fmtValue, impactPieces, thresholdPieces } from '../lib/outlookText';
 import type { IndicatorOutlook } from '../shared/outlook';
-import { countdownText, releaseAt, RELEASE_KINDS, whenText } from '../shared/schedule';
+import { countdownText, nextReleaseFor, releaseAt, RELEASE_KINDS, whenText } from '../shared/schedule';
 
 /** 下次公布：時間、倒數、翻轉門檻、對總分的影響 */
 function NextRelease({ o, nowScore, now }: { o: IndicatorOutlook; nowScore: number; now: Date }) {
@@ -102,6 +102,7 @@ function Row({
   const tags = statusTags(row);
   // 有官方日程時，「下次」改由 NextRelease 顯示（含門檻），避免重複
   const relLines = releaseLines(releases).filter((l) => !(outlook && l.head.startsWith('下次')));
+  const scheduled = !outlook && !relLines.some((l) => l.head.startsWith('下次')) ? nextReleaseFor(def.id, now) : null;
   return (
     <li>
       <button
@@ -159,6 +160,16 @@ function Row({
           </span>
         ))}
         {outlook && <NextRelease o={outlook} nowScore={nowScore} now={now} />}
+        {/* 參考型指標（PPI）沒有門檻可算，只顯示官方日程的下次公布 */}
+        {!outlook && scheduled && (
+          <span className="c-next">
+            <span className="next-head">
+              ⏰ 下次 {whenText(scheduled)}
+              <span className="next-cd">（{countdownText(releaseAt(scheduled), now)}）</span>
+              <span className="next-note">{RELEASE_KINDS[scheduled.kind].source}</span>
+            </span>
+          </span>
+        )}
       </button>
     </li>
   );
