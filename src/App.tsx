@@ -3,6 +3,7 @@ import { ChartPanel, type ChartPrefs } from './components/ChartPanel';
 import { IndicatorTable } from './components/IndicatorTable';
 import { BreadthPanel } from './components/BreadthPanel';
 import { EventsBar } from './components/EventsBar';
+import { RadarPanel } from './components/RadarPanel';
 import { MarginStressPanel } from './components/MarginStressPanel';
 import { RegimePanel } from './components/RegimePanel';
 import { SourceStatus } from './components/SourceStatus';
@@ -14,6 +15,7 @@ import { releasesByIndicator } from './shared/calendar';
 import { INDICATOR_MAP } from './shared/indicators';
 import { computeRegime } from './shared/regime';
 import { outlooksFor } from './shared/outlook';
+import { dailyOutlooksFor } from './shared/dailyOutlook';
 import { MA_PERIODS, type MaPeriod, type Period, type RangeKey } from './shared/timeseries';
 
 const WIDE_QUERY = '(min-width: 1100px)';
@@ -94,6 +96,13 @@ export default function App() {
     [regime, nowMs, calendar],
   );
 
+  // 每日市場指標的翻轉門檻：最後一筆是盤中 → 算今日收盤
+  const dailyOutlooks = useMemo(() => {
+    if (!regime || !summary) return {};
+    const partial = Object.fromEntries(Object.values(summary.entries).map((e) => [e.id, e.partial]));
+    return dailyOutlooksFor(regime, partial);
+  }, [regime, summary]);
+
   // 桌面版預設顯示加權指數圖表
   const activeId = selected ?? (isWide ? 'taiex' : null);
   const activeDef = activeId ? INDICATOR_MAP[activeId] : undefined;
@@ -164,6 +173,7 @@ export default function App() {
         <main className={`layout${isWide ? ' wide' : ''}`}>
           <div className="col-main">
             <RegimePanel regime={regime} onSelect={setSelected} backtest={backtest} />
+            <RadarPanel regime={regime} outlooks={dailyOutlooks} onSelect={setSelected} />
             <EventsBar
               regime={regime}
               outlooks={outlooks}
@@ -178,6 +188,7 @@ export default function App() {
               onSelect={setSelected}
               releases={releases}
               outlooks={outlooks}
+              dailyOutlooks={dailyOutlooks}
               nowScore={regime.score}
               now={new Date(nowMs)}
             />
@@ -197,6 +208,7 @@ export default function App() {
                 onPrefs={onPrefs}
                 onClose={() => setSelected(isWide ? 'taiex' : null)}
                 themeKey={themeKey}
+                daily={dailyOutlooks[activeDef.id]}
                 backtest={backtest?.indicators[activeDef.id]}
                 backtestRange={backtest ? `${backtest.start}～${backtest.end}` : undefined}
               />

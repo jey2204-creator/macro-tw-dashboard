@@ -8,6 +8,7 @@ import { INDICATORS } from '../../src/shared/indicators';
 import { updateCalendar } from './calendar';
 import { writeBacktest } from './writeBacktest';
 import { writeIcs } from './writeIcs';
+import { logRadar } from './radarLog';
 import { lastBreadth, writeMarginStress } from './writeMarginStress';
 import { runPipeline } from './pipeline';
 
@@ -46,6 +47,14 @@ async function main() {
     console.log(`[ics] macro-events.ics ${await writeIcs(outDir)} 個事件`);
   } catch (e) {
     console.warn('[ics] 略過：', e instanceof Error ? e.message : e);
+  }
+  // 翻轉雷達摘要：寫進日誌與 Actions 註記（失敗不影響資料更新）
+  try {
+    const lines = await logRadar(outDir);
+    for (const l of lines) console.log(`  [radar] ${l}`);
+    if (process.env.GITHUB_ACTIONS) console.log(`::notice title=翻轉雷達::${lines.join('%0A')}`);
+  } catch (e) {
+    console.warn('[radar] 略過：', e instanceof Error ? e.message : e);
   }
   // 回測失敗不影響資料更新
   try {

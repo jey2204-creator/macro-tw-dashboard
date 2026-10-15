@@ -6,9 +6,61 @@ import { CATEGORY_LABEL, CATEGORY_ORDER, INDICATOR_MAP, toneClass } from '../sha
 import { SIGNAL_LABEL } from '../shared/regime';
 import { quarterLabel, sumLast } from '../shared/signals';
 import { SignalBadge } from './SignalBadge';
-import { fmtValue, impactPieces, thresholdPieces } from '../lib/outlookText';
+import {
+  basisText,
+  dailyBandText,
+  fmtLevel,
+  fmtScore,
+  fmtValue,
+  impactPieces,
+  thresholdPieces,
+} from '../lib/outlookText';
+import type { DailyOutlook } from '../shared/dailyOutlook';
 import type { IndicatorOutlook } from '../shared/outlook';
 import { countdownText, releaseAt, RELEASE_KINDS, whenText } from '../shared/schedule';
+
+/** 每日市場指標：下一個收盤的翻轉門檻、若持平何時改變、對總分的影響 */
+function DailyNext({ o, nowScore }: { o: DailyOutlook; nowScore: number }) {
+  const def = INDICATOR_MAP[o.id]!;
+  const posIdx = o.bands.findIndex((b) => (b.lo === null || o.last >= b.lo) && (b.hi === null || o.last <= b.hi));
+  // 趨勢三條件：離目前價位太遠（±25% 外）的條件視為「任何收盤都成立／不成立」
+  const lines = (o.trendLines ?? []).map((t) => {
+    const far = Math.abs(t.at / o.last - 1) > 0.25;
+    const ok = o.last > t.at;
+    return far
+      ? `${t.label}${ok ? '（這次必成立）' : '（這次不會成立）'}`
+      : `${t.label} ${fmtLevel(def, t.at, o.decimals)}`;
+  });
+  return (
+    <span className="c-next">
+      <span className="next-head">📍 {basisText(o.basis, o.targetDate)}</span>
+      <span className="next-line">
+        {o.bands.map((b, i) => (
+          <span key={i} className={`th sig-${b.signal}${i === posIdx ? ' cur' : ''}`}>
+            {dailyBandText(def, b, o.decimals)} → {SIGNAL_LABEL[b.signal]}
+          </span>
+        ))}
+      </span>
+      {lines.length > 0 && <span className="next-line muted">收盤需高於：{lines.join('・')}</span>}
+      {o.drift && (
+        <span className={`next-line${o.drift.flipsRegime ? ' flip' : ''}`}>
+          ⏳ 若持平，約 {o.drift.steps} 個交易日後（{o.drift.date.slice(5).replace('-', '/')}）轉{SIGNAL_LABEL[o.drift.signal]}
+          {o.drift.flipsRegime && `，總分 → ${fmtScore(o.drift.impact.score)}（${SIGNAL_LABEL[o.drift.impact.regime]}）`}
+        </span>
+      )}
+      {o.flips.length > 0 && (
+        <span className="next-line">
+          {o.flips.map((f) => (
+            <span key={f.dir} className={f.flipsRegime ? 'flip' : undefined}>
+              {f.flipsRegime && '⚠️ '}若轉{SIGNAL_LABEL[f.signal]}：總分 {fmtScore(nowScore)} → {fmtScore(f.impact.score)}（
+              {SIGNAL_LABEL[f.impact.regime]}）
+            </span>
+          ))}
+        </span>
+      )}
+    </span>
+  );
+}
 
 /** 下次公布：時間、倒數、翻轉門檻、對總分的影響 */
 function NextRelease({ o, nowScore, now }: { o: IndicatorOutlook; nowScore: number; now: Date }) {
@@ -70,6 +122,7 @@ function Row({
   onSelect,
   releases,
   outlook,
+  daily,
   nowScore,
   now,
 }: {
@@ -79,6 +132,7 @@ function Row({
   onSelect: (id: string) => void;
   releases?: IndicatorReleases;
   outlook?: IndicatorOutlook;
+  daily?: DailyOutlook;
   nowScore: number;
   now: Date;
 }) {
@@ -159,6 +213,7 @@ function Row({
           </span>
         ))}
         {outlook && <NextRelease o={outlook} nowScore={nowScore} now={now} />}
+        {daily && <DailyNext o={daily} nowScore={nowScore} />}
       </button>
     </li>
   );
@@ -171,6 +226,7 @@ export function IndicatorTable({
   onSelect,
   releases = {},
   outlooks = {},
+  dailyOutlooks = {},
   nowScore = 0,
   now = new Date(),
 }: {
@@ -180,6 +236,7 @@ export function IndicatorTable({
   onSelect: (id: string) => void;
   releases?: Record<string, IndicatorReleases>;
   outlooks?: Record<string, IndicatorOutlook>;
+  dailyOutlooks?: Record<string, DailyOutlook>;
   nowScore?: number;
   now?: Date;
 }) {
@@ -209,6 +266,7 @@ export function IndicatorTable({
                   onSelect={onSelect}
                   releases={releases[r.ev.def.id]}
                   outlook={outlooks[r.ev.def.id]}
+                  daily={dailyOutlooks[r.ev.def.id]}
                   nowScore={nowScore}
                   now={now}
                 />

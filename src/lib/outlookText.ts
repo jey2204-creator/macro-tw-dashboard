@@ -102,3 +102,64 @@ export function outlookPlain(o: IndicatorOutlook, nowScore: number): string {
   for (const p of impactPieces(o, nowScore)) lines.push(p.text);
   return lines.join('\n');
 }
+
+// ───────────── 每日市場指標（dailyOutlook） ─────────────
+
+const lvlFmt = new Map<number, Intl.NumberFormat>();
+
+/** 價位：利率 5.19%、台幣 32.337、指數 45,580 */
+export function fmtLevel(def: IndicatorDef, v: number, decimals: number): string {
+  let f = lvlFmt.get(decimals);
+  if (!f) {
+    f = new Intl.NumberFormat('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    lvlFmt.set(decimals, f);
+  }
+  const s = f.format(v);
+  return def.unit === '%' ? `${s}%` : s;
+}
+
+export function dailyBandText(def: IndicatorDef, b: Band, decimals: number): string {
+  if (b.lo === null && b.hi === null) return '任何收盤';
+  if (b.lo === null) return `≤ ${fmtLevel(def, b.hi!, decimals)}`;
+  if (b.hi === null) return `≥ ${fmtLevel(def, b.lo, decimals)}`;
+  return `${fmtLevel(def, b.lo, decimals)}～${fmtLevel(def, b.hi, decimals)}`;
+}
+
+/** 還要動多少：「再降 2bp」「再跌 8.5%」 */
+export function moveText(def: IndicatorDef, dist: number, pct: number | null): string {
+  if (def.changeInBp) return `${dist > 0 ? '再升' : '再降'} ${Math.round(Math.abs(dist) * 100)}bp`;
+  const p = pct === null ? '—' : `${Math.abs(pct) < 0.1 ? Math.abs(pct).toFixed(2) : Math.abs(pct).toFixed(1)}%`;
+  return `${dist > 0 ? '再漲' : '再跌'} ${p}`;
+}
+
+/** 標準常態單尾機率 P(Z ≥ k)（Abramowitz–Stegun 7.1.26） */
+export function tailProb(k: number): number {
+  const x = Math.abs(k) / Math.SQRT2;
+  const t = 1 / (1 + 0.3275911 * x);
+  const erf = 1 - ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+  const p = 0.5 * (1 - erf);
+  return k >= 0 ? p : 1 - p;
+}
+
+/** 「0.4σ，單日約 34%」 */
+export function sigmaText(sigmas: number | null): string {
+  if (sigmas === null) return '';
+  const p = tailProb(sigmas) * 100;
+  const ps = p >= 1 ? `${Math.round(p)}%` : '<1%';
+  return `${sigmas.toFixed(1)}σ，單日約 ${ps}`;
+}
+
+export function basisText(basis: 'next' | 'today', targetDate: string): string {
+  const md = targetDate.slice(5).replace('-', '/');
+  return basis === 'today' ? `今日收盤（${md}）` : `下一筆收盤（${md}）`;
+}
+
+/** 「任一權重 0.5 以上指標轉弱一級就會翻」 */
+export function gapText(weight: number, dir: 'bear' | 'bull'): string {
+  const v = dir === 'bear' ? '轉弱' : '轉強';
+  if (weight <= 1e-9) return '已在門檻上';
+  if (weight <= 0.25) return `任何一個指標${v}一級就會翻`;
+  if (weight <= 0.5) return `任一權重 0.5 以上的指標${v}一級就會翻`;
+  if (weight <= 1) return `一個權重 1 的指標（2Y、10Y、Fed、核心CPI）或兩個 0.5 的${v}一級就會翻`;
+  return `需要權重合計 ${weight.toFixed(1)} 的指標${v}一級`;
+}
