@@ -11,7 +11,7 @@ import {
   type SeriesMarker,
   type Time,
 } from 'lightweight-charts';
-import { CHART_INTERACTION, resetPriceScales } from '../lib/chartInteraction';
+import { CHART_INTERACTION, resetPaneStretch, resetPriceScales } from '../lib/chartInteraction';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CLEAR_REBOUND,
@@ -113,10 +113,7 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
     chg.setData(
       data.rows.filter((r) => Number.isFinite(r[4])).map((r) => ({ time: r[0] as Time, value: r[4], color: r[4] >= 0 ? up : down })),
     );
-    const panes = chart.panes();
-    panes[0]?.setStretchFactor(0.45);
-    panes[1]?.setStretchFactor(0.33);
-    panes[2]?.setStretchFactor(0.22);
+    resetPaneStretch(chart);
     return () => {
       chart.removeSeries(series);
       chart.removeSeries(ratio);
@@ -134,6 +131,7 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
     const apply = () => {
       chart.timeScale().setVisibleLogicalRange({ from, to: data.rows.length + 1 });
       resetPriceScales(chart);
+      resetPaneStretch(chart);
     };
     apply();
     const raf = requestAnimationFrame(apply);
