@@ -4,6 +4,9 @@ name: PPI 回測資料探測
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ppi-backtest]
+    paths: ['.github/workflows/ppi-probe.yml']
 
 permissions:
   contents: write
