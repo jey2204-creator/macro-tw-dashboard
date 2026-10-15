@@ -6,7 +6,14 @@ import path from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { HttpOptions } from '../scripts/fetch-data/http';
 import { runPipeline } from '../scripts/fetch-data/pipeline';
-import { fetchTaifex, parseTaifexCsv, splitRange, taifexToBars } from '../scripts/fetch-data/sources/taifex';
+import {
+  fetchTaifex,
+  parseLargeTraderCsv,
+  parseTaifexCsv,
+  parseTaifexOptionsCsv,
+  splitRange,
+  taifexToBars,
+} from '../scripts/fetch-data/sources/taifex';
 import {
   computeMarginRatio,
   fetchTwseChips,
@@ -84,6 +91,80 @@ describe('期交所三大法人期貨部位', () => {
     expect(calls[2]!.body).toContain('queryEndDate=2026%2F10%2F13');
     expect(r.bars.at(-1)![4]).toBe(-87239);
     expect(r.incremental).toBe(false);
+  });
+});
+
+describe('期交所：外資選擇權與前十大特定法人（2026-10-14／15 實際回應）', () => {
+  const txo = fx('taifex-txo.csv');
+  const large = fx('taifex-large-trader.csv');
+  const big5 = (t: string) => new Response(new Uint8Array(iconv.encode(t, 'big5')));
+
+  it('外資選擇權淨金額＝CALL 未平倉金額淨額 − PUT（千元→億元）', () => {
+    // 10/14：(−167,879 − 56,486) 千元 = −2.24 億；10/15：(−45,413 − 211,974) = −2.57 億
+    expect(parseTaifexOptionsCsv(txo)).toEqual([
+      ['2026-10-14', -2.24, -2.24, -2.24, -2.24],
+      ['2026-10-15', -2.57, -2.57, -2.57, -2.57],
+    ]);
+    expect(parseTaifexOptionsCsv('<!DOCTYPE HTML><html></html>')).toEqual([]);
+    expect(() => parseTaifexOptionsCsv('日期,買賣權別\n2026/10/14,CALL')).toThrow(/欄位異常/);
+  });
+
+  it('只有 CALL 沒有 PUT 的日期不計算', () => {
+    const onlyCall = txo.split(/\r?\n/).filter((l) => !l.includes('2026/10/15,臺指選擇權,PUT')).join('\n');
+    expect(parseTaifexOptionsCsv(onlyCall).map((b) => b[0])).toEqual(['2026-10-14']);
+  });
+
+  it('前十大特定法人：TX、所有月份、特定法人的前十大買方 − 賣方', () => {
+    // 10/14：81,533 − 83,794 = −2,261；10/15：81,438 − 89,356 = −7,918
+    expect(parseLargeTraderCsv(large)).toEqual([
+      ['2026-10-14', -2261, -2261, -2261, -2261],
+      ['2026-10-15', -7918, -7918, -7918, -7918],
+    ]);
+    expect(parseLargeTraderCsv('<html>查詢區間不得超過三個月</html>')).toEqual([]);
+  });
+
+  it('大額交易人單次最多 3 個月 → 無快取時切成 85 天一段', async () => {
+    const bodies: URLSearchParams[] = [];
+    const http: HttpOptions = {
+      retries: 0,
+      timeoutMs: 20_000,
+      fetchImpl: async (url, init) => {
+        expect(url).toContain('largeTraderFutDown');
+        bodies.push(new URLSearchParams(String(init?.body)));
+        return big5(large);
+      },
+    };
+    const r = await fetchTaifex('TX_TOP10_SPECIFIC', null, '2026-10-15', http, true);
+    expect(bodies.length).toBe(9); // 730 天 ÷ 85
+    expect(bodies.every((b) => !b.has('commodityId'))).toBe(true);
+    expect(bodies.at(-1)!.get('queryEndDate')).toBe('2026/10/15');
+    expect(r.bars.at(-1)).toEqual(['2026-10-15', -7918, -7918, -7918, -7918]);
+  });
+
+  it('選擇權以 commodityId=TXO 查詢；增量更新只抓一段', async () => {
+    const bodies: URLSearchParams[] = [];
+    const http: HttpOptions = {
+      retries: 0,
+      fetchImpl: async (url, init) => {
+        expect(url).toContain('callsAndPutsDateDown');
+        bodies.push(new URLSearchParams(String(init?.body)));
+        return big5(txo);
+      },
+    };
+    const r = await fetchTaifex('TXO_FOREIGN_NET', '2026-10-14', '2026-10-15', http, true);
+    expect(bodies).toHaveLength(1);
+    expect(bodies[0]!.get('commodityId')).toBe('TXO');
+    expect(bodies[0]!.get('queryStartDate')).toBe('2026/10/04');
+    expect(r.incremental).toBe(true);
+    expect(r.bars.at(-1)![4]).toBe(-2.57);
+  });
+
+  it('新指標為參考型（權重 0），增減由淨未平倉推導', () => {
+    for (const id of ['opt_foreign_net', 'top10_specific_oi', 'top10_specific_oi_chg']) {
+      expect(getIndicator(id).weight).toBe(0);
+      expect(getIndicator(id).rule).toEqual({ kind: 'info' });
+    }
+    expect(getIndicator('top10_specific_oi_chg').derivedFrom).toBe('top10_specific_oi');
   });
 });
 
@@ -249,7 +330,7 @@ describe('融資餘額與大盤融資維持率', () => {
 describe('籌碼指標的顯示與計分', () => {
   it('全部為「僅供參考」：權重 0、規則 info，不影響綜合判斷', () => {
     const chips = INDICATORS.filter((d) => d.category === 'tw_chips');
-    expect(chips).toHaveLength(14);
+    expect(chips).toHaveLength(17);
     expect(chips.every((d) => d.weight === 0 && d.rule.kind === 'info')).toBe(true);
     const r = computeRegime({ schemaVersion: 1, generatedAt: '', entries: {} }, '2026-10-13');
     expect(r.evals.filter((e) => e.def.category === 'tw_chips').every((e) => !e.counted)).toBe(true);

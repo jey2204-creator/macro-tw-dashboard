@@ -10,7 +10,7 @@ export type SourceSpec =
   | { provider: 'fred'; symbol: string }
   | { provider: 'tpex'; symbol: 'TPEX_INDEX' }
   | { provider: 'twse'; symbol: 'TAIEX' }
-  | { provider: 'taifex'; symbol: 'TXF_FOREIGN_OI' | 'MXF_RETAIL_OI' }
+  | { provider: 'taifex'; symbol: 'TXF_FOREIGN_OI' | 'MXF_RETAIL_OI' | 'TXO_FOREIGN_NET' | 'TX_TOP10_SPECIFIC' }
   | {
       provider: 'twse_chips';
       symbol:
@@ -283,6 +283,24 @@ export const INDICATORS: IndicatorDef[] = [
     chart: 'histogram', note: '與前一交易日相比的淨未平倉變化；正值＝多單增加或空單回補',
   },
   {
+    id: 'opt_foreign_net', name: '外資台指選擇權多空淨金額', short: '外資選擇權', category: 'tw_chips', frequency: 'daily',
+    unit: '億', decimals: 2, sources: [{ provider: 'taifex', symbol: 'TXO_FOREIGN_NET' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, chart: 'line',
+    note: '外資 CALL 未平倉金額淨額 − PUT 未平倉金額淨額（億元）；正值偏多、負值偏空。看金額不看口數；週選擇權結算日前後會劇烈跳動',
+  },
+  {
+    id: 'top10_specific_oi', name: '前十大特定法人台指期淨未平倉', short: '十大法人期', category: 'tw_chips', frequency: 'daily',
+    unit: '口', decimals: 0, sources: [{ provider: 'taifex', symbol: 'TX_TOP10_SPECIFIC' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, chart: 'line',
+    note: '大額交易人資料：所有月份合計、前十大特定法人買方 − 賣方（大台約當，含小台÷4、微台÷20）。特定法人以外資為主，可與外資台指期互相驗證',
+  },
+  {
+    id: 'top10_specific_oi_chg', name: '前十大特定法人台指期淨未平倉增減', short: '十大法人增減', category: 'tw_chips',
+    frequency: 'daily', unit: '口', decimals: 0, sources: [{ provider: 'taifex', symbol: 'TX_TOP10_SPECIFIC' }],
+    transform: 'diff', market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, derivedFrom: 'top10_specific_oi',
+    flow: true, chart: 'histogram', note: '與前一交易日相比的前十大特定法人淨未平倉變化',
+  },
+  {
     id: 'retail_oi', name: '散戶小台淨未平倉（推算）', short: '散戶小台OI', category: 'tw_chips', frequency: 'daily',
     unit: '口', decimals: 0, sources: [{ provider: 'taifex', symbol: 'MXF_RETAIL_OI' }], transform: 'none',
     market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, chart: 'line',
@@ -390,6 +408,8 @@ export function sourceUrl(spec: SourceSpec): string {
     case 'twse':
       return 'https://www.twse.com.tw/zh/';
     case 'taifex':
+      if (spec.symbol === 'TXO_FOREIGN_NET') return 'https://www.taifex.com.tw/cht/3/callsAndPutsDate';
+      if (spec.symbol === 'TX_TOP10_SPECIFIC') return 'https://www.taifex.com.tw/cht/3/largeTraderFutQry';
       return 'https://www.taifex.com.tw/cht/3/futContractsDate';
     case 'twse_chips':
       return 'https://www.twse.com.tw/zh/';
