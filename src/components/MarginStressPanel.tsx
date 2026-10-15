@@ -205,7 +205,7 @@ export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile |
 
       <p className="small muted ms-rule">
         警戒：維持率 &lt; {WARN_RATIO}% 或近 5 日降 &gt; {WARN_DROP_5D}pp；斷頭區：&lt; {ZONE_RATIO}%；斷頭潮：斷頭區內融資單日減幅為近 250
-        日最大 5%；清洗完成：近 20 日曾 &lt; 140%，維持率自低點回升 ≥ {CLEAR_REBOUND}pp、近 3 日無斷頭潮、加權 3 日不破低。每一波只標一次，回到 160% 以上才算新的一波。
+        日最大 5%（且 ≥ 0.5%）；清洗完成：近 20 日曾 &lt; 140%，維持率自低點回升 ≥ {CLEAR_REBOUND}pp、近 3 日無斷頭潮、加權 3 日不破低。每一波只標一次，回到 160% 以上才算新的一波。
       </p>
 
       <div className="seg" role="group" aria-label="時間區間">

@@ -9,7 +9,7 @@
  * 事件（每一「波」只觸發一次；維持率回到 160% 以上才算新的一波）：
  *  - below150：首次跌破 150%
  *  - below140：首次跌破 140%（進入斷頭區）
- *  - flush   ：斷頭潮——斷頭區內融資單日減幅（占餘額比）落在近 250 日最低 5%
+ *  - flush   ：斷頭潮——斷頭區內融資單日減幅（占餘額比）落在近 250 日最低 5%，且減幅 ≥ 0.5%
  *  - cleared ：清洗完成——近 20 日曾 < 140%，且維持率自波段低點回升 ≥ 5pp、
  *              近 3 日沒有斷頭潮、加權指數近 3 日未破波段低點
  *
@@ -40,6 +40,8 @@ export const ZONE_RATIO = 140;
 export const RESET_RATIO = 160;
 export const WARN_DROP_5D = 15;
 export const CLEAR_REBOUND = 5;
+/** 斷頭潮另需單日減幅至少 0.5%（避免平淡期的小幅減少被當成極端值） */
+export const FLUSH_MIN_DROP_PCT = -0.5;
 
 export const EVENT_LABEL: Record<StressEventType, string> = {
   below150: '跌破 150%',
@@ -145,7 +147,7 @@ function flushFlags(rows: StressRow[]): boolean[] {
     if (row[2] >= ZONE_RATIO || p === null || p === undefined) return false;
     const win = pcts.slice(Math.max(0, i - 250), i).filter((v): v is number => v !== null);
     if (win.length < 60) return false;
-    return p <= percentile([...win].sort((a, b) => a - b), 0.05);
+    return p <= FLUSH_MIN_DROP_PCT && p <= percentile([...win].sort((a, b) => a - b), 0.05);
   });
 }
 
