@@ -11,7 +11,7 @@ import {
   type SeriesMarker,
   type Time,
 } from 'lightweight-charts';
-import { CHART_INTERACTION, resetPriceScales } from '../lib/chartInteraction';
+import { CHART_INTERACTION, resetPaneStretch, resetPriceScales } from '../lib/chartInteraction';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { cssVar, f2, pctCell } from '../lib/stressFormat';
 import {
@@ -104,10 +104,7 @@ function BreadthChart({ data, range, themeKey, resetKey }: { data: BreadthStress
     ad.setData(data.rows.flatMap((r, i) => (data.adRatio10[i] == null ? [] : [{ time: r[0] as Time, value: data.adRatio10[i]! }])));
     ad.createPriceLine({ price: 1, color: cssVar('--text-3'), lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: '漲跌持平 1.0' });
 
-    const panes = chart.panes();
-    panes[0]?.setStretchFactor(0.45);
-    panes[1]?.setStretchFactor(0.33);
-    panes[2]?.setStretchFactor(0.22);
+    resetPaneStretch(chart);
     return () => {
       for (const s of [price, ul, dl, ad]) chart.removeSeries(s);
     };
@@ -122,6 +119,7 @@ function BreadthChart({ data, range, themeKey, resetKey }: { data: BreadthStress
     const apply = () => {
       chart.timeScale().setVisibleLogicalRange({ from, to: data.rows.length + 1 });
       resetPriceScales(chart);
+      resetPaneStretch(chart);
     };
     apply();
     const raf = requestAnimationFrame(apply);
