@@ -508,6 +508,12 @@ th {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.c-name .subtitle {
+  font-size: 10.5px;
+  color: var(--text-3);
+  line-height: 1.25;
+  white-space: normal;
+}
 .c-name .date {
   font-size: 10.5px;
   color: var(--text-3);
