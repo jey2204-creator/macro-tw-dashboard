@@ -122,8 +122,10 @@ describe('輔助', () => {
   it('列表說明文字：通膨三指標與縮寫型指標都有一行中文', () => {
     for (const id of ['cpi', 'ppi', 'pce', 'core_pce', 'dxy', 'sox', 'gdpnow', 'fut_foreign_oi']) {
       const sub = getIndicator(id).subtitle ?? '';
-      expect(sub.length, id).toBeGreaterThan(5);
-      expect(sub.length, id).toBeLessThanOrEqual(32);
+      // 手機名稱欄一行約 9 個全形字；全形算 2、半形算 1，兩行以內
+      const width = [...sub].reduce((n, c) => n + (/[\u3000-\u9fff\uff00-\uffef]/.test(c) ? 2 : 1), 0);
+      expect(width, id).toBeGreaterThan(5);
+      expect(width, id).toBeLessThanOrEqual(30);
     }
   });
   it('recentDirection', () => {
