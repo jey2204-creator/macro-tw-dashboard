@@ -861,6 +861,9 @@ th {
   min-height: 0;
   line-height: 1.5;
 }
+.cm-rho {
+  margin: 2px 0 0;
+}
 .cm .cp-mas {
   align-items: center;
 }

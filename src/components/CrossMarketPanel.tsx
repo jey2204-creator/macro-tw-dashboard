@@ -158,7 +158,8 @@ export function CrossMarketPanel({ version, themeKey }: { version: string; theme
         session: spec.session,
         bars,
         closeOnly: f.data.closeOnly,
-        decimals: def?.decimals ?? 2,
+        // 指數類在對照窗格用整數，價格軸較不占寬度（匯率、利率、油價維持原精度）
+        decimals: def?.unit === 'pt' ? 0 : (def?.decimals ?? 2),
         corr: correlationSeries(pairedReturns(twBars, bars)),
       });
     }
@@ -300,14 +301,12 @@ export function CrossMarketPanel({ version, themeKey }: { version: string; theme
       <div className="regime-head">
         <div className="regime-title">
           <span className="label">跨市場對照（參考）</span>
-          {latestRho.length > 0 && (
-            <span className="score num">
-              ρ60：{latestRho.map((r) => `${r.label} ${fmtRho(r.rho60)}`).join('｜')}
-            </span>
-          )}
         </div>
         {twBars.length > 0 && <span className="small muted num">加權資料 {twBars.at(-1)![0]}</span>}
       </div>
+      {latestRho.length > 0 && (
+        <p className="score num cm-rho">ρ60：{latestRho.map((r) => `${r.label} ${fmtRho(r.rho60)}`).join('｜')}</p>
+      )}
 
       <p className="small muted ms-rule">
         美股、美債、美元、原油在台股開盤前收盤，是台股的「前一晚」：對齊後，同一直線上的美系 K 棒＝台股開盤時看到的那根（連假期間多根合併成一根）。

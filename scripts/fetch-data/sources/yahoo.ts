@@ -75,17 +75,20 @@ export function parseYahooChart(json: YahooChart, nowSec: number): { bars: Bar[]
   const rmt = r.meta.regularMarketTime;
   const rmp = r.meta.regularMarketPrice;
   const rmtDate = rmt !== undefined ? toLocalDate(rmt, tz) : null;
+  // Yahoo 另一個已知問題：最新一根日 K 的開／高／低（偶爾含收盤）回傳 0（如 ^KS11），
+  // 價格不可能剛好是 0（WTI 2020-04 的負值為真實資料，仍保留），視為缺值
+  const nz = (v: number | null | undefined) => (v === null || v === undefined || v === 0 ? undefined : v);
   for (let i = 0; i < ts.length; i++) {
-    let c = q.close?.[i];
+    let c = nz(q.close?.[i]);
     // Yahoo 已知問題：最新一根日 K 收盤常為 null（如 ^TWII 收盤後），
     // 此時以 meta.regularMarketPrice（同一交易日）補上收盤價。
-    if ((c === null || c === undefined) && i === ts.length - 1 && rmp !== undefined && rmtDate === toLocalDate(ts[i]!, tz)) {
-      c = rmp;
+    if (c === undefined && i === ts.length - 1 && rmp !== undefined && rmtDate === toLocalDate(ts[i]!, tz)) {
+      c = nz(rmp);
     }
-    if (c === null || c === undefined || !Number.isFinite(c)) continue; // 未收盤/缺值
-    const o = q.open?.[i] ?? c;
-    const h = q.high?.[i] ?? Math.max(o, c);
-    const l = q.low?.[i] ?? Math.min(o, c);
+    if (c === undefined || !Number.isFinite(c)) continue; // 未收盤/缺值
+    const o = nz(q.open?.[i]) ?? c;
+    const h = nz(q.high?.[i]) ?? Math.max(o, c);
+    const l = nz(q.low?.[i]) ?? Math.min(o, c);
     const bar: Bar = [toLocalDate(ts[i]!, tz), o, Math.max(h, o, c), Math.min(l, o, c), c];
     if (isValidBar(bar)) byDate.set(bar[0], bar); // 同日以較晚者覆蓋
   }
