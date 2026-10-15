@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 import { ChartPanel, type ChartPrefs } from './components/ChartPanel';
 import { IndicatorTable } from './components/IndicatorTable';
 import { BreadthPanel } from './components/BreadthPanel';
+import { EventsBar } from './components/EventsBar';
 import { MarginStressPanel } from './components/MarginStressPanel';
 import { RegimePanel } from './components/RegimePanel';
 import { SourceStatus } from './components/SourceStatus';
@@ -12,6 +13,7 @@ import { formatTaipeiDateTime, todayInTaipei } from './shared/dates';
 import { releasesByIndicator } from './shared/calendar';
 import { INDICATOR_MAP } from './shared/indicators';
 import { computeRegime } from './shared/regime';
+import { outlooksFor } from './shared/outlook';
 import { MA_PERIODS, type MaPeriod, type Period, type RangeKey } from './shared/timeseries';
 
 const WIDE_QUERY = '(min-width: 1100px)';
@@ -40,6 +42,11 @@ export default function App() {
     setNowMs(Date.now());
   };
   const summaryState = useSummary(reloadKey);
+  // 倒數與「下次公布」需要跟著時間走：每 5 分鐘更新一次現在時間
+  useEffect(() => {
+    const t = window.setInterval(() => setNowMs(Date.now()), 5 * 60_000);
+    return () => window.clearInterval(t);
+  }, []);
   const isWide = useMedia(WIDE_QUERY);
   const systemDark = useMedia(DARK_QUERY);
 
@@ -80,6 +87,11 @@ export default function App() {
   const releases = useMemo(
     () => (summary ? releasesByIndicator(calendar, summary, new Date(nowMs)) : {}),
     [calendar, summary, nowMs],
+  );
+
+  const outlooks = useMemo(
+    () => (regime ? outlooksFor(regime, new Date(nowMs), calendar) : {}),
+    [regime, nowMs, calendar],
   );
 
   // 桌面版預設顯示加權指數圖表
@@ -152,7 +164,23 @@ export default function App() {
         <main className={`layout${isWide ? ' wide' : ''}`}>
           <div className="col-main">
             <RegimePanel regime={regime} onSelect={setSelected} backtest={backtest} />
-            <IndicatorTable rows={rows} today={today} selectedId={activeId} onSelect={setSelected} releases={releases} />
+            <EventsBar
+              regime={regime}
+              outlooks={outlooks}
+              now={new Date(nowMs)}
+              onSelect={setSelected}
+              icsPath={`${import.meta.env.BASE_URL}data/macro-events.ics`}
+            />
+            <IndicatorTable
+              rows={rows}
+              today={today}
+              selectedId={activeId}
+              onSelect={setSelected}
+              releases={releases}
+              outlooks={outlooks}
+              nowScore={regime.score}
+              now={new Date(nowMs)}
+            />
             <MarginStressPanel data={marginStress} themeKey={themeKey} />
             <BreadthPanel data={breadthStress} themeKey={themeKey} />
             <SourceStatus summary={summary} />

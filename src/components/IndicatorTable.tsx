@@ -2,10 +2,63 @@ import { formatChange, formatSigned, formatValue, shortDate } from '../lib/forma
 import { releaseLines } from '../lib/release';
 import type { IndicatorReleases } from '../shared/calendar';
 import { statusTags, type RowModel } from '../lib/rows';
-import { CATEGORY_LABEL, CATEGORY_ORDER, toneClass } from '../shared/indicators';
+import { CATEGORY_LABEL, CATEGORY_ORDER, INDICATOR_MAP, toneClass } from '../shared/indicators';
 import { SIGNAL_LABEL } from '../shared/regime';
 import { quarterLabel, sumLast } from '../shared/signals';
 import { SignalBadge } from './SignalBadge';
+import { fmtValue, impactPieces, thresholdPieces } from '../lib/outlookText';
+import type { IndicatorOutlook } from '../shared/outlook';
+import { countdownText, releaseAt, RELEASE_KINDS, whenText } from '../shared/schedule';
+
+/** 下次公布：時間、倒數、翻轉門檻、對總分的影響 */
+function NextRelease({ o, nowScore, now }: { o: IndicatorOutlook; nowScore: number; now: Date }) {
+  const def = INDICATOR_MAP[o.id]!;
+  const r = o.release;
+  const pieces = thresholdPieces(o);
+  const impacts = impactPieces(o, nowScore);
+  return (
+    <span className="c-next">
+      <span className="next-head">
+        ⏰ 下次 {whenText(r)}
+        <span className="next-cd">（{countdownText(releaseAt(r), now)}）</span>
+        {r.note && <span className="next-note">{r.note}</span>}
+        {r.kind === 'gdpnow' && <span className="next-note">{RELEASE_KINDS.gdpnow.source}</span>}
+      </span>
+      {o.pendingData && <span className="next-line warn">上次公布的數據尚未更新進網站，門檻待資料更新後計算</span>}
+      {pieces.length > 0 && (
+        <span className="next-line">
+          {pieces.map((p, i) => (
+            <span key={i} className={`th sig-${p.signal}${p.current ? ' cur' : ''}`}>
+              {p.text} → {SIGNAL_LABEL[p.signal]}
+            </span>
+          ))}
+        </span>
+      )}
+      {(o.forecast || o.policy?.holdNeutralFrom) && (
+        <span className="next-line">
+          {o.forecast && (
+            <span>
+              市場預期 {fmtValue(def, o.forecast.value)} → {SIGNAL_LABEL[o.forecast.signal]}
+            </span>
+          )}
+          {o.policy?.holdNeutralFrom && (
+            <span>若一直不變，{o.policy.holdNeutralFrom.slice(5).replace('-', '/')} 起轉中性（升息滿 120 天）</span>
+          )}
+        </span>
+      )}
+      {impacts.length > 0 && (
+        <span className="next-line">
+          {impacts.map((p) => (
+            <span key={p.signal} className={p.flips ? 'flip' : undefined}>
+              {p.flips && '⚠️ '}
+              {p.text}
+            </span>
+          ))}
+        </span>
+      )}
+    </span>
+  );
+}
 import { Sparkline } from './Sparkline';
 
 const ARROW = { up: '▲', down: '▼', flat: '▶' } as const;
@@ -16,12 +69,18 @@ function Row({
   selected,
   onSelect,
   releases,
+  outlook,
+  nowScore,
+  now,
 }: {
   row: RowModel;
   today: string;
   selected: boolean;
   onSelect: (id: string) => void;
   releases?: IndicatorReleases;
+  outlook?: IndicatorOutlook;
+  nowScore: number;
+  now: Date;
 }) {
   const { def } = row.ev;
   const last = row.change.last;
@@ -41,7 +100,8 @@ function Row({
         ? formatSigned(def, last?.[1] ?? null)
         : formatValue(def, last?.[1]);
   const tags = statusTags(row);
-  const relLines = releaseLines(releases);
+  // 有官方日程時，「下次」改由 NextRelease 顯示（含門檻），避免重複
+  const relLines = releaseLines(releases).filter((l) => !(outlook && l.head.startsWith('下次')));
   return (
     <li>
       <button
@@ -98,6 +158,7 @@ function Row({
             ))}
           </span>
         ))}
+        {outlook && <NextRelease o={outlook} nowScore={nowScore} now={now} />}
       </button>
     </li>
   );
@@ -109,12 +170,18 @@ export function IndicatorTable({
   selectedId,
   onSelect,
   releases = {},
+  outlooks = {},
+  nowScore = 0,
+  now = new Date(),
 }: {
   rows: RowModel[];
   today: string;
   selectedId: string | null;
   onSelect: (id: string) => void;
   releases?: Record<string, IndicatorReleases>;
+  outlooks?: Record<string, IndicatorOutlook>;
+  nowScore?: number;
+  now?: Date;
 }) {
   return (
     <div className="groups">
@@ -141,6 +208,9 @@ export function IndicatorTable({
                   selected={selectedId === r.ev.def.id}
                   onSelect={onSelect}
                   releases={releases[r.ev.def.id]}
+                  outlook={outlooks[r.ev.def.id]}
+                  nowScore={nowScore}
+                  now={now}
                 />
               ))}
             </ul>

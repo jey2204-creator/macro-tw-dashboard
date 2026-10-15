@@ -7,6 +7,7 @@ import path from 'node:path';
 import { INDICATORS } from '../../src/shared/indicators';
 import { updateCalendar } from './calendar';
 import { writeBacktest } from './writeBacktest';
+import { writeIcs } from './writeIcs';
 import { lastBreadth, writeMarginStress } from './writeMarginStress';
 import { runPipeline } from './pipeline';
 
@@ -39,6 +40,12 @@ async function main() {
     await updateCalendar({ outDir, fetchImpl: (url, init) => fetch(url, init), log: (m) => console.log(`  ${m}`) });
   } catch (e) {
     console.warn('[calendar] 略過：', e instanceof Error ? e.message : e);
+  }
+  // 行事曆檔（訂閱用）失敗不影響資料更新
+  try {
+    console.log(`[ics] macro-events.ics ${await writeIcs(outDir)} 個事件`);
+  } catch (e) {
+    console.warn('[ics] 略過：', e instanceof Error ? e.message : e);
   }
   // 回測失敗不影響資料更新
   try {
