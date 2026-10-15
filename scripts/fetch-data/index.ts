@@ -7,6 +7,7 @@ import path from 'node:path';
 import { INDICATORS } from '../../src/shared/indicators';
 import { updateCalendar } from './calendar';
 import { writeBacktest } from './writeBacktest';
+import { writeMarginStress } from './writeMarginStress';
 import { runPipeline } from './pipeline';
 
 function arg(name: string): string | undefined {
@@ -46,6 +47,13 @@ async function main() {
     console.log(`[backtest] ${bt.start}～${bt.end}，用時 ${((Date.now() - t) / 1000).toFixed(1)}s`);
   } catch (e) {
     console.warn('[backtest] 略過：', e instanceof Error ? e.message : e);
+  }
+  // 融資斷頭監測失敗不影響資料更新
+  try {
+    const ms = await writeMarginStress(outDir);
+    console.log(`[margin-stress] ${ms.start}～${ms.end}，${ms.rows.length} 天，事件 ${ms.events.length} 筆，最新 ${JSON.stringify(ms.latest)}`);
+  } catch (e) {
+    console.warn('[margin-stress] 略過：', e instanceof Error ? e.message : e);
   }
 }
 

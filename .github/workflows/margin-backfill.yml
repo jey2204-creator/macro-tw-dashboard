@@ -1,0 +1,71 @@
+name: 融資維持率歷史回補
+
+# 一次性：把大盤融資維持率（上市，推算）回補到 2010 年，存進 data/margin-history.json，供斷頭事件回測。
+# 每個交易日 2 個請求、間隔 2.5 秒，全部約 6 小時；每次執行最多 5 小時，未完成會自動接著跑下一次。
+# 完成（或每段結束）後會觸發「更新資料並部署」，網站即顯示最新的回測結果。
+# probe：只測試指定日期能否解析（逗號分隔），不寫檔。
+
+on:
+  workflow_dispatch:
+    inputs:
+      probe:
+        description: '只測試這些日期（例如 2010-03-02,2020-03-19），留空＝正式回補'
+        type: string
+        default: ''
+      target:
+        description: '回補到哪一天（最早）'
+        type: string
+        default: '2010-01-04'
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: margin-backfill
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: 測試解析
+        if: ${{ inputs.probe != '' }}
+        run: npx tsx scripts/fetch-data/marginBackfill.ts --probe "${{ inputs.probe }}"
+
+      - name: 回補
+        id: run
+        if: ${{ inputs.probe == '' }}
+        continue-on-error: true
+        run: npx tsx scripts/fetch-data/marginBackfill.ts --target "${{ inputs.target }}" --budget-min 300
+
+      - name: 提交進度
+        if: ${{ inputs.probe == '' && always() }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/margin-history.json
+          if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
+          rows=$(grep -c '^\["' data/margin-history.json || true)
+          git commit -m "data: 融資維持率歷史回補（共 ${rows} 天）"
+          for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done
+
+      - name: 接續下一段
+        if: ${{ inputs.probe == '' && steps.run.outputs.remaining == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run margin-backfill.yml -f target="${{ inputs.target }}"
+
+      - name: 重新部署網站
+        if: ${{ inputs.probe == '' && always() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run update-and-deploy.yml
