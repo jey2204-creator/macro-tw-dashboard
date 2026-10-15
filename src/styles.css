@@ -502,19 +502,18 @@ th {
   flex-direction: column;
   min-width: 0;
 }
-/* 短名＋日期同一行：名稱可縮（省略號），日期不換行 */
+/* 短名＋日期：放得下就同一行，放不下日期自動換到下一行；名稱永遠完整 */
 .c-name .head {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 5px;
+  column-gap: 5px;
+  row-gap: 1px;
   min-width: 0;
 }
 .c-name .name {
   font-weight: 600;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
 }
 .c-name .subtitle {
   font-size: 10.5px;
