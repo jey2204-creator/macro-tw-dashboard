@@ -81,7 +81,7 @@ export function PriceChart({ bars, kind, mas, range, decimals, showPct, themeKey
       autoSize: true,
       crosshair: { mode: CrosshairMode.Normal },
       localization: { locale: 'zh-TW', dateFormat: 'yyyy-MM-dd' },
-      timeScale: { rightOffset: 2, minBarSpacing: 0.2 },
+      timeScale: { rightOffset: 2, fixLeftEdge: true, fixRightEdge: true, minBarSpacing: 0.2 },
       ...CHART_INTERACTION,
       rightPriceScale: { autoScale: true, scaleMargins: { top: 0.12, bottom: 0.06 } },
     });

@@ -45,7 +45,7 @@ function BreadthChart({ data, range, themeKey, resetKey }: { data: BreadthStress
       autoSize: true,
       crosshair: { mode: CrosshairMode.Normal },
       localization: { locale: 'zh-TW', dateFormat: 'yyyy-MM-dd' },
-      timeScale: { rightOffset: 2, minBarSpacing: 0.1 },
+      timeScale: { rightOffset: 2, fixLeftEdge: true, fixRightEdge: true, minBarSpacing: 0.1 },
       ...CHART_INTERACTION,
     });
     chartRef.current = chart;
