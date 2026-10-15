@@ -94,6 +94,7 @@ describe('變化與查詢', () => {
     expect(valueAtOrBefore(pts, '2026-02-01')).toEqual(['2026-01-05', 99]);
   });
   it('rangeStart', () => {
+    expect(rangeStart('2026-10-15', '3M')).toBe('2026-07-15');
     expect(rangeStart('2026-10-06', '6M')).toBe('2026-04-06');
     expect(rangeStart('2026-10-06', '5Y')).toBe('2021-10-06');
     expect(rangeStart('2026-10-06', 'ALL')).toBeNull();

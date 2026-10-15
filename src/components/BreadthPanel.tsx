@@ -25,6 +25,8 @@ import { rangeStart, type RangeKey } from '../shared/timeseries';
 import { StatsRow } from './StatsRow';
 
 const RANGES: { k: RangeKey; label: string }[] = [
+  { k: '3M', label: '3個月' },
+  { k: '6M', label: '半年' },
   { k: '1Y', label: '1年' },
   { k: '5Y', label: '5年' },
   { k: 'ALL', label: '全部' },

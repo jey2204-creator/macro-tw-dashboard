@@ -47,7 +47,7 @@ export default function App() {
   const [theme, setTheme] = useState<Theme>(() => loadPref('theme', ['auto', 'light', 'dark'] as const, 'auto'));
   const [prefs, setPrefs] = useState<ChartPrefs>(() => ({
     period: loadPref<Period>('period', ['D', 'W', 'M'], 'D'),
-    range: loadPref<RangeKey>('range', ['6M', '1Y', '5Y', 'ALL'], '1Y'),
+    range: loadPref<RangeKey>('range', ['3M', '6M', '1Y', '5Y', 'ALL'], '1Y'),
     mas: loadList('mas', [20, 60, 240]).filter((p): p is MaPeriod => (MA_PERIODS as readonly number[]).includes(p)),
   }));
   const [selected, setSelected] = useState<string | null>(null);

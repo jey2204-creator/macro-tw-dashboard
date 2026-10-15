@@ -4,7 +4,7 @@ import type { Bar } from './types';
 
 export type Point = [date: string, value: number];
 export type Period = 'D' | 'W' | 'M';
-export type RangeKey = '6M' | '1Y' | '5Y' | 'ALL';
+export type RangeKey = '3M' | '6M' | '1Y' | '5Y' | 'ALL';
 
 export const MA_PERIODS = [5, 10, 20, 60, 120, 240] as const;
 export type MaPeriod = (typeof MA_PERIODS)[number];
@@ -46,6 +46,8 @@ export function resample(bars: readonly Bar[], period: Period): Bar[] {
 /** 依時間區間取尾段（以最後一筆日期為基準） */
 export function rangeStart(lastDate: string, range: RangeKey): string | null {
   switch (range) {
+    case '3M':
+      return addMonths(lastDate, -3);
     case '6M':
       return addMonths(lastDate, -6);
     case '1Y':
