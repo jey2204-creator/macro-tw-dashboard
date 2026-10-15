@@ -174,7 +174,7 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
 }
 
 export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile | null; themeKey: string }) {
-  const [range, setRange] = useState<RangeKey>('5Y');
+  const [range, setRange] = useState<RangeKey>('3M');
   const [resetKey, setResetKey] = useState(0);
   const [showEvents, setShowEvents] = useState(false);
   if (!data || !data.latest) return null;

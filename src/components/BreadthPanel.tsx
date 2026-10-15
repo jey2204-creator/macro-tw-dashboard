@@ -160,7 +160,7 @@ function BreadthChart({ data, range, themeKey, resetKey }: { data: BreadthStress
 }
 
 export function BreadthPanel({ data, themeKey }: { data: BreadthStressFile | null; themeKey: string }) {
-  const [range, setRange] = useState<RangeKey>('1Y');
+  const [range, setRange] = useState<RangeKey>('3M');
   const [resetKey, setResetKey] = useState(0);
   const [showEvents, setShowEvents] = useState(false);
   if (!data || !data.latest) return null;
