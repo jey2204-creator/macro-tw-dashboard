@@ -12,6 +12,7 @@ import {
   type SeriesType,
   type Time,
 } from 'lightweight-charts';
+import { CHART_INTERACTION, resetPriceScales } from '../lib/chartInteraction';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { MA_PERIODS, rangeStart, sma, type MaPeriod, type RangeKey } from '../shared/timeseries';
 import type { Bar } from '../shared/types';
@@ -78,8 +79,8 @@ export function PriceChart({ bars, kind, mas, range, decimals, showPct, themeKey
       crosshair: { mode: CrosshairMode.Normal },
       localization: { locale: 'zh-TW', dateFormat: 'yyyy-MM-dd' },
       timeScale: { rightOffset: 2, minBarSpacing: 0.2 },
-      rightPriceScale: { scaleMargins: { top: 0.12, bottom: 0.06 } },
-      handleScale: { axisPressedMouseMove: true },
+      ...CHART_INTERACTION,
+      rightPriceScale: { autoScale: true, scaleMargins: { top: 0.12, bottom: 0.06 } },
     });
     chartRef.current = chart;
     return () => {
@@ -175,6 +176,7 @@ export function PriceChart({ bars, kind, mas, range, decimals, showPct, themeKey
     const last = bars.at(-1);
     if (!chart || !last) return;
     const start = rangeStart(last[0], range);
+    resetPriceScales(chart);
     if (!start || start <= bars[0]![0]) chart.timeScale().fitContent();
     else chart.timeScale().setVisibleRange({ from: start as Time, to: last[0] as Time });
   }, [bars, range, kind, mas]);

@@ -11,6 +11,7 @@ import {
   type SeriesMarker,
   type Time,
 } from 'lightweight-charts';
+import { CHART_INTERACTION, resetPriceScales } from '../lib/chartInteraction';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { cssVar, f2, pctCell } from '../lib/stressFormat';
 import {
@@ -31,7 +32,7 @@ const RANGES: { k: RangeKey; label: string }[] = [
 const TYPES: BreadthEventType[] = ['panic', 'capitulate', 'divergence', 'stabilized'];
 const MARKER_TEXT: Record<BreadthEventType, string> = { panic: '恐慌', capitulate: '投降', divergence: '背離', stabilized: '止跌' };
 
-function BreadthChart({ data, range, themeKey }: { data: BreadthStressFile; range: RangeKey; themeKey: string }) {
+function BreadthChart({ data, range, themeKey, resetKey }: { data: BreadthStressFile; range: RangeKey; themeKey: string; resetKey: number }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
@@ -45,7 +46,7 @@ function BreadthChart({ data, range, themeKey }: { data: BreadthStressFile; rang
       crosshair: { mode: CrosshairMode.Normal },
       localization: { locale: 'zh-TW', dateFormat: 'yyyy-MM-dd' },
       timeScale: { rightOffset: 2, minBarSpacing: 0.1 },
-      handleScale: { axisPressedMouseMove: true },
+      ...CHART_INTERACTION,
     });
     chartRef.current = chart;
     return () => {
@@ -116,11 +117,14 @@ function BreadthChart({ data, range, themeKey }: { data: BreadthStressFile; rang
     if (!chart || !last) return;
     const start = rangeStart(last[0], range);
     const from = start ? Math.max(0, data.rows.findIndex((r) => r[0] >= start)) : 0;
-    const apply = () => chart.timeScale().setVisibleLogicalRange({ from, to: data.rows.length + 1 });
+    const apply = () => {
+      chart.timeScale().setVisibleLogicalRange({ from, to: data.rows.length + 1 });
+      resetPriceScales(chart);
+    };
     apply();
     const raf = requestAnimationFrame(apply);
     return () => cancelAnimationFrame(raf);
-  }, [data, range, themeKey]);
+  }, [data, range, themeKey, resetKey]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -155,6 +159,7 @@ function BreadthChart({ data, range, themeKey }: { data: BreadthStressFile; rang
 
 export function BreadthPanel({ data, themeKey }: { data: BreadthStressFile | null; themeKey: string }) {
   const [range, setRange] = useState<RangeKey>('1Y');
+  const [resetKey, setResetKey] = useState(0);
   const [showEvents, setShowEvents] = useState(false);
   if (!data || !data.latest) return null;
   const { latest } = data;
@@ -185,8 +190,11 @@ export function BreadthPanel({ data, themeKey }: { data: BreadthStressFile | nul
             {r.label}
           </button>
         ))}
+        <button type="button" onClick={() => setResetKey((k) => k + 1)} aria-label="重設圖表縮放" title="重設縮放">
+          ↺ 重設
+        </button>
       </div>
-      <BreadthChart data={data} range={range} themeKey={themeKey} />
+      <BreadthChart data={data} range={range} themeKey={themeKey} resetKey={resetKey} />
 
       <div className="table-wrap">
         <table className="bt-table num">

@@ -11,6 +11,7 @@ import {
   type SeriesMarker,
   type Time,
 } from 'lightweight-charts';
+import { CHART_INTERACTION, resetPriceScales } from '../lib/chartInteraction';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CLEAR_REBOUND,
@@ -34,7 +35,7 @@ const RANGES: { k: RangeKey; label: string }[] = [
 const EVENT_TYPES: StressEventType[] = ['below150', 'below140', 'flush', 'cleared'];
 const MARKER_TEXT: Record<StressEventType, string> = { below150: '150', below140: '140', flush: '斷頭', cleared: '清洗完成' };
 
-function StressChart({ data, range, themeKey }: { data: MarginStressFile; range: RangeKey; themeKey: string }) {
+function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFile; range: RangeKey; themeKey: string; resetKey: number }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
@@ -48,7 +49,7 @@ function StressChart({ data, range, themeKey }: { data: MarginStressFile; range:
       crosshair: { mode: CrosshairMode.Normal },
       localization: { locale: 'zh-TW', dateFormat: 'yyyy-MM-dd' },
       timeScale: { rightOffset: 2, minBarSpacing: 0.1 },
-      handleScale: { axisPressedMouseMove: true },
+      ...CHART_INTERACTION,
     });
     chartRef.current = chart;
     return () => {
@@ -128,11 +129,14 @@ function StressChart({ data, range, themeKey }: { data: MarginStressFile; range:
     // 以 K 棒索引設定可視範圍（不受圖表初次排版時寬度為 0 的影響）
     const start = rangeStart(last[0], range);
     const from = start ? Math.max(0, data.rows.findIndex((r) => r[0] >= start)) : 0;
-    const apply = () => chart.timeScale().setVisibleLogicalRange({ from, to: data.rows.length + 1 });
+    const apply = () => {
+      chart.timeScale().setVisibleLogicalRange({ from, to: data.rows.length + 1 });
+      resetPriceScales(chart);
+    };
     apply();
     const raf = requestAnimationFrame(apply);
     return () => cancelAnimationFrame(raf);
-  }, [data, range, themeKey]);
+  }, [data, range, themeKey, resetKey]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -169,6 +173,7 @@ function StressChart({ data, range, themeKey }: { data: MarginStressFile; range:
 
 export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile | null; themeKey: string }) {
   const [range, setRange] = useState<RangeKey>('5Y');
+  const [resetKey, setResetKey] = useState(0);
   const [showEvents, setShowEvents] = useState(false);
   if (!data || !data.latest) return null;
   const { latest } = data;
@@ -199,8 +204,11 @@ export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile |
             {r.label}
           </button>
         ))}
+        <button type="button" onClick={() => setResetKey((k) => k + 1)} aria-label="重設圖表縮放" title="重設縮放">
+          ↺ 重設
+        </button>
       </div>
-      <StressChart data={data} range={range} themeKey={themeKey} />
+      <StressChart data={data} range={range} themeKey={themeKey} resetKey={resetKey} />
 
       <div className="table-wrap">
         <table className="bt-table num">
