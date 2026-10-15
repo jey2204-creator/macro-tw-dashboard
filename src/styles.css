@@ -502,11 +502,19 @@ th {
   flex-direction: column;
   min-width: 0;
 }
+/* 短名＋日期同一行：名稱可縮（省略號），日期不換行 */
+.c-name .head {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+}
 .c-name .name {
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
 .c-name .subtitle {
   font-size: 10.5px;
@@ -525,6 +533,7 @@ th {
   gap: 3px;
   align-items: center;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 .tag {
   font-size: 9.5px;
