@@ -222,6 +222,20 @@ export const INDICATORS: IndicatorDef[] = [
     market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 75,
     note: '排除食品能源的生產者價格；其中醫療、機票、投資管理費等項目直接進入核心 PCE。僅供參考不計分',
   },
+  // PCE：Fed 2% 通膨目標的正式衡量指標（核心 PCE）。公布晚同月 CPI 約 2 週，且大半可由 CPI＋PPI 分項推算，
+  // 對台股判多空與核心 CPI 高度重疊（PPI 回測紀錄）→ 參考型不計分；用途是對照 FOMC（距 2% 目標多遠）
+  {
+    id: 'pce', name: 'PCE 物價年增率', short: 'PCE', category: 'macro', frequency: 'monthly',
+    unit: '%', decimals: 1, sources: [{ provider: 'fred', symbol: 'PCEPI' }], transform: 'yoy',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 75,
+    note: '個人消費支出物價（BEA），權重隨消費行為變動、含代付醫療，通常低於 CPI 0.3–0.5pp；與 GDP 同日公布。僅供參考不計分',
+  },
+  {
+    id: 'core_pce', name: '核心 PCE 年增率', short: '核心PCE', category: 'macro', frequency: 'monthly',
+    unit: '%', decimals: 1, sources: [{ provider: 'fred', symbol: 'PCEPILFE' }], transform: 'yoy',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 75,
+    note: 'Fed 2% 通膨目標看的就是這個；比同月 CPI 晚約 2 週公布，大半可由 CPI＋PPI 分項推算，驚喜小。僅供參考不計分',
+  },
   // 月增率用季調指數（市場預期的月增率以季調為準）；只抓取、不單獨顯示
   {
     id: 'cpi_sa', name: 'CPI 指數（季調）', short: 'CPI季調', category: 'macro', frequency: 'monthly',

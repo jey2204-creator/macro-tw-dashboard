@@ -5,7 +5,7 @@ import { daysBetween, todayInTaipei } from './dates';
  *
  * 來源（2026-10-15 查證，官方網站公布的排程）：
  *  - CPI、PPI、就業報告（非農＋失業率）：BLS https://www.bls.gov/schedule/news_release/cpi.htm、ppi.htm、empsit.htm
- *  - GDP：BEA https://www.bea.gov/news/schedule/full（2027 年見 next-year）
+ *  - GDP、PCE（Personal Income and Outlays，與 GDP 同日）：BEA https://www.bea.gov/news/schedule/full（2027 年見 next-year）
  *  - FOMC：Fed https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm（會議日為暫定，前一次會議確認）
  *  - GDPNow：Atlanta Fed https://www.atlantafed.org/cqer/research/gdpnow（只公布到年底，約每月更新一次清單）
  *
@@ -15,7 +15,7 @@ import { daysBetween, todayInTaipei } from './dates';
  * 每年 10 月左右官方會公布隔年日程；GDPNow 清單較短，到期前 UI 會顯示「日程待更新」。
  */
 
-export type ReleaseKind = 'cpi' | 'ppi' | 'jobs' | 'gdp' | 'fomc' | 'gdpnow';
+export type ReleaseKind = 'cpi' | 'ppi' | 'jobs' | 'gdp' | 'pce' | 'fomc' | 'gdpnow';
 
 export interface ReleaseKindDef {
   kind: ReleaseKind;
@@ -33,6 +33,7 @@ export const RELEASE_KINDS: Record<ReleaseKind, ReleaseKindDef> = {
   ppi: { kind: 'ppi', name: 'PPI 生產者物價', indicators: ['ppi', 'core_ppi'], importance: 'high', source: 'BLS' },
   jobs: { kind: 'jobs', name: '就業報告（非農／失業率）', indicators: ['nfp', 'unrate'], importance: 'high', source: 'BLS' },
   gdp: { kind: 'gdp', name: 'GDP', indicators: ['gdp'], importance: 'high', source: 'BEA' },
+  pce: { kind: 'pce', name: 'PCE 物價（個人所得與支出）', indicators: ['pce', 'core_pce'], importance: 'high', source: 'BEA' },
   fomc: { kind: 'fomc', name: 'FOMC 利率決議', indicators: ['fed'], importance: 'high', source: 'Federal Reserve' },
   gdpnow: { kind: 'gdpnow', name: 'GDPNow 更新', indicators: ['gdpnow'], importance: 'low', source: 'Atlanta Fed' },
 };
@@ -125,6 +126,25 @@ const GDP: [string, string, string][] = [
   ['2027-12-22', m(2027, 7), 'Q3 確定值'],
 ];
 
+/** PCE（BEA Personal Income and Outlays，2026-10-16 查證）：與 GDP 同日 08:30 ET；[公布日, 參考月份] */
+const PCE: [string, string][] = [
+  ['2026-10-29', m(2026, 9)],
+  ['2026-11-25', m(2026, 10)],
+  ['2026-12-23', m(2026, 11)],
+  ['2027-01-28', m(2026, 12)],
+  ['2027-02-25', m(2027, 1)],
+  ['2027-03-31', m(2027, 2)],
+  ['2027-04-29', m(2027, 3)],
+  ['2027-05-27', m(2027, 4)],
+  ['2027-06-25', m(2027, 5)],
+  ['2027-07-29', m(2027, 6)],
+  ['2027-08-25', m(2027, 7)],
+  ['2027-09-30', m(2027, 8)],
+  ['2027-10-28', m(2027, 9)],
+  ['2027-11-24', m(2027, 10)],
+  ['2027-12-22', m(2027, 11)],
+];
+
 /** FOMC 會議第二天（14:00 ET 公布決議）；* 為附經濟預測（SEP）的會議 */
 const FOMC: [string, boolean][] = [
   ['2026-10-28', false],
@@ -165,6 +185,7 @@ export const SCHEDULE: ScheduledRelease[] = [
   ...PPI.map(([date, period]): ScheduledRelease => ({ kind: 'ppi', date, timeET: '08:30', period })),
   ...JOBS.map(([date, period]): ScheduledRelease => ({ kind: 'jobs', date, timeET: '08:30', period })),
   ...GDP.map(([date, period, note]): ScheduledRelease => ({ kind: 'gdp', date, timeET: '08:30', period, note })),
+  ...PCE.map(([date, period]): ScheduledRelease => ({ kind: 'pce', date, timeET: '08:30', period })),
   ...FOMC.map(([date, sep]): ScheduledRelease => ({
     kind: 'fomc',
     date,
