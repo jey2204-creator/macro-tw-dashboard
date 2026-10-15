@@ -98,6 +98,15 @@ export interface IndicatorDef {
   refLines?: { value: number; label: string }[];
   /** 依數值分區的說明（由低到高，取第一個 value < max 的區間） */
   zones?: { max: number; label: string }[];
+  /** 數值越大越偏空（跌停、下跌家數）：漲跌顏色反轉，用空方色 */
+  bearish?: boolean;
+}
+
+/** 依多空語意決定顏色 class：一般指標上升＝up；bearish 指標上升＝down（隨紅漲綠跌設定切換） */
+export function toneClass(def: Pick<IndicatorDef, 'bearish'>, dir: 'up' | 'down' | 'flat' | ''): 'up' | 'down' | '' {
+  if (dir !== 'up' && dir !== 'down') return '';
+  if (!def.bearish) return dir;
+  return dir === 'up' ? 'down' : 'up';
 }
 
 export const CATEGORY_LABEL: Record<Category, string> = {
@@ -369,7 +378,7 @@ export const INDICATORS: IndicatorDef[] = [
   {
     id: 'limit_down', name: '跌停家數（上市股票）', short: '跌停家數', category: 'tw_chips', frequency: 'daily',
     unit: '家', decimals: 0, sources: [{ provider: 'twse_chips', symbol: 'LIMIT_DOWN' }], transform: 'none',
-    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, chart: 'histogram', flow: true,
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, chart: 'histogram', flow: true, bearish: true,
     note: '收盤跌停的上市普通股家數；暴增代表恐慌或斷頭賣壓，常在階段低點附近，但不一定是最後一天',
   },
   {
@@ -381,7 +390,7 @@ export const INDICATORS: IndicatorDef[] = [
   {
     id: 'decline', name: '下跌家數（上市股票）', short: '下跌家數', category: 'tw_chips', frequency: 'daily',
     unit: '家', decimals: 0, sources: [{ provider: 'twse_chips', symbol: 'DECLINE' }], transform: 'none',
-    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true,
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true, bearish: true,
     note: '下跌的上市普通股家數（含跌停）',
   },
 ];

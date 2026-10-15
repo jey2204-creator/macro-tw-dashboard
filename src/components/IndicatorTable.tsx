@@ -2,7 +2,7 @@ import { formatChange, formatSigned, formatValue, shortDate } from '../lib/forma
 import { releaseLines } from '../lib/release';
 import type { IndicatorReleases } from '../shared/calendar';
 import { statusTags, type RowModel } from '../lib/rows';
-import { CATEGORY_LABEL, CATEGORY_ORDER } from '../shared/indicators';
+import { CATEGORY_LABEL, CATEGORY_ORDER, toneClass } from '../shared/indicators';
 import { SIGNAL_LABEL } from '../shared/regime';
 import { quarterLabel, sumLast } from '../shared/signals';
 import { SignalBadge } from './SignalBadge';
@@ -31,7 +31,8 @@ function Row({
     ? { main: formatSigned(def, sum5), sub: '5日計' }
     : formatChange(def, row.change.abs, row.change.pct);
   const chVal = def.flow ? sum5 : row.change.abs;
-  const chDir = chVal === null ? '' : chVal > 0 ? 'up' : chVal < 0 ? 'down' : '';
+  const chDir = toneClass(def, chVal === null ? '' : chVal > 0 ? 'up' : chVal < 0 ? 'down' : '');
+  const trendTone = toneClass(def, row.direction.dir) || 'flat';
   const dateText = def.frequency === 'quarterly' && last ? quarterLabel(last[0]) : shortDate(last?.[0], today);
   const value =
     def.pairId && row.pairValue !== null && last
@@ -66,8 +67,8 @@ function Row({
           {ch.sub && <span className="sub">{ch.sub}</span>}
         </span>
         <span className="c-trend">
-          <Sparkline points={row.ev.points.slice(def.frequency === 'daily' ? -60 : -24)} dir={row.direction.dir} />
-          <span className={`dir ${row.direction.dir}`}>
+          <Sparkline points={row.ev.points.slice(def.frequency === 'daily' ? -60 : -24)} dir={trendTone} />
+          <span className={`dir ${trendTone}`}>
             {ARROW[row.direction.dir]} {row.direction.text}
           </span>
         </span>

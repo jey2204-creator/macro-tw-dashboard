@@ -17,6 +17,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { MA_PERIODS, rangeStart, sma, type MaPeriod, type RangeKey } from '../shared/timeseries';
 import type { Bar } from '../shared/types';
 import { MA_COLOR_VAR, type ChartKind } from '../lib/chartData';
+import { toneClass } from '../shared/indicators';
 
 
 interface Props {
@@ -31,6 +32,8 @@ interface Props {
   themeKey: string;
   /** 水平參考線 */
   refLines?: { value: number; label: string }[];
+  /** 數值越大越偏空（跌停家數等）：柱狀圖與圖例改用空方色 */
+  bearish?: boolean;
 }
 
 function cssVar(name: string): string {
@@ -43,7 +46,7 @@ interface Hover {
   ma: Partial<Record<MaPeriod, number | null>>;
 }
 
-export function PriceChart({ bars, kind, mas, range, decimals, showPct, themeKey, refLines }: Props) {
+export function PriceChart({ bars, kind, mas, range, decimals, showPct, themeKey, refLines, bearish }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<SeriesType>[]>([]);
@@ -132,7 +135,7 @@ export function PriceChart({ bars, kind, mas, range, decimals, showPct, themeKey
       seriesRef.current.push(s);
     } else if (kind === 'histogram') {
       const s = chart.addSeries(HistogramSeries, { priceFormat });
-      s.setData(bars.map((b) => ({ time: b[0] as Time, value: b[4], color: b[4] >= 0 ? up : down })));
+      s.setData(bars.map((b) => ({ time: b[0] as Time, value: b[4], color: (b[4] >= 0) !== !!bearish ? up : down })));
       seriesRef.current.push(s);
     } else {
       const s = chart.addSeries(LineSeries, { color: cssVar('--text-1'), lineWidth: 2, priceFormat });
@@ -168,7 +171,7 @@ export function PriceChart({ bars, kind, mas, range, decimals, showPct, themeKey
       );
       seriesRef.current.push(s);
     }
-  }, [bars, kind, mas, maData, decimals, themeKey, refLines]);
+  }, [bars, kind, mas, maData, decimals, themeKey, refLines, bearish]);
 
   // 時間區間
   useEffect(() => {
@@ -214,7 +217,7 @@ export function PriceChart({ bars, kind, mas, range, decimals, showPct, themeKey
               <b>{fmt(shown.bar[4])}</b>
             )}{' '}
             {chg !== null && (
-              <span className={chg > 0 ? 'up' : chg < 0 ? 'down' : ''}>
+              <span className={toneClass({ bearish }, chg > 0 ? 'up' : chg < 0 ? 'down' : '')}>
                 {chg > 0 ? '+' : ''}
                 {fmt(chg)}
                 {chgPct !== null && showPct ? ` (${chgPct > 0 ? '+' : ''}${chgPct.toFixed(2)}%)` : ''}

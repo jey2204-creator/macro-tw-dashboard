@@ -50,5 +50,5 @@ export function shortDate(d: string | null | undefined, today?: string): string 
 export function formatSigned(def: Pick<IndicatorDef, 'unit' | 'decimals'>, v: number | null): string {
   if (v === null || !Number.isFinite(v)) return '—';
   const u = def.unit === '億' || def.unit === '口' || def.unit === '家' ? def.unit : '';
-  return `${v > 0 ? '+' : ''}${num(v, def.decimals)}${u}`;
+  return `${v > 0 && def.unit !== '家' ? '+' : ''}${num(v, def.decimals)}${u}`;
 }

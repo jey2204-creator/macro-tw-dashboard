@@ -159,7 +159,7 @@ export function evaluateSignal(def: IndicatorDef, pts: readonly Point[]): Signal
 }
 
 const unitText = (def: Pick<IndicatorDef, 'unit' | 'decimals'>, v: number) =>
-  `${v > 0 ? '+' : ''}${v.toLocaleString('en-US', { minimumFractionDigits: def.decimals, maximumFractionDigits: def.decimals })}${def.unit === '億' || def.unit === '口' || def.unit === '家' ? def.unit : ''}`;
+  `${v > 0 && def.unit !== '家' ? '+' : ''}${v.toLocaleString('en-US', { minimumFractionDigits: def.decimals, maximumFractionDigits: def.decimals })}${def.unit === '億' || def.unit === '口' || def.unit === '家' ? def.unit : ''}`;
 
 /** N 期合計（流量型） */
 export function sumLast(pts: readonly Point[], n: number): number | null {
