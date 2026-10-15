@@ -176,10 +176,17 @@ export function infoReason(def: IndicatorDef, pts: readonly Point[]): string {
       .filter(Boolean)
       .join('，') || '資料不足';
   }
-  const ch = changeOver(pts, 5);
+  // 日資料看 5 日變化；月資料看 3 個月（與通膨指標的判斷期間一致）
+  const n = def.frequency === 'monthly' ? 3 : 5;
+  const label = def.frequency === 'monthly' ? `近${n}月` : `近${n}日`;
+  const ch = changeOver(pts, n);
   const last = pts.at(-1);
   const zone = last && def.zones ? def.zones.find((z) => last[1] < z.max)?.label : undefined;
-  const chText = ch ? (def.unit === '%' ? `近5日 ${signed(ch.abs, 2)}pp` : `近5日變化 ${unitText(def, ch.abs)}`) : null;
+  const chText = ch
+    ? def.unit === '%'
+      ? `${def.transform === 'yoy' && last ? `年增 ${fmt(last[1], 1)}%，` : ''}${label} ${signed(ch.abs, def.frequency === 'monthly' ? 1 : 2)}pp`
+      : `${label}變化 ${unitText(def, ch.abs)}`
+    : null;
   return [zone, chText].filter(Boolean).join('，') || '資料不足';
 }
 

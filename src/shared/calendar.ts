@@ -14,7 +14,7 @@ import type { SummaryFile } from './types';
  * 市場預期僅供參考、不計分（沒有免費的歷史預期資料可回測）。
  */
 
-export type EventKey = 'cpi_yoy' | 'cpi_mom' | 'core_yoy' | 'core_mom' | 'nfp' | 'unrate' | 'gdp';
+export type EventKey = 'cpi_yoy' | 'cpi_mom' | 'core_yoy' | 'core_mom' | 'ppi_mom' | 'core_ppi_mom' | 'nfp' | 'unrate' | 'gdp';
 
 export interface EventDef {
   key: EventKey;
@@ -37,6 +37,8 @@ export const EVENT_DEFS: EventDef[] = [
   { key: 'cpi_mom', indicatorId: 'cpi', label: '月增', unit: '%', decimals: 1, actual: { id: 'cpi_sa', calc: 'mom' }, period: 'month', match: /^CPI m\/m$/i },
   { key: 'core_yoy', indicatorId: 'core_cpi', label: '年增', unit: '%', decimals: 1, actual: { id: 'core_cpi', calc: 'yoy' }, period: 'month', match: /^Core CPI y\/y$/i },
   { key: 'core_mom', indicatorId: 'core_cpi', label: '月增', unit: '%', decimals: 1, actual: { id: 'core_cpi_sa', calc: 'mom' }, period: 'month', match: /^Core CPI m\/m$/i },
+  { key: 'ppi_mom', indicatorId: 'ppi', label: '月增', unit: '%', decimals: 1, actual: { id: 'ppi', calc: 'mom' }, period: 'month', match: /^PPI m\/m$/i },
+  { key: 'core_ppi_mom', indicatorId: 'core_ppi', label: '月增', unit: '%', decimals: 1, actual: { id: 'core_ppi', calc: 'mom' }, period: 'month', match: /^Core PPI m\/m$/i },
   { key: 'nfp', indicatorId: 'nfp', label: '新增', unit: 'k', decimals: 0, actual: { id: 'nfp', calc: 'diff' }, period: 'month', match: /^Non-Farm Employment Change$/i },
   { key: 'unrate', indicatorId: 'unrate', label: '失業率', unit: '%', decimals: 1, actual: { id: 'unrate', calc: 'none' }, period: 'month', match: /^Unemployment Rate$/i },
   { key: 'gdp', indicatorId: 'gdp', label: 'GDP', unit: '%', decimals: 1, actual: { id: 'gdp', calc: 'none' }, period: 'quarter', match: /^(Advance |Prelim |Final )?GDP q\/q$/i },
