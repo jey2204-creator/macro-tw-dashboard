@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { CalendarFile } from '../shared/calendar';
 import type { BacktestFile, SeriesFile, SummaryFile } from '../shared/types';
 
 export type LoadState<T> =
@@ -67,6 +68,22 @@ export function useBacktest(version: string | null): BacktestFile | null {
     const ctrl = new AbortController();
     getJson<BacktestFile>(`${DATA_BASE}/backtest.json?v=${encodeURIComponent(version)}`, ctrl.signal)
       .then((data) => setState({ v: version, data: data.schemaVersion === 1 ? data : null }))
+      .catch(() => {
+        if (!ctrl.signal.aborted) setState({ v: version, data: null });
+      });
+    return () => ctrl.abort();
+  }, [version]);
+  return state && state.v === version ? state.data : null;
+}
+
+/** 公布行事曆（市場預期）為選用資料：載入失敗時回傳 null，不影響主畫面 */
+export function useCalendar(version: string | null): CalendarFile | null {
+  const [state, setState] = useState<{ v: string; data: CalendarFile | null } | null>(null);
+  useEffect(() => {
+    if (!version) return;
+    const ctrl = new AbortController();
+    getJson<CalendarFile>(`${DATA_BASE}/calendar.json?v=${encodeURIComponent(version)}`, ctrl.signal)
+      .then((data) => setState({ v: version, data: data.schemaVersion === 1 && Array.isArray(data.events) ? data : null }))
       .catch(() => {
         if (!ctrl.signal.aborted) setState({ v: version, data: null });
       });

@@ -3,10 +3,11 @@ import { ChartPanel, type ChartPrefs } from './components/ChartPanel';
 import { IndicatorTable } from './components/IndicatorTable';
 import { RegimePanel } from './components/RegimePanel';
 import { SourceStatus } from './components/SourceStatus';
-import { useBacktest, useSummary } from './hooks/useData';
+import { useBacktest, useCalendar, useSummary } from './hooks/useData';
 import { buildRow } from './lib/rows';
 import { loadList, loadPref, savePref } from './lib/storage';
 import { formatTaipeiDateTime, todayInTaipei } from './shared/dates';
+import { releasesByIndicator } from './shared/calendar';
 import { INDICATOR_MAP } from './shared/indicators';
 import { computeRegime } from './shared/regime';
 import { MA_PERIODS, type MaPeriod, type Period, type RangeKey } from './shared/timeseries';
@@ -71,6 +72,11 @@ export default function App() {
   const backtest = useBacktest(summary?.generatedAt ?? null);
   const regime = useMemo(() => (summary ? computeRegime(summary, today) : null), [summary, today]);
   const rows = useMemo(() => (regime && summary ? regime.evals.map((ev) => buildRow(ev, summary)) : []), [regime, summary]);
+  const calendar = useCalendar(summary?.generatedAt ?? null);
+  const releases = useMemo(
+    () => (summary ? releasesByIndicator(calendar, summary, new Date(nowMs)) : {}),
+    [calendar, summary, nowMs],
+  );
 
   // 桌面版預設顯示加權指數圖表
   const activeId = selected ?? (isWide ? 'taiex' : null);
@@ -142,7 +148,7 @@ export default function App() {
         <main className={`layout${isWide ? ' wide' : ''}`}>
           <div className="col-main">
             <RegimePanel regime={regime} onSelect={setSelected} backtest={backtest} />
-            <IndicatorTable rows={rows} today={today} selectedId={activeId} onSelect={setSelected} />
+            <IndicatorTable rows={rows} today={today} selectedId={activeId} onSelect={setSelected} releases={releases} />
             <SourceStatus summary={summary} />
           </div>
           {activeDef && activeEval && (

@@ -176,15 +176,26 @@ export const INDICATORS: IndicatorDef[] = [
   },
   {
     id: 'cpi', name: 'CPI 年增率', short: 'CPI', category: 'macro', frequency: 'monthly',
-    unit: '%', decimals: 1, sources: [{ provider: 'fred', symbol: 'CPIAUCSL' }], transform: 'yoy',
+    unit: '%', decimals: 1, sources: [{ provider: 'fred', symbol: 'CPIAUCNS' }], transform: 'yoy',
     market: false, rule: { kind: 'inflationTrend', lookback: 3, threshold: 0.2 },
-    weight: 0.5, maxAgeDays: 75, note: '整體通膨；趨勢下降給 Fed 降息空間',
+    weight: 0.5, maxAgeDays: 75, note: '整體通膨；趨勢下降給 Fed 降息空間（年增率用未季調指數，與 BLS 新聞稿一致）',
   },
   {
     id: 'core_cpi', name: '核心 CPI 年增率', short: '核心CPI', category: 'macro', frequency: 'monthly',
-    unit: '%', decimals: 1, sources: [{ provider: 'fred', symbol: 'CPILFESL' }], transform: 'yoy',
+    unit: '%', decimals: 1, sources: [{ provider: 'fred', symbol: 'CPILFENS' }], transform: 'yoy',
     market: false, rule: { kind: 'inflationTrend', lookback: 3, threshold: 0.2 },
-    weight: 1, maxAgeDays: 75, note: '排除食品能源，Fed 更重視的通膨指標',
+    weight: 1, maxAgeDays: 75, note: '排除食品能源，Fed 更重視的通膨指標（年增率用未季調指數，與 BLS 新聞稿一致）',
+  },
+  // 月增率用季調指數（市場預期的月增率以季調為準）；只抓取、不單獨顯示
+  {
+    id: 'cpi_sa', name: 'CPI 指數（季調）', short: 'CPI季調', category: 'macro', frequency: 'monthly',
+    unit: 'pt', decimals: 3, sources: [{ provider: 'fred', symbol: 'CPIAUCSL' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 75, note: '', hidden: true,
+  },
+  {
+    id: 'core_cpi_sa', name: '核心 CPI 指數（季調）', short: '核心季調', category: 'macro', frequency: 'monthly',
+    unit: 'pt', decimals: 3, sources: [{ provider: 'fred', symbol: 'CPILFESL' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 75, note: '', hidden: true,
   },
   {
     id: 'unrate', name: '美國失業率', short: '失業率', category: 'macro', frequency: 'monthly',

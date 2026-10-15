@@ -1,0 +1,9 @@
+{
+  "說明": "自動來源（ForexFactory）抓不到市場預期時，在這裡手動填。forecast 以此為準，會覆蓋自動值。key 可用：cpi_yoy、cpi_mom、core_yoy、core_mom、nfp、unrate、gdp；releaseDate 為美東公布日；nfp 單位為千人，其餘為 %。",
+  "entries": [
+    { "key": "cpi_yoy", "releaseDate": "2026-10-14", "forecast": 3.6, "previous": 3.4 },
+    { "key": "core_yoy", "releaseDate": "2026-10-14", "forecast": 2.5 },
+    { "key": "core_mom", "releaseDate": "2026-10-14", "forecast": 0.2 },
+    { "key": "cpi_mom", "releaseDate": "2026-10-14", "forecast": 0.6 }
+  ]
+}

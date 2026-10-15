@@ -5,6 +5,7 @@
  */
 import path from 'node:path';
 import { INDICATORS } from '../../src/shared/indicators';
+import { updateCalendar } from './calendar';
 import { writeBacktest } from './writeBacktest';
 import { runPipeline } from './pipeline';
 
@@ -32,6 +33,12 @@ async function main() {
     `[fetch-data] 完成，用時 ${((Date.now() - started) / 1000).toFixed(1)}s；正常 ${entries.length - bad - degraded}、降級 ${degraded}、失敗 ${bad}`,
   );
   if (entries.length > 0 && bad === entries.length) process.exit(1);
+  // 公布行事曆（市場預期）失敗不影響資料更新
+  try {
+    await updateCalendar({ outDir, fetchImpl: (url, init) => fetch(url, init), log: (m) => console.log(`  ${m}`) });
+  } catch (e) {
+    console.warn('[calendar] 略過：', e instanceof Error ? e.message : e);
+  }
   // 回測失敗不影響資料更新
   try {
     const t = Date.now();

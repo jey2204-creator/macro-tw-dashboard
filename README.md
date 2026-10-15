@@ -53,6 +53,18 @@ src/          React UI（lightweight-charts 繪製 K 線）
 
 FRED 與證交所、櫃買中心、期交所為官方公開資料；Yahoo Finance 為非官方介面（可能變動，已設計備援與快取）。
 
+### 公布日、實績與市場預期（僅供參考，不計分）
+
+CPI、核心 CPI、非農、失業率、GDP 的指標列下方會顯示「最近一次公布時間（台北時間）｜實績（預期 X ▲/▼差值）」，以及下一次預定公布時間。
+
+| 項目 | 來源 |
+|---|---|
+| 公布時間、市場預期、前值 | ForexFactory 公開行事曆（`nfs.faireconomy.media`，本週＋下週），每次執行合併進 `public/data/calendar.json` 累積歷史 |
+| 手動備援 | `config/consensus-manual.json`：自動來源抓不到時用 GitHub 手機 App 編輯，`forecast` 以手動值為準 |
+| 實績 | 網站自己的 FRED 數列：年增率用未季調指數（`CPIAUCNS`、`CPILFENS`，與 BLS 新聞稿一致），月增率用季調指數（`CPIAUCSL`、`CPILFESL`） |
+
+公布後 FRED 尚未更新時顯示「待更新」。沒有免費的歷史預期資料可回測，因此不納入綜合判斷。
+
 ## 容錯設計
 
 | 狀況 | 處理 |

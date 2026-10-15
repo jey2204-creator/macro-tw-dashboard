@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { IndicatorTable } from '../src/components/IndicatorTable';
 import { RegimePanel } from '../src/components/RegimePanel';
 import { buildRow } from '../src/lib/rows';
+import { mergeEvents, releasesByIndicator } from '../src/shared/calendar';
 import { computeRegime } from '../src/shared/regime';
 import type { BacktestFile, SummaryFile } from '../src/shared/types';
 
@@ -71,6 +72,21 @@ describe('UI（真實資料快照）', () => {
     expect(fed.textContent).toContain('120天 +25bp');
     // 參考型指標（籌碼）不重複顯示依據，維持列表密度
     expect(screen.getByRole('button', { name: /^外資買賣超（上市）/ }).textContent).not.toContain('→');
+  });
+
+  it('CPI 列顯示公布日、實績與市場預期', () => {
+    const rows = regime.evals.map((e) => buildRow(e, summary));
+    const events = mergeEvents([], [], [{ key: 'cpi_yoy', releaseDate: '2026-09-11', forecast: 2.0 }], TODAY);
+    const releases = releasesByIndicator(
+      { schemaVersion: 1, generatedAt: '', feed: { status: 'ok', fetchedAt: '', errors: [] }, events },
+      summary,
+      new Date('2026-10-07T00:00:00Z'),
+    );
+    render(<IndicatorTable rows={rows} today={TODAY} selectedId={null} onSelect={() => {}} releases={releases} />);
+    const cpi = screen.getByRole('button', { name: /^CPI 年增率/ });
+    expect(cpi.textContent).toMatch(/09\/11 公布年增 \d+\.\d%（預期 2\.0% ▲\+\d+\.\dpp）/);
+    // 沒有公布資料的列不受影響
+    expect(screen.getByRole('button', { name: /^Fed 政策利率/ }).textContent).not.toContain('公布');
   });
 
   it('指標資料缺失時仍能渲染並標示失敗', () => {

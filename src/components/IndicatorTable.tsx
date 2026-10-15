@@ -1,4 +1,6 @@
 import { formatChange, formatSigned, formatValue, shortDate } from '../lib/format';
+import { releaseLines } from '../lib/release';
+import type { IndicatorReleases } from '../shared/calendar';
 import { statusTags, type RowModel } from '../lib/rows';
 import { CATEGORY_LABEL, CATEGORY_ORDER } from '../shared/indicators';
 import { SIGNAL_LABEL } from '../shared/regime';
@@ -8,7 +10,19 @@ import { Sparkline } from './Sparkline';
 
 const ARROW = { up: '▲', down: '▼', flat: '▶' } as const;
 
-function Row({ row, today, selected, onSelect }: { row: RowModel; today: string; selected: boolean; onSelect: (id: string) => void }) {
+function Row({
+  row,
+  today,
+  selected,
+  onSelect,
+  releases,
+}: {
+  row: RowModel;
+  today: string;
+  selected: boolean;
+  onSelect: (id: string) => void;
+  releases?: IndicatorReleases;
+}) {
   const { def } = row.ev;
   const last = row.change.last;
   // 流量型（買賣超、增減）：變化欄改顯示 5 日累計，比單日差值更有意義
@@ -26,6 +40,7 @@ function Row({ row, today, selected, onSelect }: { row: RowModel; today: string;
         ? formatSigned(def, last?.[1] ?? null)
         : formatValue(def, last?.[1]);
   const tags = statusTags(row);
+  const relLines = releaseLines(releases);
   return (
     <li>
       <button
@@ -71,6 +86,17 @@ function Row({ row, today, selected, onSelect }: { row: RowModel; today: string;
             {row.ev.excludedReason && <span className="warn">（不計分：{row.ev.excludedReason}）</span>}
           </span>
         )}
+        {/* 公布日／實績／市場預期（僅供參考，不計分） */}
+        {relLines.map((l) => (
+          <span key={l.head} className="c-release">
+            <span className="rel-head">{l.head}</span>
+            {l.parts.map((p) => (
+              <span key={p.text} className={`rel-part ${p.dir}`} title={p.title}>
+                {p.text}
+              </span>
+            ))}
+          </span>
+        ))}
       </button>
     </li>
   );
@@ -81,11 +107,13 @@ export function IndicatorTable({
   today,
   selectedId,
   onSelect,
+  releases = {},
 }: {
   rows: RowModel[];
   today: string;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  releases?: Record<string, IndicatorReleases>;
 }) {
   return (
     <div className="groups">
@@ -105,7 +133,14 @@ export function IndicatorTable({
             </h2>
             <ul>
               {list.map((r) => (
-                <Row key={r.ev.def.id} row={r} today={today} selected={selectedId === r.ev.def.id} onSelect={onSelect} />
+                <Row
+                  key={r.ev.def.id}
+                  row={r}
+                  today={today}
+                  selected={selectedId === r.ev.def.id}
+                  onSelect={onSelect}
+                  releases={releases[r.ev.def.id]}
+                />
               ))}
             </ul>
           </section>
