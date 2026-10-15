@@ -1,0 +1,27 @@
+name: 期交所資料格式探測
+
+on:
+  workflow_dispatch:
+  push:
+    paths: ['.github/workflows/taifex-probe.yml']
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 探測選擇權買賣權分計與大額交易人
+        shell: bash
+        run: |
+          set +e
+          ME="macro-tw-dashboard/0.1 (+https://github.com/jey2204-creator/macro-tw-dashboard)"
+          p(){ n=$1; url=$2; shift 2; curl -s -A "$ME" -m 40 -X POST "$url" "$@" -o /tmp/raw; iconv -f big5 -t utf-8 /tmp/raw > /tmp/u 2>/dev/null || cp /tmp/raw /tmp/u;
+               echo "::notice title=$n head::$(head -c 1500 /tmp/u | tr '\r\n' ' |')";
+               echo "::notice title=$n match::$(grep -E "$PAT" /tmp/u | head -12 | tr '\r\n' ' |' | head -c 3000)"; }
+          PAT='外資'
+          p opt https://www.taifex.com.tw/cht/3/callsAndPutsDateDown -d queryStartDate=2026/10/13 -d queryEndDate=2026/10/15 -d commodityId=TXO
+          PAT='TX|臺股期貨'
+          p large https://www.taifex.com.tw/cht/3/largeTraderFutDown -d queryStartDate=2026/10/13 -d queryEndDate=2026/10/15
+          p large-old https://www.taifex.com.tw/cht/3/largeTraderFutDown -d queryStartDate=2016/10/03 -d queryEndDate=2016/10/04
+          PAT='外資'
+          p opt-old https://www.taifex.com.tw/cht/3/callsAndPutsDateDown -d queryStartDate=2016/10/03 -d queryEndDate=2016/10/04 -d commodityId=TXO
