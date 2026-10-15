@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { CalendarFile } from '../shared/calendar';
+import type { MarginStressFile } from '../shared/marginStress';
 import type { BacktestFile, SeriesFile, SummaryFile } from '../shared/types';
 
 export type LoadState<T> =
@@ -84,6 +85,22 @@ export function useCalendar(version: string | null): CalendarFile | null {
     const ctrl = new AbortController();
     getJson<CalendarFile>(`${DATA_BASE}/calendar.json?v=${encodeURIComponent(version)}`, ctrl.signal)
       .then((data) => setState({ v: version, data: data.schemaVersion === 1 && Array.isArray(data.events) ? data : null }))
+      .catch(() => {
+        if (!ctrl.signal.aborted) setState({ v: version, data: null });
+      });
+    return () => ctrl.abort();
+  }, [version]);
+  return state && state.v === version ? state.data : null;
+}
+
+/** 融資斷頭監測（選用資料）：載入失敗時回傳 null */
+export function useMarginStress(version: string | null): MarginStressFile | null {
+  const [state, setState] = useState<{ v: string; data: MarginStressFile | null } | null>(null);
+  useEffect(() => {
+    if (!version) return;
+    const ctrl = new AbortController();
+    getJson<MarginStressFile>(`${DATA_BASE}/margin-stress.json?v=${encodeURIComponent(version)}`, ctrl.signal)
+      .then((data) => setState({ v: version, data: data.schemaVersion === 1 && Array.isArray(data.rows) ? data : null }))
       .catch(() => {
         if (!ctrl.signal.aborted) setState({ v: version, data: null });
       });

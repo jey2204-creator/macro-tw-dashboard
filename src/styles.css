@@ -801,3 +801,52 @@ th {
 .cp-info dd .table-wrap {
   max-width: 420px;
 }
+
+/* ===== 融資斷頭監測 ===== */
+.ms {
+  margin-top: 8px;
+}
+.wide .ms {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.ms .verdict.ms-normal {
+  color: var(--neutral);
+}
+.ms .verdict.ms-warn {
+  color: var(--warn);
+}
+.ms .verdict.ms-zone {
+  color: var(--err);
+}
+.ms-rule {
+  margin: 4px 0 8px;
+  line-height: 1.5;
+}
+.ms-chart {
+  margin-top: 6px;
+}
+.ms-host {
+  height: max(420px, 60vh);
+}
+.ms-pane-labels {
+  margin: 2px 0 4px;
+}
+.ms-state {
+  padding: 0 4px;
+  border-radius: 3px;
+  border: 1px solid currentColor;
+  font-size: 11px;
+}
+.ms-state.ms-normal {
+  color: var(--neutral);
+}
+.ms-state.ms-warn {
+  color: var(--warn);
+}
+.ms-state.ms-zone {
+  color: var(--err);
+}
+.ms .table-wrap {
+  margin-top: 8px;
+}

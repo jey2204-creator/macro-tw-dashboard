@@ -97,9 +97,9 @@ async function probe(dates: string[], intervalMs: number) {
   for (const d of dates) {
     try {
       const r = await fetchDay(d, intervalMs);
-      console.log(`[probe] ${d}`, JSON.stringify(r));
+      console.log(`::notice title=probe ${d}::${JSON.stringify(r).slice(0, 300)}`);
     } catch (e) {
-      console.log(`[probe] ${d} 網路錯誤：${e instanceof Error ? e.message : String(e)}`);
+      console.log(`::warning title=probe ${d}::網路錯誤 ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 }
@@ -173,7 +173,7 @@ async function main() {
   await save(file, f);
   const left = f.cursor > target;
   console.log(
-    `[backfill] 結束：cursor=${f.cursor} rows=${f.rows.length} 解析失敗 ${f.parseErrors.length} 天，${left ? '尚未完成' : '已完成'}${blocked ? '（連續網路錯誤，疑似被擋）' : ''}`,
+    `::notice title=backfill::結束：cursor=${f.cursor} rows=${f.rows.length} 解析失敗 ${f.parseErrors.length} 天，${left ? '尚未完成' : '已完成'}${blocked ? '（連續網路錯誤，疑似被擋）' : ''}`,
   );
   if (process.env.GITHUB_OUTPUT) {
     await writeFile(process.env.GITHUB_OUTPUT, `remaining=${left && !blocked ? 'true' : 'false'}\n`, { flag: 'a' });
