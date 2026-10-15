@@ -65,6 +65,8 @@ export interface IndicatorDef {
   name: string;
   /** 小螢幕使用的短名稱 */
   short: string;
+  /** 列表短名下方的一行中文說明（縮寫是什麼、看什麼），省略則不顯示 */
+  subtitle?: string;
   category: Category;
   frequency: Frequency;
   /** 顯示單位 */
@@ -132,6 +134,7 @@ export const INDICATORS: IndicatorDef[] = [
   // ── 美債利率 ───────────────────────────────
   {
     id: 'us2y', name: '美國 2 年期公債殖利率', short: '美債2Y', category: 'rates', frequency: 'daily',
+    subtitle: '美國2年期公債殖利率｜反映 Fed 政策預期',
     unit: '%', decimals: 2, sources: [{ provider: 'fred', symbol: 'DGS2' }], transform: 'none',
     market: true, changeInBp: true,
     rule: { kind: 'risingIsBearish', lookback: 20, mode: 'abs', bearAt: 0.2, bullAt: -0.2 },
@@ -139,6 +142,7 @@ export const INDICATORS: IndicatorDef[] = [
   },
   {
     id: 'us10y', name: '美國 10 年期公債殖利率', short: '美債10Y', category: 'rates', frequency: 'daily',
+    subtitle: '美國10年期公債殖利率｜全球資產定價錨',
     unit: '%', decimals: 2, sources: [{ provider: 'fred', symbol: 'DGS10' }], transform: 'none',
     market: true, changeInBp: true,
     rule: { kind: 'risingIsBearish', lookback: 20, mode: 'abs', bearAt: 0.2, bullAt: -0.2 },
@@ -146,6 +150,7 @@ export const INDICATORS: IndicatorDef[] = [
   },
   {
     id: 'spread', name: '10Y−2Y 利差', short: '10Y-2Y', category: 'rates', frequency: 'daily',
+    subtitle: '10年減2年殖利率差｜負值（倒掛）＝衰退警訊',
     unit: '%', decimals: 2, sources: [{ provider: 'fred', symbol: 'T10Y2Y' }], transform: 'none',
     market: true, changeInBp: true, rule: { kind: 'curve' },
     weight: 0, maxAgeDays: 7, note: '負值＝殖利率曲線倒掛，常領先景氣衰退；回測觸發樣本太少，僅供參考不計分',
@@ -153,6 +158,7 @@ export const INDICATORS: IndicatorDef[] = [
   // ── 美元／匯率 ─────────────────────────────
   {
     id: 'dxy', name: '美元指數 DXY', short: 'DXY', category: 'fx', frequency: 'daily',
+    subtitle: '美元指數｜美元對一籃子主要貨幣',
     unit: 'pt', decimals: 2, sources: [{ provider: 'yahoo', symbol: 'DX-Y.NYB' }], transform: 'none',
     market: true,
     rule: { kind: 'risingIsBearish', lookback: 20, mode: 'pct', bearAt: 1.5, bullAt: -1.5 },
@@ -160,6 +166,7 @@ export const INDICATORS: IndicatorDef[] = [
   },
   {
     id: 'usdtwd', name: '美元／新台幣', short: 'USD/TWD', category: 'fx', frequency: 'daily',
+    subtitle: '美元兌新台幣｜升＝台幣貶、外資偏流出',
     unit: 'TWD', decimals: 3,
     sources: [{ provider: 'yahoo', symbol: 'TWD=X' }, { provider: 'fred', symbol: 'DEXTAUS' }],
     transform: 'none', market: true,
@@ -169,6 +176,7 @@ export const INDICATORS: IndicatorDef[] = [
   // ── 能源 ──────────────────────────────────
   {
     id: 'wti', name: 'WTI 原油', short: 'WTI', category: 'energy', frequency: 'daily',
+    subtitle: '美國西德州原油｜美國油價基準',
     unit: 'USD', decimals: 2,
     sources: [{ provider: 'yahoo', symbol: 'CL=F' }, { provider: 'fred', symbol: 'DCOILWTICO' }],
     transform: 'none', market: true,
@@ -177,6 +185,7 @@ export const INDICATORS: IndicatorDef[] = [
   },
   {
     id: 'brent', name: 'Brent 原油', short: 'Brent', category: 'energy', frequency: 'daily',
+    subtitle: '北海布蘭特原油｜國際油價基準',
     unit: 'USD', decimals: 2,
     sources: [{ provider: 'yahoo', symbol: 'BZ=F' }, { provider: 'fred', symbol: 'DCOILBRENTEU' }],
     transform: 'none', market: true,
@@ -186,6 +195,7 @@ export const INDICATORS: IndicatorDef[] = [
   // ── 美國總經 ───────────────────────────────
   {
     id: 'fed', name: 'Fed 政策利率（目標區間）', short: 'Fed利率', category: 'macro', frequency: 'daily',
+    subtitle: '聯邦基金利率上緣｜Fed 政策利率',
     unit: '%', decimals: 2, sources: [{ provider: 'fred', symbol: 'DFEDTARU' }], transform: 'none',
     market: false, changeInBp: true, rule: { kind: 'policyRate', lookbackDays: 120 },
     weight: 1, maxAgeDays: 10, note: '降息循環通常有利風險資產評價', pairId: 'fed_lower',
@@ -198,12 +208,14 @@ export const INDICATORS: IndicatorDef[] = [
   },
   {
     id: 'cpi', name: 'CPI 年增率', short: 'CPI', category: 'macro', frequency: 'monthly',
+    subtitle: '消費者物價｜下游，你買東西的價格',
     unit: '%', decimals: 1, sources: [{ provider: 'fred', symbol: 'CPIAUCNS' }], transform: 'yoy',
     market: false, rule: { kind: 'inflationTrend', lookback: 3, threshold: 0.2 },
     weight: 0.5, maxAgeDays: 75, note: '整體通膨；趨勢下降給 Fed 降息空間（年增率用未季調指數，與 BLS 新聞稿一致）',
   },
   {
     id: 'core_cpi', name: '核心 CPI 年增率', short: '核心CPI', category: 'macro', frequency: 'monthly',
+    subtitle: 'CPI 扣除食品能源｜Fed 較重視',
     unit: '%', decimals: 1, sources: [{ provider: 'fred', symbol: 'CPILFENS' }], transform: 'yoy',
     market: false, rule: { kind: 'inflationTrend', lookback: 3, threshold: 0.2 },
     weight: 1, maxAgeDays: 75, note: '排除食品能源，Fed 更重視的通膨指標（年增率用未季調指數，與 BLS 新聞稿一致）',
@@ -212,28 +224,33 @@ export const INDICATORS: IndicatorDef[] = [
   // 用途是提前預告 CPI／PCE（PPI 年增 3 月變化與 1–2 個月後核心 PCE 的相關係數約 0.5）
   {
     id: 'ppi', name: 'PPI 最終需求年增率', short: 'PPI', category: 'macro', frequency: 'monthly',
+    subtitle: '生產者物價｜上游，工廠出廠價，先於 CPI',
     unit: '%', decimals: 1, sources: [{ provider: 'fred', symbol: 'PPIFIS' }], transform: 'yoy',
     market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 75,
     note: '生產者出廠價格，通膨的上游；通常比 CPI 早或同週公布，用來預告 CPI／PCE。回測對台股無預測力，僅供參考不計分（季調指數，與 BLS 未季調年增差距通常 <0.1pp）',
   },
   {
     id: 'core_ppi', name: '核心 PPI 年增率', short: '核心PPI', category: 'macro', frequency: 'monthly',
+    subtitle: 'PPI 扣除食品能源｜部分項目直接進核心 PCE',
     unit: '%', decimals: 1, sources: [{ provider: 'fred', symbol: 'PPIFES' }], transform: 'yoy',
     market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 75,
     note: '排除食品能源的生產者價格；其中醫療、機票、投資管理費等項目直接進入核心 PCE。僅供參考不計分',
   },
+  // PCE 公布比 CPI 晚（8 月數據 10 月底才被 9 月取代）→ maxAgeDays 95（CPI 為 75）
   // PCE：Fed 2% 通膨目標的正式衡量指標（核心 PCE）。公布晚同月 CPI 約 2 週，且大半可由 CPI＋PPI 分項推算，
   // 對台股判多空與核心 CPI 高度重疊（PPI 回測紀錄）→ 參考型不計分；用途是對照 FOMC（距 2% 目標多遠）
   {
     id: 'pce', name: 'PCE 物價年增率', short: 'PCE', category: 'macro', frequency: 'monthly',
+    subtitle: '個人消費支出物價｜與 CPI 同層，Fed 用的尺',
     unit: '%', decimals: 1, sources: [{ provider: 'fred', symbol: 'PCEPI' }], transform: 'yoy',
-    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 75,
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 95,
     note: '個人消費支出物價（BEA），權重隨消費行為變動、含代付醫療，通常低於 CPI 0.3–0.5pp；與 GDP 同日公布。僅供參考不計分',
   },
   {
     id: 'core_pce', name: '核心 PCE 年增率', short: '核心PCE', category: 'macro', frequency: 'monthly',
+    subtitle: 'PCE 扣除食品能源｜Fed 2% 通膨目標看這個',
     unit: '%', decimals: 1, sources: [{ provider: 'fred', symbol: 'PCEPILFE' }], transform: 'yoy',
-    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 75,
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 95,
     note: 'Fed 2% 通膨目標看的就是這個；比同月 CPI 晚約 2 週公布，大半可由 CPI＋PPI 分項推算，驚喜小。僅供參考不計分',
   },
   // 月增率用季調指數（市場預期的月增率以季調為準）；只抓取、不單獨顯示
@@ -249,24 +266,28 @@ export const INDICATORS: IndicatorDef[] = [
   },
   {
     id: 'unrate', name: '美國失業率', short: '失業率', category: 'macro', frequency: 'monthly',
+    subtitle: '美國失業率｜Sahm 法則：3月均值較低點升 0.5pp＝衰退',
     unit: '%', decimals: 1, sources: [{ provider: 'fred', symbol: 'UNRATE' }], transform: 'none',
     market: false, changeInBp: false, rule: { kind: 'sahm', bullBelow: null },
     weight: 0.5, maxAgeDays: 75, note: 'Sahm 法則：3月均值較前12月低點升 ≥0.5pp 為衰退訊號',
   },
   {
     id: 'nfp', name: '非農就業新增', short: '非農', category: 'macro', frequency: 'monthly',
+    subtitle: '非農就業新增人數｜美國每月新增工作',
     unit: 'k', decimals: 0, sources: [{ provider: 'fred', symbol: 'PAYEMS' }], transform: 'diff',
     market: false, rule: { kind: 'payrolls', bullAt: null, bearAt: 0 },
     weight: 0.5, maxAgeDays: 75, note: '每月新增就業人數（千人）；以 3 個月平均判斷',
   },
   {
     id: 'gdp', name: '美國實質 GDP（年化季增）', short: '實質GDP', category: 'macro', frequency: 'quarterly',
+    subtitle: '美國實質 GDP｜年化季增率',
     unit: '%', decimals: 1, sources: [{ provider: 'fred', symbol: 'A191RL1Q225SBEA' }], transform: 'none',
     market: false, rule: { kind: 'growth', bullAt: 2, bearAt: 0 },
     weight: 0.5, maxAgeDays: 230, note: 'BEA 公布之實質 GDP 年化季增率（季度結束約 1 個月後初值）',
   },
   {
     id: 'gdpnow', name: 'Atlanta Fed GDPNow', short: 'GDPNow', category: 'macro', frequency: 'quarterly',
+    subtitle: '亞特蘭大 Fed 即時 GDP 預估｜當季領先指標',
     unit: '%', decimals: 1, sources: [{ provider: 'fred', symbol: 'GDPNOW' }], transform: 'none',
     market: false, rule: { kind: 'growth', bullAt: 2, bearAt: 0 },
     weight: 0.5, maxAgeDays: 200, note: '當季 GDP 即時預估（日期為所預估的季度起始日）',
@@ -274,6 +295,7 @@ export const INDICATORS: IndicatorDef[] = [
   // ── 美股 ──────────────────────────────────
   {
     id: 'spx', name: 'S&P 500', short: 'S&P500', category: 'us_equity', frequency: 'daily',
+    subtitle: '標普500｜美股大盤 500 家',
     unit: 'pt', decimals: 2,
     sources: [{ provider: 'yahoo', symbol: '^GSPC' }, { provider: 'fred', symbol: 'SP500' }],
     transform: 'none', market: true, rule: { kind: 'trend' }, weight: 0.25, maxAgeDays: 5,
@@ -281,6 +303,7 @@ export const INDICATORS: IndicatorDef[] = [
   },
   {
     id: 'nasdaq', name: 'NASDAQ 綜合指數', short: 'NASDAQ', category: 'us_equity', frequency: 'daily',
+    subtitle: '那斯達克綜合｜美股科技股',
     unit: 'pt', decimals: 2,
     sources: [{ provider: 'yahoo', symbol: '^IXIC' }, { provider: 'fred', symbol: 'NASDAQCOM' }],
     transform: 'none', market: true, rule: { kind: 'trend' }, weight: 0.25, maxAgeDays: 5,
@@ -288,6 +311,7 @@ export const INDICATORS: IndicatorDef[] = [
   },
   {
     id: 'sox', name: '費城半導體指數', short: '費半SOX', category: 'us_equity', frequency: 'daily',
+    subtitle: '費城半導體指數｜台股電子股的領先指標',
     unit: 'pt', decimals: 2, sources: [{ provider: 'yahoo', symbol: '^SOX' }], transform: 'none',
     market: true, rule: { kind: 'trend' }, weight: 0.5, maxAgeDays: 5,
     note: '與台股（半導體權重高）連動最直接',
@@ -295,6 +319,7 @@ export const INDICATORS: IndicatorDef[] = [
   // ── 台股 ──────────────────────────────────
   {
     id: 'taiex', name: '台灣加權指數', short: '加權指數', category: 'tw_equity', frequency: 'daily',
+    subtitle: '台灣加權股價指數｜上市大盤',
     unit: 'pt', decimals: 2,
     sources: [{ provider: 'yahoo', symbol: '^TWII' }, { provider: 'twse', symbol: 'TAIEX' }],
     transform: 'none', market: true, rule: { kind: 'trend' }, weight: 0.5, maxAgeDays: 5,
@@ -302,6 +327,7 @@ export const INDICATORS: IndicatorDef[] = [
   },
   {
     id: 'tpex', name: '櫃買指數', short: '櫃買指數', category: 'tw_equity', frequency: 'daily',
+    subtitle: '櫃買指數｜上櫃中小型股',
     unit: 'pt', decimals: 2, sources: [{ provider: 'tpex', symbol: 'TPEX_INDEX' }], transform: 'none',
     market: true, rule: { kind: 'trend' }, weight: 0.25, maxAgeDays: 5,
     note: '中小型股風險偏好',
@@ -309,6 +335,7 @@ export const INDICATORS: IndicatorDef[] = [
   // ── 台股籌碼（僅供參考，權重 0；待回測驗證後再決定是否計分） ──
   {
     id: 'fut_foreign_oi', name: '外資台指期淨未平倉', short: '外資期淨OI', category: 'tw_chips', frequency: 'daily',
+    subtitle: '外資台指期淨未平倉口數｜OI＝未平倉',
     unit: '口', decimals: 0, sources: [{ provider: 'taifex', symbol: 'TXF_FOREIGN_OI' }], transform: 'none',
     market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, chart: 'line',
     note: '外資在臺股期貨（大台）的多空未平倉口數淨額；負值為淨空單。外資空單常是現貨避險，不等於看空',
@@ -321,12 +348,14 @@ export const INDICATORS: IndicatorDef[] = [
   },
   {
     id: 'opt_foreign_net', name: '外資台指選擇權多空淨金額', short: '外資選擇權', category: 'tw_chips', frequency: 'daily',
+    subtitle: '外資台指選擇權買賣權淨金額',
     unit: '億', decimals: 2, sources: [{ provider: 'taifex', symbol: 'TXO_FOREIGN_NET' }], transform: 'none',
     market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, chart: 'line',
     note: '外資 CALL 未平倉金額淨額 − PUT 未平倉金額淨額（億元）；正值偏多、負值偏空。看金額不看口數；週選擇權結算日前後會劇烈跳動',
   },
   {
     id: 'top10_specific_oi', name: '前十大特定法人台指期淨未平倉', short: '十大法人期', category: 'tw_chips', frequency: 'daily',
+    subtitle: '前十大特定法人台指期淨未平倉',
     unit: '口', decimals: 0, sources: [{ provider: 'taifex', symbol: 'TX_TOP10_SPECIFIC' }], transform: 'none',
     market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, chart: 'line',
     note: '大額交易人資料：所有月份合計、前十大特定法人買方 − 賣方（大台約當，含小台÷4、微台÷20）。特定法人以外資為主，可與外資台指期互相驗證',
@@ -339,6 +368,7 @@ export const INDICATORS: IndicatorDef[] = [
   },
   {
     id: 'retail_oi', name: '散戶小台淨未平倉（推算）', short: '散戶小台OI', category: 'tw_chips', frequency: 'daily',
+    subtitle: '散戶小型台指期淨未平倉｜由三大法人反推',
     unit: '口', decimals: 0, sources: [{ provider: 'taifex', symbol: 'MXF_RETAIL_OI' }], transform: 'none',
     market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, chart: 'line',
     note: '推算值：−（三大法人小台淨未平倉合計）。常被當作反向指標：散戶大量偏多時需留意',
@@ -375,6 +405,7 @@ export const INDICATORS: IndicatorDef[] = [
   },
   {
     id: 'margin_ratio', name: '大盤融資維持率（上市，推算）', short: '融資維持率', category: 'tw_chips', frequency: 'daily',
+    subtitle: '融資戶平均擔保維持率｜130% 追繳、140% 斷頭區',
     unit: '%', decimals: 2, sources: [{ provider: 'twse_chips', symbol: 'MARGIN_RATIO' }], transform: 'none',
     market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, chart: 'line',
     refLines: [

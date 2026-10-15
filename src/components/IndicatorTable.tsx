@@ -113,6 +113,7 @@ function Row({
       >
         <span className="c-name">
           <span className="name">{def.short}</span>
+          {def.subtitle && <span className="subtitle">{def.subtitle}</span>}
           <span className="date">
             {dateText}
             {tags.map((t) => (

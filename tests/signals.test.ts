@@ -115,6 +115,17 @@ describe('輔助', () => {
     expect(isStale({ maxAgeDays: 5 }, '2026-09-30', '2026-10-06')).toBe(true);
     expect(isStale({ maxAgeDays: 5 }, null, '2026-10-06')).toBe(true);
   });
+  it('PCE 公布晚於 CPI：8 月數據到 10/28 仍不算過時（CPI 的 75 天會誤判）', () => {
+    expect(isStale(getIndicator('core_pce'), '2026-08-01', '2026-10-28')).toBe(false);
+    expect(isStale(getIndicator('core_cpi'), '2026-08-01', '2026-10-28')).toBe(true);
+  });
+  it('列表說明文字：通膨三指標與縮寫型指標都有一行中文', () => {
+    for (const id of ['cpi', 'ppi', 'pce', 'core_pce', 'dxy', 'sox', 'gdpnow', 'fut_foreign_oi']) {
+      const sub = getIndicator(id).subtitle ?? '';
+      expect(sub.length, id).toBeGreaterThan(5);
+      expect(sub.length, id).toBeLessThanOrEqual(32);
+    }
+  });
   it('recentDirection', () => {
     const d = recentDirection(getIndicator('us10y'), dailySeries('2026-01-01', linear(30, 4, 0.01)));
     expect(d.dir).toBe('up');
