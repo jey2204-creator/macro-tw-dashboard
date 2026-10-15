@@ -17,11 +17,27 @@
  */
 import type { Bar } from './types';
 
-/** data/margin-history.json 每列：[日期, 維持率%（缺價格時 null）, 融資餘額（億）, 融資增減（億）] */
-export type MarginHistoryRow = [date: string, ratio: number | null, balance: number, change: number];
+/**
+ * data/margin-history.json 每列（schemaVersion 2）：
+ * [日期, 維持率%（缺價格時 null）, 融資餘額（億）, 融資增減（億）,
+ *  上漲家數, 漲停家數, 下跌家數, 跌停家數, 持平家數, 漲跌家數來源（1＝證交所官方表、0＝逐檔推算）]
+ * 漲跌家數無法取得時後 6 欄為 null。
+ */
+export type MarginHistoryRow = [
+  date: string,
+  ratio: number | null,
+  balance: number,
+  change: number,
+  up?: number | null,
+  upLimit?: number | null,
+  down?: number | null,
+  downLimit?: number | null,
+  flat?: number | null,
+  official?: 0 | 1 | null,
+];
 
 export interface MarginHistoryFile {
-  schemaVersion: 1;
+  schemaVersion: 2;
   note: string;
   /** 回補目標（最早日期） */
   target: string;

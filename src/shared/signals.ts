@@ -159,7 +159,7 @@ export function evaluateSignal(def: IndicatorDef, pts: readonly Point[]): Signal
 }
 
 const unitText = (def: Pick<IndicatorDef, 'unit' | 'decimals'>, v: number) =>
-  `${v > 0 ? '+' : ''}${v.toLocaleString('en-US', { minimumFractionDigits: def.decimals, maximumFractionDigits: def.decimals })}${def.unit === '億' ? '億' : def.unit === '口' ? '口' : ''}`;
+  `${v > 0 ? '+' : ''}${v.toLocaleString('en-US', { minimumFractionDigits: def.decimals, maximumFractionDigits: def.decimals })}${def.unit === '億' || def.unit === '口' || def.unit === '家' ? def.unit : ''}`;
 
 /** N 期合計（流量型） */
 export function sumLast(pts: readonly Point[], n: number): number | null {
@@ -246,7 +246,7 @@ export function recentDirection(def: IndicatorDef, pts: readonly Point[]): { dir
   // 判斷持平的門檻：價格類 0.5%、利率類 5bp、其他 1% 相對值
   let dir: Direction;
   if (def.changeInBp) dir = Math.abs(ch.abs) < 0.05 ? 'flat' : ch.abs > 0 ? 'up' : 'down';
-  else if (def.unit === '口') dir = ch.abs === 0 ? 'flat' : ch.abs > 0 ? 'up' : 'down';
+  else if (def.unit === '口' || def.unit === '家') dir = ch.abs === 0 ? 'flat' : ch.abs > 0 ? 'up' : 'down';
   else if (def.unit === '%' || def.unit === 'k')
     dir = Math.abs(ch.abs) < (def.unit === 'k' ? 25 : 0.1) ? 'flat' : ch.abs > 0 ? 'up' : 'down';
   else dir = ch.pct === null || Math.abs(ch.pct) < 0.5 ? 'flat' : ch.pct > 0 ? 'up' : 'down';
@@ -256,7 +256,7 @@ export function recentDirection(def: IndicatorDef, pts: readonly Point[]): { dir
       ? `${signed(ch.abs, 1)}pp`
       : def.unit === 'k'
         ? `${signed(ch.abs, 0)}k`
-        : def.unit === '口'
+        : def.unit === '口' || def.unit === '家'
           ? unitText(def, ch.abs)
           : `${signed(ch.pct ?? 0, 1)}%`;
   return { dir, text: `${label} ${amount}` };

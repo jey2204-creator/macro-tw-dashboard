@@ -18,7 +18,15 @@ import path from 'node:path';
 import { addDays, todayInTaipei } from '../../src/shared/dates';
 import type { MarginHistoryFile, MarginHistoryRow } from '../../src/shared/marginStress';
 import { getJson, sleep, type HttpOptions } from './http';
-import { computeMarginRatio, parseMiIndexPrices, parseMiMargnAll, weekdaysBackward } from './sources/twseChips';
+import {
+  computeBreadth,
+  computeMarginRatio,
+  parseBreadth,
+  parseMiIndexPrices,
+  parseMiMargnAll,
+  parseOfficialBreadth,
+  weekdaysBackward,
+} from './sources/twseChips';
 
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
@@ -67,9 +75,20 @@ async function fetchDay(date: string, intervalMs: number): Promise<DayResult> {
     const prices = parseMiIndexPrices(pj);
     ratio = prices ? computeMarginRatio(margin, prices) : null;
   } catch (e) {
-    console.warn(`  ${date} MI_INDEX 解析失敗：${e instanceof Error ? e.message : String(e)}`);
+    console.warn(`  ${date} MI_INDEX 收盤價解析失敗：${e instanceof Error ? e.message : String(e)}`);
   }
-  return { kind: 'row', row: [date, ratio, margin.balance, margin.change] };
+  let b = null;
+  try {
+    b = parseBreadth(pj, date);
+  } catch (e) {
+    console.warn(`  ${date} MI_INDEX 漲跌家數解析失敗：${e instanceof Error ? e.message : String(e)}`);
+  }
+  return {
+    kind: 'row',
+    row: b
+      ? [date, ratio, margin.balance, margin.change, b.up, b.upLimit, b.down, b.downLimit, b.flat, b.source === 'official' ? 1 : 0]
+      : [date, ratio, margin.balance, margin.change, null, null, null, null, null, null],
+  };
 }
 
 async function load(file: string): Promise<MarginHistoryFile | null> {
@@ -98,6 +117,16 @@ async function probe(dates: string[], intervalMs: number) {
     try {
       const r = await fetchDay(d, intervalMs);
       console.log(`::notice title=probe ${d}::${JSON.stringify(r).slice(0, 300)}`);
+      // 比對漲跌家數：官方表 vs 逐檔推算
+      const pj = await throttled(intervalMs, () =>
+        getJson<Parameters<typeof parseOfficialBreadth>[0]>(
+          `https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX?date=${d.replace(/-/g, '')}&type=ALLBUT0999&response=json`,
+          http,
+        ),
+      );
+      console.log(
+        `::notice title=breadth ${d}::official=${JSON.stringify(parseOfficialBreadth(pj))} computed=${JSON.stringify(computeBreadth(pj, d))}`,
+      );
     } catch (e) {
       console.log(`::warning title=probe ${d}::網路錯誤 ${e instanceof Error ? e.message : String(e)}`);
     }
@@ -113,9 +142,11 @@ async function main() {
   const target = arg('target') ?? '2010-01-04';
   const budgetMs = Number(arg('budget-min') ?? 300) * 60_000;
   const started = Date.now();
-  const f: MarginHistoryFile = (await load(file)) ?? {
-    schemaVersion: 1,
-    note: '大盤融資維持率（上市，推算）歷史：[日期, 維持率%, 融資餘額億, 融資增減億]。由 marginBackfill.ts 產生。',
+  const loaded = await load(file);
+  // 舊版（schemaVersion 1）沒有漲跌家數：重新回補
+  const f: MarginHistoryFile = (loaded?.schemaVersion === 2 ? loaded : null) ?? {
+    schemaVersion: 2,
+    note: '上市融資維持率（推算）與漲跌家數歷史：[日期, 維持率%, 融資餘額億, 融資增減億, 上漲, 漲停, 下跌, 跌停, 持平, 官方表=1/推算=0]。由 marginBackfill.ts 產生。',
     target,
     cursor: addDays(todayInTaipei(), 1),
     updatedAt: '',

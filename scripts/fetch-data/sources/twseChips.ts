@@ -9,6 +9,8 @@ import type { SourceFetchResult } from './types';
  *  - 信用交易統計 MI_MARGN（selectType=ALL）：融資金額前日／今日餘額（仟元）＋逐檔融資餘額（張）
  *  - 每日收盤行情 MI_INDEX（type=ALLBUT0999）：逐檔收盤價（計算融資維持率用）
  *
+ * 漲跌家數：MI_INDEX 的「漲跌證券數合計」股票欄（2011 年中以前無此表，改由逐檔收盤行情推算）
+ *
  * 大盤融資維持率（推算，上市、含 ETF）＝ Σ(逐檔融資餘額張數 × 1000 × 收盤價) ÷ 融資金額餘額 × 100%
  *   無收盤價（暫停交易等）的個股略過，影響通常 < 0.1 個百分點；
  *   2026-10-12 試算 196.16%，與愛玩股公布值一致。
@@ -18,7 +20,22 @@ import type { SourceFetchResult } from './types';
  * 同一天的 BFI82U 回應由外資／投信／自營商三個指標共用（每次執行內快取）。
  */
 
-export type TwseChipSymbol = 'FOREIGN' | 'TRUST' | 'DEALER' | 'MARGIN' | 'MARGIN_BALANCE' | 'MARGIN_RATIO';
+export type TwseChipSymbol =
+  | 'FOREIGN'
+  | 'TRUST'
+  | 'DEALER'
+  | 'MARGIN'
+  | 'MARGIN_BALANCE'
+  | 'MARGIN_RATIO'
+  | 'LIMIT_UP'
+  | 'LIMIT_DOWN'
+  | 'ADVANCE'
+  | 'DECLINE';
+
+/** 由每日收盤行情（MI_INDEX）取得的漲跌家數類指標 */
+const BREADTH_SYMBOLS = ['LIMIT_UP', 'LIMIT_DOWN', 'ADVANCE', 'DECLINE'] as const;
+type BreadthSymbol = (typeof BREADTH_SYMBOLS)[number];
+const isBreadth = (s: TwseChipSymbol): s is BreadthSymbol => (BREADTH_SYMBOLS as readonly string[]).includes(s);
 
 export const TWSE_CHIPS_BACKFILL_DAYS = 365;
 /** 維持率每天多一個大檔請求，回補較短 */
@@ -128,6 +145,98 @@ interface MiIndex {
   tables?: { title?: string; fields?: string[]; data?: string[][] }[];
 }
 
+/** 上市「股票」漲跌家數（不含 ETF、權證） */
+export interface Breadth {
+  up: number;
+  upLimit: number;
+  down: number;
+  downLimit: number;
+  flat: number;
+  /** official＝證交所「漲跌證券數合計」；computed＝逐檔推算（2011 年中以前無此表） */
+  source: 'official' | 'computed';
+}
+
+/** 解析「6,123(45)」→ [6123, 45] */
+function countWithLimit(s: string | undefined): [number, number] {
+  const m = String(s ?? '').replace(/,/g, '').match(/^\s*(\d+)\s*(?:\((\d+)\))?/);
+  if (!m) return [NaN, NaN];
+  return [Number(m[1]), Number(m[2] ?? 0)];
+}
+
+/** 證交所「漲跌證券數合計」表的「股票」欄 */
+export function parseOfficialBreadth(json: MiIndex): Breadth | null {
+  const t = json.tables?.find((x) => x.title === '漲跌證券數合計' || (x.fields?.[0] === '類型' && x.fields.includes('股票')));
+  if (!t?.data?.length) return null;
+  const col = t.fields!.indexOf('股票');
+  if (col < 0) return null;
+  const row = (prefix: string) => t.data!.find((r) => (r[0] ?? '').startsWith(prefix))?.[col];
+  const [up, upLimit] = countWithLimit(row('上漲'));
+  const [down, downLimit] = countWithLimit(row('下跌'));
+  const [flat] = countWithLimit(row('持平'));
+  if (![up, upLimit, down, downLimit].every(Number.isFinite)) return null;
+  return { up, upLimit, down, downLimit, flat: Number.isFinite(flat) ? flat : 0, source: 'official' };
+}
+
+/** 升降單位（2015 年以前與現行相同的六級距，足以判斷漲跌停價） */
+function tickSize(p: number): number {
+  if (p < 10) return 0.01;
+  if (p < 50) return 0.05;
+  if (p < 100) return 0.1;
+  if (p < 500) return 0.5;
+  if (p < 1000) return 1;
+  return 5;
+}
+
+/** 漲跌幅限制：2015-06-01 起由 7% 放寬為 10% */
+export const limitPctOn = (date: string) => (date >= '2015-06-01' ? 0.1 : 0.07);
+
+/**
+ * 由逐檔收盤行情推算漲跌停家數（只算 4 位數普通股代號）。
+ * 前日收盤＝收盤 ∓ 漲跌價差；漲停價＝前日×(1+限制) 向下取到升降單位，跌停價向上取。
+ * 與官方值比對：2011-12-19 跌停 123 vs 120、2020-03-19 382 vs 380。
+ */
+export function computeBreadth(json: MiIndex, date: string): Breadth | null {
+  const t = json.tables?.find((x) => x.fields?.includes('證券代號') && x.fields.includes('收盤價'));
+  if (!t) return null;
+  const f = t.fields!;
+  const iCode = f.indexOf('證券代號');
+  const iClose = f.indexOf('收盤價');
+  const iSign = f.indexOf('漲跌(+/-)');
+  const iDiff = f.indexOf('漲跌價差');
+  if (iSign < 0 || iDiff < 0) return null;
+  const lp = limitPctOn(date);
+  const b: Breadth = { up: 0, upLimit: 0, down: 0, downLimit: 0, flat: 0, source: 'computed' };
+  for (const r of t.data ?? []) {
+    if (!/^[1-9]\d{3}$/.test((r[iCode] ?? '').trim())) continue;
+    const close = num(r[iClose]);
+    if (!(close > 0)) continue;
+    const signText = r[iSign] ?? '';
+    const sign = signText.includes('+') ? 1 : signText.includes('-') ? -1 : 0;
+    const diff = num(r[iDiff]);
+    if (sign === 0 || !(diff > 0)) {
+      if (sign === 0) b.flat++;
+      continue;
+    }
+    const prev = close - sign * diff;
+    const raw = prev * (1 + sign * lp);
+    const tk = tickSize(raw);
+    const limit = sign > 0 ? Math.floor(raw / tk + 1e-9) * tk : Math.ceil(raw / tk - 1e-9) * tk;
+    if (sign > 0) {
+      b.up++;
+      if (close >= limit - 1e-9) b.upLimit++;
+    } else {
+      b.down++;
+      if (close <= limit + 1e-9) b.downLimit++;
+    }
+  }
+  return b.up + b.down + b.flat > 0 ? b : null;
+}
+
+export function parseBreadth(json: MiIndex, date: string): Breadth | null {
+  if (json.stat !== 'OK') return null;
+  return parseOfficialBreadth(json) ?? computeBreadth(json, date);
+}
+
 /** 解析 MI_INDEX 每日收盤行情：代號 → 收盤價。查無資料回傳 null */
 export function parseMiIndexPrices(json: MiIndex): Map<string, number> | null {
   if (json.stat !== 'OK') return null;
@@ -167,7 +276,7 @@ export function weekdaysBackward(from: string, to: string, limit: number): strin
 // 單次執行內的每日回應快取（三個法人指標共用同一天的 BFI82U）
 const bfiCache = new Map<string, Promise<ReturnType<typeof parseBfi82u>>>();
 const marginCache = new Map<string, Promise<MarginDay | null>>();
-const priceCache = new Map<string, Promise<Map<string, number> | null>>();
+const priceCache = new Map<string, Promise<{ prices: Map<string, number> | null; breadth: Breadth | null }>>();
 
 export function resetTwseChipsCache(): void {
   bfiCache.clear();
@@ -191,7 +300,8 @@ function marginDay(date: string, http: HttpOptions, fast: boolean): Promise<Marg
   return p;
 }
 
-function closePrices(date: string, http: HttpOptions, fast: boolean): Promise<Map<string, number> | null> {
+/** 每日收盤行情：同一份回應同時提供逐檔收盤價（維持率）與漲跌家數 */
+function closeDay(date: string, http: HttpOptions, fast: boolean): Promise<{ prices: Map<string, number> | null; breadth: Breadth | null }> {
   let p = priceCache.get(date);
   if (!p) {
     p = (async () => {
@@ -200,7 +310,7 @@ function closePrices(date: string, http: HttpOptions, fast: boolean): Promise<Ma
         `https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX?date=${date.replace(/-/g, '')}&type=ALLBUT0999&response=json`,
         http,
       );
-      return parseMiIndexPrices(j);
+      return { prices: parseMiIndexPrices(j), breadth: parseBreadth(j, date) };
     })();
     priceCache.set(date, p);
   }
@@ -214,8 +324,13 @@ async function dayValue(symbol: TwseChipSymbol, date: string, http: HttpOptions,
     if (!m) return null;
     if (symbol === 'MARGIN') return m.change;
     if (symbol === 'MARGIN_BALANCE') return m.balance;
-    const prices = await closePrices(date, http, fast);
+    const { prices } = await closeDay(date, http, fast);
     return prices ? computeMarginRatio(m, prices) : null;
+  }
+  if (isBreadth(symbol)) {
+    const { breadth: b } = await closeDay(date, http, fast);
+    if (!b) return null;
+    return symbol === 'LIMIT_UP' ? b.upLimit : symbol === 'LIMIT_DOWN' ? b.downLimit : symbol === 'ADVANCE' ? b.up : b.down;
   }
   let p = bfiCache.get(date);
   if (!p) {
@@ -237,7 +352,7 @@ export async function fetchTwseChips(
   http: HttpOptions,
   fast = false,
 ): Promise<SourceFetchResult> {
-  const target = addDays(today, -(symbol === 'MARGIN_RATIO' ? MARGIN_RATIO_BACKFILL_DAYS : TWSE_CHIPS_BACKFILL_DAYS));
+  const target = addDays(today, -(symbol === 'MARGIN_RATIO' || isBreadth(symbol) ? MARGIN_RATIO_BACKFILL_DAYS : TWSE_CHIPS_BACKFILL_DAYS));
   // 快取太少（例如早期版本被限流而留下缺洞）時，視同無快取重新抓最近 40 個工作日；結果仍會與舊快取合併
   if (cached && cached.length < 20) cached = null;
   const first = cached?.[0]?.[0] ?? null;

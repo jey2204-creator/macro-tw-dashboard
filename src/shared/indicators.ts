@@ -11,7 +11,20 @@ export type SourceSpec =
   | { provider: 'tpex'; symbol: 'TPEX_INDEX' }
   | { provider: 'twse'; symbol: 'TAIEX' }
   | { provider: 'taifex'; symbol: 'TXF_FOREIGN_OI' | 'MXF_RETAIL_OI' }
-  | { provider: 'twse_chips'; symbol: 'FOREIGN' | 'TRUST' | 'DEALER' | 'MARGIN' | 'MARGIN_BALANCE' | 'MARGIN_RATIO' };
+  | {
+      provider: 'twse_chips';
+      symbol:
+        | 'FOREIGN'
+        | 'TRUST'
+        | 'DEALER'
+        | 'MARGIN'
+        | 'MARGIN_BALANCE'
+        | 'MARGIN_RATIO'
+        | 'LIMIT_UP'
+        | 'LIMIT_DOWN'
+        | 'ADVANCE'
+        | 'DECLINE';
+    };
 
 /** 原始資料 → 顯示用數列的轉換 */
 export type Transform =
@@ -55,7 +68,7 @@ export interface IndicatorDef {
   category: Category;
   frequency: Frequency;
   /** 顯示單位 */
-  unit: '%' | 'pt' | 'USD' | 'TWD' | 'k' | '口' | '億';
+  unit: '%' | 'pt' | 'USD' | 'TWD' | 'k' | '口' | '億' | '家';
   decimals: number;
   /** 依優先順序排列；第一個失敗會嘗試下一個 */
   sources: SourceSpec[];
@@ -328,6 +341,30 @@ export const INDICATORS: IndicatorDef[] = [
     unit: '億', decimals: 2, sources: [{ provider: 'twse_chips', symbol: 'MARGIN' }], transform: 'none',
     market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, flow: true, chart: 'histogram',
     note: '融資金額今日餘額 − 前日餘額（億元）；融資快速增加代表散戶槓桿升溫',
+  },
+  {
+    id: 'limit_up', name: '漲停家數（上市股票）', short: '漲停家數', category: 'tw_chips', frequency: 'daily',
+    unit: '家', decimals: 0, sources: [{ provider: 'twse_chips', symbol: 'LIMIT_UP' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, chart: 'histogram', flow: true,
+    note: '收盤漲停的上市普通股家數（不含 ETF、權證）；跌勢中漲停多於跌停常是止跌跡象',
+  },
+  {
+    id: 'limit_down', name: '跌停家數（上市股票）', short: '跌停家數', category: 'tw_chips', frequency: 'daily',
+    unit: '家', decimals: 0, sources: [{ provider: 'twse_chips', symbol: 'LIMIT_DOWN' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, chart: 'histogram', flow: true,
+    note: '收盤跌停的上市普通股家數；暴增代表恐慌或斷頭賣壓，常在階段低點附近，但不一定是最後一天',
+  },
+  {
+    id: 'advance', name: '上漲家數（上市股票）', short: '上漲家數', category: 'tw_chips', frequency: 'daily',
+    unit: '家', decimals: 0, sources: [{ provider: 'twse_chips', symbol: 'ADVANCE' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true,
+    note: '上漲的上市普通股家數（含漲停）',
+  },
+  {
+    id: 'decline', name: '下跌家數（上市股票）', short: '下跌家數', category: 'tw_chips', frequency: 'daily',
+    unit: '家', decimals: 0, sources: [{ provider: 'twse_chips', symbol: 'DECLINE' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true,
+    note: '下跌的上市普通股家數（含跌停）',
   },
 ];
 

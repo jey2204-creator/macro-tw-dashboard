@@ -249,7 +249,7 @@ describe('融資餘額與大盤融資維持率', () => {
 describe('籌碼指標的顯示與計分', () => {
   it('全部為「僅供參考」：權重 0、規則 info，不影響綜合判斷', () => {
     const chips = INDICATORS.filter((d) => d.category === 'tw_chips');
-    expect(chips).toHaveLength(10);
+    expect(chips).toHaveLength(14);
     expect(chips.every((d) => d.weight === 0 && d.rule.kind === 'info')).toBe(true);
     const r = computeRegime({ schemaVersion: 1, generatedAt: '', entries: {} }, '2026-10-13');
     expect(r.evals.filter((e) => e.def.category === 'tw_chips').every((e) => !e.counted)).toBe(true);
