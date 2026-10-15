@@ -208,6 +208,20 @@ export const INDICATORS: IndicatorDef[] = [
     market: false, rule: { kind: 'inflationTrend', lookback: 3, threshold: 0.2 },
     weight: 1, maxAgeDays: 75, note: '排除食品能源，Fed 更重視的通膨指標（年增率用未季調指數，與 BLS 新聞稿一致）',
   },
+  // PPI：回測（2026-10，claude/PPI回測紀錄）顯示對台股 60 日報酬無鑑別力、方向常與通膨邏輯相反 → 參考型不計分；
+  // 用途是提前預告 CPI／PCE（PPI 年增 3 月變化與 1–2 個月後核心 PCE 的相關係數約 0.5）
+  {
+    id: 'ppi', name: 'PPI 最終需求年增率', short: 'PPI', category: 'macro', frequency: 'monthly',
+    unit: '%', decimals: 1, sources: [{ provider: 'fred', symbol: 'PPIFIS' }], transform: 'yoy',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 75,
+    note: '生產者出廠價格，通膨的上游；通常比 CPI 早或同週公布，用來預告 CPI／PCE。回測對台股無預測力，僅供參考不計分（季調指數，與 BLS 未季調年增差距通常 <0.1pp）',
+  },
+  {
+    id: 'core_ppi', name: '核心 PPI 年增率', short: '核心PPI', category: 'macro', frequency: 'monthly',
+    unit: '%', decimals: 1, sources: [{ provider: 'fred', symbol: 'PPIFES' }], transform: 'yoy',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 75,
+    note: '排除食品能源的生產者價格；其中醫療、機票、投資管理費等項目直接進入核心 PCE。僅供參考不計分',
+  },
   // 月增率用季調指數（市場預期的月增率以季調為準）；只抓取、不單獨顯示
   {
     id: 'cpi_sa', name: 'CPI 指數（季調）', short: 'CPI季調', category: 'macro', frequency: 'monthly',

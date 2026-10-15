@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getIndicator } from '../src/shared/indicators';
-import { describeRule, evaluateSignal, isStale, recentDirection, recentWindow, sahmValue } from '../src/shared/signals';
-import { changeOver, transformPoints } from '../src/shared/timeseries';
+import { describeRule, evaluateSignal, infoReason, isStale, recentDirection, recentWindow, sahmValue } from '../src/shared/signals';
+import { changeOver, transformPoints, type Point } from '../src/shared/timeseries';
 import { dailySeries, linear, monthlySeries } from './helpers';
 
 describe('trend（股價指數）', () => {
@@ -150,5 +150,17 @@ describe('輔助', () => {
       const def = getIndicator(id);
       expect(describeRule(def.rule, def).length).toBeGreaterThan(5);
     }
+  });
+});
+
+describe('參考型指標說明文字', () => {
+  it('月資料（PPI 年增）看 3 個月變化，不計分', () => {
+    const def = getIndicator('ppi');
+    const pts: Point[] = [['2026-05-01', 2.5], ['2026-06-01', 2.7], ['2026-07-01', 2.9], ['2026-08-01', 3.3]];
+    expect(infoReason(def, pts)).toBe('年增 3.3%，近3月 +0.8pp');
+    const res = evaluateSignal(def, pts);
+    expect(res.signal).toBe('neutral');
+    expect(res.ruleText).toContain('不計分');
+    expect(def.weight).toBe(0);
   });
 });

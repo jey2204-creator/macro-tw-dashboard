@@ -43,7 +43,7 @@ describe('官方公布日程', () => {
   it('日程依時間排序，且每類都有未來日期', () => {
     const times = SCHEDULE.map((r) => releaseAt(r));
     expect([...times].sort()).toEqual(times);
-    for (const id of ['cpi', 'core_cpi', 'nfp', 'unrate', 'gdp', 'fed', 'gdpnow']) {
+    for (const id of ['cpi', 'core_cpi', 'ppi', 'core_ppi', 'nfp', 'unrate', 'gdp', 'fed', 'gdpnow']) {
       expect(nextReleaseFor(id, NOW), id).not.toBeNull();
     }
   });
@@ -57,6 +57,10 @@ describe('官方公布日程', () => {
     expect(whenText(nextReleaseFor('fed', after)!)).toBe('10/29（四）02:00');
     expect(nextReleaseFor('nfp', after)!.date).toBe('2026-11-06');
     expect(nextReleaseFor('gdp', after)!.note).toBe('Q3 初值');
+    // PPI（BLS 2026-10-15 查證）：10 月數據 11/13 公布，冬令時間台北 21:30
+    const ppi = nextReleaseFor('ppi', after)!;
+    expect(ppi).toMatchObject({ kind: 'ppi', date: '2026-11-13', period: '2026-10-01' });
+    expect(whenText(ppi)).toBe('11/13（五）21:30');
   });
 
   it('本週事件與日程到期提醒', () => {
