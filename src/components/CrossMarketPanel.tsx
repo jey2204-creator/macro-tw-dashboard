@@ -27,7 +27,7 @@ import {
   type Session,
 } from '../shared/crossMarket';
 import { INDICATOR_MAP } from '../shared/indicators';
-import { rangeStart, sma, type RangeKey } from '../shared/timeseries';
+import { MA_PERIODS, rangeStart, sma, type MaPeriod, type RangeKey } from '../shared/timeseries';
 import type { Bar } from '../shared/types';
 
 const RANGES: { k: RangeKey; label: string }[] = [
@@ -38,7 +38,6 @@ const RANGES: { k: RangeKey; label: string }[] = [
   { k: 'ALL', label: '全部' },
 ];
 const COMPARE_IDS = COMPARE_SERIES.map((s) => s.id);
-const TW_MAS = [60, 240] as const;
 /** 上窗格（加權）較高，其餘對照窗格等高 */
 const TOP_STRETCH = 1.6;
 
@@ -51,6 +50,14 @@ interface PaneData {
   closeOnly: boolean;
   decimals: number;
   corr: CorrSeries;
+  /** 依勾選均線週期計算（以顯示用 K 棒的收盤） */
+  ma: Partial<Record<MaPeriod, (number | null)[]>>;
+}
+
+/** 依勾選的週期算均線 */
+function maLines(bars: readonly Bar[], mas: readonly MaPeriod[]): Partial<Record<MaPeriod, (number | null)[]>> {
+  const closes = bars.map((b) => b[4]);
+  return Object.fromEntries(mas.map((p) => [p, sma(closes, p)])) as Partial<Record<MaPeriod, (number | null)[]>>;
 }
 
 const fmtNum = (v: number | null | undefined, decimals: number) =>
@@ -104,7 +111,15 @@ function sessionText(session: Session, aligned: boolean): string {
   return aligned ? '前一晚，已對齊' : '前一晚，未對齊';
 }
 
-export function CrossMarketPanel({ version, themeKey }: { version: string; themeKey: string }) {
+interface Props {
+  version: string;
+  themeKey: string;
+  /** 均線週期，與單一指標圖共用同一個設定 */
+  mas: MaPeriod[];
+  onMas: (mas: MaPeriod[]) => void;
+}
+
+export function CrossMarketPanel({ version, themeKey, mas, onMas }: Props) {
   const sectionRef = useRef<HTMLElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -136,11 +151,10 @@ export function CrossMarketPanel({ version, themeKey }: { version: string; theme
     savePref('cm-range', r);
   };
 
+  const toggleMa = (p: MaPeriod) => onMas(mas.includes(p) ? mas.filter((x) => x !== p) : [...mas, p].sort((a, b) => a - b));
+
   const twDates = useMemo(() => twBars.map((b) => b[0]), [twBars]);
-  const twMa = useMemo(() => {
-    const closes = twBars.map((b) => b[4]);
-    return Object.fromEntries(TW_MAS.map((p) => [p, sma(closes, p)])) as Record<(typeof TW_MAS)[number], (number | null)[]>;
-  }, [twBars]);
+  const twMa = useMemo(() => maLines(twBars, mas), [twBars, mas]);
 
   const panes = useMemo<PaneData[]>(() => {
     if (twBars.length === 0) return [];
@@ -161,10 +175,11 @@ export function CrossMarketPanel({ version, themeKey }: { version: string; theme
         // 指數類在對照窗格用整數，價格軸較不占寬度（匯率、利率、油價維持原精度）
         decimals: def?.unit === 'pt' ? 0 : (def?.decimals ?? 2),
         corr: correlationSeries(pairedReturns(twBars, bars)),
+        ma: maLines(bars, mas),
       });
     }
     return out;
-  }, [twBars, twDates, files, selected, aligned]);
+  }, [twBars, twDates, files, selected, aligned, mas]);
 
   // 圖表：窗格數會隨選擇變動，資料或選擇改變時整個重建（比逐一增刪窗格單純）
   useEffect(() => {
@@ -204,17 +219,25 @@ export function CrossMarketPanel({ version, themeKey }: { version: string; theme
       }
     };
 
+    // 均線：所有窗格同一組週期；不標數值（加權的數值在圖例）
+    const addMas = (paneIndex: number, bars: readonly Bar[], lines: Partial<Record<MaPeriod, (number | null)[]>>) => {
+      for (const p of mas) {
+        const vals = lines[p];
+        if (!vals) continue;
+        const s = chart.addSeries(
+          LineSeries,
+          { color: cssVar(MA_COLOR_VAR[p]), lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false },
+          paneIndex,
+        );
+        s.setData(bars.flatMap((b, i) => (vals[i] == null ? [] : [{ time: b[0] as Time, value: vals[i]! }])));
+      }
+    };
+    const maText = mas.length > 0 ? `（MA${mas.join('／')}）` : '';
+
     const tw = chart.addSeries(CandlestickSeries, { ...candleOpts, priceFormat: { type: 'price', precision: 0, minMove: 1 } }, 0);
     tw.setData(twBars.map((b) => ({ time: b[0] as Time, open: b[1], high: b[2], low: b[3], close: b[4] })));
-    for (const p of TW_MAS) {
-      const s = chart.addSeries(
-        LineSeries,
-        { color: cssVar(MA_COLOR_VAR[p]), lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false },
-        0,
-      );
-      s.setData(twBars.flatMap((b, i) => (twMa[p][i] == null ? [] : [{ time: b[0] as Time, value: twMa[p][i]! }])));
-    }
-    watermark(0, '加權指數（MA60／MA240）');
+    addMas(0, twBars, twMa);
+    watermark(0, `加權指數${maText}`);
 
     panes.forEach((p, k) => {
       const paneIndex = k + 1;
@@ -226,6 +249,7 @@ export function CrossMarketPanel({ version, themeKey }: { version: string; theme
         const s = chart.addSeries(CandlestickSeries, { ...candleOpts, priceFormat }, paneIndex);
         s.setData(p.bars.map((b) => ({ time: b[0] as Time, open: b[1], high: b[2], low: b[3], close: b[4] })));
       }
+      addMas(paneIndex, p.bars, p.ma);
       watermark(paneIndex, `${p.label}（${sessionText(p.session, aligned)}）`);
     });
 
@@ -238,7 +262,7 @@ export function CrossMarketPanel({ version, themeKey }: { version: string; theme
       chart.remove();
       chartRef.current = null;
     };
-  }, [twBars, twMa, panes, aligned, themeKey]);
+  }, [twBars, twMa, panes, aligned, mas, themeKey]);
 
   // 時間區間與重設：每個窗格 Y 軸自動縮放、高度比例設回預設
   useEffect(() => {
@@ -283,10 +307,10 @@ export function CrossMarketPanel({ version, themeKey }: { version: string; theme
       date: hoverTime ?? twBar?.[0] ?? '',
       twBar,
       twPct: twBar && twPrev ? ((twBar[4] - twPrev[4]) / Math.abs(twPrev[4])) * 100 : null,
-      ma: Object.fromEntries(TW_MAS.map((p) => [p, twBar ? twMa[p][twIdx] : null])) as Record<(typeof TW_MAS)[number], number | null | undefined>,
+      ma: Object.fromEntries(mas.map((p) => [p, twBar ? twMa[p]?.[twIdx] : null])) as Partial<Record<MaPeriod, number | null | undefined>>,
       rows,
     };
-  }, [twBars, twDates, twMa, panes, hoverTime]);
+  }, [twBars, twDates, twMa, panes, hoverTime, mas]);
 
   const latestRho = panes.map((p) => ({ label: p.label, rho60: p.corr[60].at(-1) ?? null }));
   const failed = COMPARE_SERIES.flatMap((s) => {
@@ -336,6 +360,15 @@ export function CrossMarketPanel({ version, themeKey }: { version: string; theme
         {atMax && <span className="small muted">最多 {MAX_COMPARE} 個</span>}
       </div>
 
+      <div className="cp-mas" role="group" aria-label="均線">
+        {MA_PERIODS.map((p) => (
+          <button key={p} type="button" className="ma-chip" aria-pressed={mas.includes(p)} onClick={() => toggleMa(p)}>
+            <i className="swatch" style={{ background: `var(${MA_COLOR_VAR[p]})` }} />
+            MA{p}
+          </button>
+        ))}
+      </div>
+
       <div className="seg" role="group" aria-label="時間區間">
         {RANGES.map((r) => (
           <button key={r.k} type="button" aria-pressed={range === r.k} onClick={() => pickRange(r.k)}>
@@ -359,11 +392,18 @@ export function CrossMarketPanel({ version, themeKey }: { version: string; theme
             <div className="legend num cm-legend" aria-live="off">
               <div>
                 <span className="muted">{legend.date}</span> 加權 <b>{fmtNum(legend.twBar?.[4], 0)}</b>{' '}
-                <span className={legend.twPct !== null ? (legend.twPct > 0 ? 'up' : legend.twPct < 0 ? 'down' : '') : ''}>{fmtPct(legend.twPct)}</span>{' '}
-                <span className="muted">
-                  MA60 {fmtNum(legend.ma[60], 0)} MA240 {fmtNum(legend.ma[240], 0)}
-                </span>
+                <span className={legend.twPct !== null ? (legend.twPct > 0 ? 'up' : legend.twPct < 0 ? 'down' : '') : ''}>{fmtPct(legend.twPct)}</span>
               </div>
+              {mas.length > 0 && (
+                <div className="ma-legend">
+                  {mas.map((p) => (
+                    <span key={p}>
+                      <i className="swatch" style={{ background: `var(${MA_COLOR_VAR[p]})` }} />
+                      MA{p} {fmtNum(legend.ma[p], 0)}
+                    </span>
+                  ))}
+                </div>
+              )}
               {legend.rows.map((r) => (
                 <div key={r.id}>
                   {r.label} <b>{fmtNum(r.bar?.[4], r.decimals)}</b>{' '}

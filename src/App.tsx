@@ -183,7 +183,12 @@ export default function App() {
               nowScore={regime.score}
               now={new Date(nowMs)}
             />
-            <CrossMarketPanel version={summary.generatedAt} themeKey={themeKey} />
+            <CrossMarketPanel
+              version={summary.generatedAt}
+              themeKey={themeKey}
+              mas={prefs.mas}
+              onMas={(mas) => onPrefs({ ...prefs, mas })}
+            />
             <MarginStressPanel data={marginStress} themeKey={themeKey} />
             <BreadthPanel data={breadthStress} themeKey={themeKey} />
             <SourceStatus summary={summary} />

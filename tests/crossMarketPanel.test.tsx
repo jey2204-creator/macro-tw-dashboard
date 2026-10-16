@@ -85,7 +85,7 @@ afterEach(() => {
 
 describe('跨市場對照面板', () => {
   it('預設加權＋費半、KOSPI、USD/TWD，美系序列對齊，窗格與浮水印依選擇配置', async () => {
-    render(<CrossMarketPanel version="v1" themeKey="auto-false-tw" />);
+    render(<CrossMarketPanel version="v1" themeKey="auto-false-tw" mas={[60, 240]} onMas={() => {}} />);
     expect(screen.getByRole('button', { name: '費半SOX' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('button', { name: 'KOSPI' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('button', { name: 'USD/TWD' }).getAttribute('aria-pressed')).toBe('true');
@@ -93,13 +93,14 @@ describe('跨市場對照面板', () => {
     expect(screen.getByRole('button', { name: /美系對齊台股交易日/ }).getAttribute('aria-pressed')).toBe('true');
     await waitFor(() => expect(screen.getByText(/ρ60：/)).toBeTruthy());
     // 加權（含 2 條均線）在窗格 0，三個對照序列各佔一個窗格
-    await waitFor(() => expect(chartLog.watermarks).toEqual(['加權指數（MA60／MA240）', '費半SOX（前一晚，已對齊）', 'KOSPI（同時段）', 'USD/TWD（同時段）']));
-    expect(chartLog.seriesPanes).toEqual([0, 0, 0, 1, 2, 3]);
+    await waitFor(() => expect(chartLog.watermarks).toEqual(['加權指數（MA60／240）', '費半SOX（前一晚，已對齊）', 'KOSPI（同時段）', 'USD/TWD（同時段）']));
+    // 每個窗格：主序列 + 勾選的 2 條均線
+    expect(chartLog.seriesPanes).toEqual([0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3]);
     expect(screen.getByText(/加權資料 2026-10-13/)).toBeTruthy();
   });
 
   it('取消對齊後浮水印標示未對齊；新增序列會增加窗格並記住選擇', async () => {
-    render(<CrossMarketPanel version="v1" themeKey="auto-false-tw" />);
+    render(<CrossMarketPanel version="v1" themeKey="auto-false-tw" mas={[60, 240]} onMas={() => {}} />);
     await waitFor(() => expect(chartLog.watermarks.length).toBe(4));
     fireEvent.click(screen.getByRole('button', { name: /美系對齊台股交易日/ }));
     await waitFor(() => expect(chartLog.watermarks.at(-3)).toBe('費半SOX（前一晚，未對齊）'));
@@ -111,7 +112,7 @@ describe('跨市場對照面板', () => {
 
   it('最多 5 個對照序列：達上限後其餘按鈕停用', async () => {
     window.localStorage.setItem('cm-ids', JSON.stringify(['sox', 'kospi', 'usdtwd', 'us10y', 'nikkei']));
-    render(<CrossMarketPanel version="v1" themeKey="auto-false-tw" />);
+    render(<CrossMarketPanel version="v1" themeKey="auto-false-tw" mas={[60, 240]} onMas={() => {}} />);
     expect(screen.getByText(/最多 5 個/)).toBeTruthy();
     expect((screen.getByRole('button', { name: 'NASDAQ' }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole('button', { name: '日經225' }) as HTMLButtonElement).disabled).toBe(false);
@@ -120,8 +121,25 @@ describe('跨市場對照面板', () => {
 
   it('對照序列載入失敗時顯示原因，其餘窗格照常', async () => {
     window.localStorage.setItem('cm-ids', JSON.stringify(['sox', 'dxy']));
-    render(<CrossMarketPanel version="v1" themeKey="auto-false-tw" />);
+    render(<CrossMarketPanel version="v1" themeKey="auto-false-tw" mas={[60, 240]} onMas={() => {}} />);
     await waitFor(() => expect(screen.getByText(/載入失敗：DXY：HTTP 404/)).toBeTruthy());
-    await waitFor(() => expect(chartLog.watermarks).toEqual(['加權指數（MA60／MA240）', '費半SOX（前一晚，已對齊）']));
+    await waitFor(() => expect(chartLog.watermarks).toEqual(['加權指數（MA60／240）', '費半SOX（前一晚，已對齊）']));
+  });
+
+  it('均線按鈕與單一指標圖共用設定：六條全開時每個窗格都畫六條，圖例列出加權的均線值', async () => {
+    const onMas = vi.fn();
+    const all = [5, 10, 20, 60, 120, 240] as const;
+    render(<CrossMarketPanel version="v1" themeKey="auto-false-tw" mas={[...all]} onMas={onMas} />);
+    for (const p of all) expect(screen.getByRole('button', { name: `MA${p}` }).getAttribute('aria-pressed')).toBe('true');
+    await waitFor(() => expect(chartLog.watermarks[0]).toBe('加權指數（MA5／10／20／60／120／240）'));
+    expect(chartLog.seriesPanes.filter((i) => i === 0)).toHaveLength(7);
+    expect(chartLog.seriesPanes.filter((i) => i === 1)).toHaveLength(7);
+    // 圖例（.ma-legend）列出加權的 6 條均線值；資料只有 7 筆，MA5 有值、MA240 為 —
+    const legend = document.querySelector('.ma-legend')!;
+    expect(legend.querySelectorAll('span')).toHaveLength(6);
+    expect(legend.textContent).toMatch(/MA5 46,[0-9]{3}/);
+    expect(legend.textContent).toContain('MA240 —');
+    fireEvent.click(screen.getByRole('button', { name: 'MA5' }));
+    expect(onMas).toHaveBeenCalledWith([10, 20, 60, 120, 240]);
   });
 });
