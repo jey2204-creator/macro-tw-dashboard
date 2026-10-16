@@ -5,6 +5,7 @@ import { BreadthPanel } from './components/BreadthPanel';
 import { CrossMarketPanel } from './components/CrossMarketPanel';
 import { EventsBar } from './components/EventsBar';
 import { MarginStressPanel } from './components/MarginStressPanel';
+import { PolicyInflationPanel } from './components/PolicyInflationPanel';
 import { RegimePanel } from './components/RegimePanel';
 import { SourceStatus } from './components/SourceStatus';
 import { useBacktest, useCalendar, useBreadthStress, useMarginStress, useSummary } from './hooks/useData';
@@ -189,6 +190,7 @@ export default function App() {
               mas={prefs.mas}
               onMas={(mas) => onPrefs({ ...prefs, mas })}
             />
+            <PolicyInflationPanel version={summary.generatedAt} themeKey={themeKey} />
             <MarginStressPanel data={marginStress} themeKey={themeKey} />
             <BreadthPanel data={breadthStress} themeKey={themeKey} />
             <SourceStatus summary={summary} />
