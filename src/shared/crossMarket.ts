@@ -26,6 +26,7 @@ export const COMPARE_SERIES: CompareSpec[] = [
   { id: 'usdtwd', session: 'tw' },
   { id: 'dxy', session: 'us' },
   { id: 'us10y', session: 'us' },
+  { id: 'tlt', session: 'us' },
   { id: 'us2y', session: 'us' },
   { id: 'wti', session: 'us' },
   { id: 'brent', session: 'us' },
@@ -41,7 +42,7 @@ export const MAX_COMPARE = 5;
 /** 一鍵切換的組合（每組 ≤ MAX_COMPARE） */
 export const COMPARE_PRESETS: { key: string; label: string; ids: string[] }[] = [
   { key: 'equity', label: '股市', ids: ['tpex', 'sox', 'nasdaq', 'kospi', 'nikkei'] },
-  { key: 'rates', label: '匯率利率', ids: ['usdtwd', 'dxy', 'us10y', 'us2y'] },
+  { key: 'rates', label: '匯率利率', ids: ['usdtwd', 'dxy', 'us10y', 'tlt', 'us2y'] },
   { key: 'hedge', label: '避險', ids: ['gold', 'wti', 'brent', 'vix'] },
 ];
 
