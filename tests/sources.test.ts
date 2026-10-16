@@ -36,6 +36,26 @@ describe('Yahoo parser（真實回應）', () => {
     for (const b of bars) expect(b[2]).toBeGreaterThanOrEqual(b[3]);
   });
 
+  it('^KS11：最後一根開／低回傳 0 時視為缺值，以收盤補上（2026-10-15 實際發生）', () => {
+    const json = {
+      chart: {
+        result: [
+          {
+            meta: { exchangeTimezoneName: 'Asia/Seoul' },
+            timestamp: [Date.UTC(2026, 9, 14, 0) / 1000, Date.UTC(2026, 9, 15, 0) / 1000],
+            indicators: { quote: [{ open: [5500, 0], high: [5560, 5554.22], low: [5480, 0], close: [5530, 5554.22] }] },
+          },
+        ],
+        error: null,
+      },
+    };
+    const { bars } = parseYahooChart(json, CAPTURED);
+    expect(bars).toEqual([
+      ['2026-10-14', 5500, 5560, 5480, 5530],
+      ['2026-10-15', 5554.22, 5554.22, 5554.22, 5554.22],
+    ]);
+  });
+
   it('錯誤回應丟出可讀錯誤', () => {
     expect(() =>
       parseYahooChart({ chart: { result: null, error: { code: 'Not Found', description: 'No data found' } } }, CAPTURED),

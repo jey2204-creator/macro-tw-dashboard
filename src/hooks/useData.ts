@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { CalendarFile } from '../shared/calendar';
 import type { BreadthStressFile } from '../shared/breadthStress';
 import type { MarginStressFile } from '../shared/marginStress';
@@ -60,6 +60,46 @@ export function useSeries(id: string | null, version: string): LoadState<SeriesF
   }, [id, key, version]);
   if (!id) return null;
   return state && state.key === key ? state.value : { status: 'loading' };
+}
+
+function loadSeries(id: string, version: string): Promise<SeriesFile> {
+  const key = `${id}@${version}`;
+  let p = seriesCache.get(key);
+  if (!p) {
+    p = getJson<SeriesFile>(`${DATA_BASE}/series/${id}.json?v=${encodeURIComponent(version)}`, new AbortController().signal);
+    seriesCache.set(key, p);
+    p.catch(() => seriesCache.delete(key));
+  }
+  return p;
+}
+
+/** 一次載入多個指標的完整歷史（跨市場對照用）；每個 id 各自回報載入狀態 */
+export function useSeriesMap(ids: readonly string[], version: string): Record<string, LoadState<SeriesFile>> {
+  const [state, setState] = useState<Record<string, { v: string; value: LoadState<SeriesFile> }>>({});
+  const idKey = ids.join(',');
+  useEffect(() => {
+    let alive = true;
+    for (const id of idKey ? idKey.split(',') : []) {
+      loadSeries(id, version).then(
+        (data) => alive && setState((s) => ({ ...s, [id]: { v: version, value: { status: 'ready', data } } })),
+        (e: unknown) =>
+          alive &&
+          setState((s) => ({ ...s, [id]: { v: version, value: { status: 'error', error: e instanceof Error ? e.message : String(e) } } })),
+      );
+    }
+    return () => {
+      alive = false;
+    };
+  }, [idKey, version]);
+  // 回傳物件只在狀態真的改變時換新，讓使用端的 useMemo／useEffect 不會每次 render 都重算
+  return useMemo(() => {
+    const out: Record<string, LoadState<SeriesFile>> = {};
+    for (const id of idKey ? idKey.split(',') : []) {
+      const s = state[id];
+      out[id] = s && s.v === version ? s.value : { status: 'loading' };
+    }
+    return out;
+  }, [state, idKey, version]);
 }
 
 /** 回測結果為選用資料：載入失敗時回傳 null，不影響主畫面 */

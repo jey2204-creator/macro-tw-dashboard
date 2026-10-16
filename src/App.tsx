@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 import { ChartPanel, type ChartPrefs } from './components/ChartPanel';
 import { IndicatorTable } from './components/IndicatorTable';
 import { BreadthPanel } from './components/BreadthPanel';
+import { CrossMarketPanel } from './components/CrossMarketPanel';
 import { EventsBar } from './components/EventsBar';
 import { MarginStressPanel } from './components/MarginStressPanel';
 import { RegimePanel } from './components/RegimePanel';
@@ -120,6 +121,7 @@ export default function App() {
       <header className="topbar">
         <div className="brand">
           <h1>美國總經 → 台股儀表板</h1>
+          {import.meta.env.VITE_PREVIEW_LABEL && <span className="small warn">{import.meta.env.VITE_PREVIEW_LABEL}</span>}
           {summary && (
             <span className={`small num ${dataAgeHours > 36 ? 'warn' : 'muted'}`}>
               資料更新 {formatTaipeiDateTime(summary.generatedAt)}
@@ -180,6 +182,12 @@ export default function App() {
               outlooks={outlooks}
               nowScore={regime.score}
               now={new Date(nowMs)}
+            />
+            <CrossMarketPanel
+              version={summary.generatedAt}
+              themeKey={themeKey}
+              mas={prefs.mas}
+              onMas={(mas) => onPrefs({ ...prefs, mas })}
             />
             <MarginStressPanel data={marginStress} themeKey={themeKey} />
             <BreadthPanel data={breadthStress} themeKey={themeKey} />

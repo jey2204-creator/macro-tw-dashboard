@@ -88,7 +88,8 @@ export function computeRegime(summary: SummaryFile, today: string, defs: Indicat
   const score = usedWeight > 0 ? counted.reduce((s, e) => s + e.contribution, 0) / usedWeight : 0;
   const coverage = totalWeight > 0 ? usedWeight / totalWeight : 0;
 
-  const categories: CategoryScore[] = CATEGORY_ORDER.map((category) => {
+  // 只有隱藏指標的分類（例如亞股，僅供跨市場對照）不列入分類摘要
+  const categories: CategoryScore[] = CATEGORY_ORDER.filter((category) => evals.some((e) => e.def.category === category)).map((category) => {
     const items = counted.filter((e) => e.def.category === category);
     const w = items.reduce((s, e) => s + e.def.weight, 0);
     if (w === 0) return { category, score: null, signal: null, weight: 0 };

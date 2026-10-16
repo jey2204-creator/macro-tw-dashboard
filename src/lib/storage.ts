@@ -16,6 +16,17 @@ export function savePref(key: string, value: string): void {
   }
 }
 
+/** 字串清單（只保留 allowed 內的值；清單無效時用 fallback） */
+export function loadIdList(key: string, allowed: readonly string[], fallback: string[]): string[] {
+  try {
+    const v = JSON.parse(window.localStorage.getItem(key) ?? 'null') as unknown;
+    if (!Array.isArray(v) || !v.every((x) => typeof x === 'string')) return fallback;
+    return (v as string[]).filter((x) => allowed.includes(x));
+  } catch {
+    return fallback;
+  }
+}
+
 export function loadList(key: string, fallback: number[]): number[] {
   try {
     const v = JSON.parse(window.localStorage.getItem(key) ?? 'null') as unknown;
