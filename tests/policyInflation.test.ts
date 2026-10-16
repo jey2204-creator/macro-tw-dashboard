@@ -9,7 +9,6 @@ import {
   valueAtOrBefore,
   yoyPoints,
 } from '../src/shared/policyInflation';
-import { rangeStart } from '../src/shared/timeseries';
 import type { Bar } from '../src/shared/types';
 
 const flat = (d: string, v: number): Bar => [d, v, v, v, v];
@@ -69,9 +68,5 @@ describe('政策利率 vs 通膨', () => {
     expect(lastSignFlip([['2026-01-01', 4, 5, -1], ['2026-02-01', 4, 3.9, 0.1], ['2026-03-01', 4, 3.5, 0.5]])).toEqual({ date: '2026-02-01', to: 'positive' });
     expect(lastSignFlip([['2026-01-01', 4, 3, 1], ['2026-02-01', 4, 4.5, -0.5]])).toEqual({ date: '2026-02-01', to: 'negative' });
     expect(lastSignFlip([['2026-01-01', 4, 3, 1]])).toBeNull();
-  });
-
-  it('10 年區間', () => {
-    expect(rangeStart('2026-10-16', '10Y')).toBe('2016-10-16');
   });
 });

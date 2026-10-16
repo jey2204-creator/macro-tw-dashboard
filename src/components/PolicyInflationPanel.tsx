@@ -31,8 +31,10 @@ import {
 import { rangeStart, type Point, type RangeKey } from '../shared/timeseries';
 
 const RANGES: { k: RangeKey; label: string }[] = [
+  { k: '3M', label: '3個月' },
+  { k: '6M', label: '半年' },
+  { k: '1Y', label: '1年' },
   { k: '5Y', label: '5年' },
-  { k: '10Y', label: '10年' },
   { k: 'ALL', label: '全部' },
 ];
 const PANE_STRETCH = [0.6, 0.4] as const;
@@ -86,7 +88,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const near = useNearViewport(sectionRef);
-  const [range, setRange] = useState<RangeKey>(() => loadPref<RangeKey>('pi-range', ['5Y', '10Y', 'ALL'], '10Y'));
+  const [range, setRange] = useState<RangeKey>(() => loadPref<RangeKey>('pi-range', ['3M', '6M', '1Y', '5Y', 'ALL'], '5Y'));
   const [extras, setExtras] = useState<Record<ExtraId, boolean>>(() => ({
     cpi: loadPref('pi-cpi', ['1', '0'] as const, '1') === '1',
     core_pce: loadPref('pi-pce', ['1', '0'] as const, '0') === '1',

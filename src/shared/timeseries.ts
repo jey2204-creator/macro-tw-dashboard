@@ -4,7 +4,7 @@ import type { Bar } from './types';
 
 export type Point = [date: string, value: number];
 export type Period = 'D' | 'W' | 'M';
-export type RangeKey = '3M' | '6M' | '1Y' | '5Y' | '10Y' | 'ALL';
+export type RangeKey = '3M' | '6M' | '1Y' | '5Y' | 'ALL';
 
 export const MA_PERIODS = [5, 10, 20, 60, 120, 240] as const;
 export type MaPeriod = (typeof MA_PERIODS)[number];
@@ -54,8 +54,6 @@ export function rangeStart(lastDate: string, range: RangeKey): string | null {
       return addMonths(lastDate, -12);
     case '5Y':
       return addMonths(lastDate, -60);
-    case '10Y':
-      return addMonths(lastDate, -120);
     case 'ALL':
       return null;
   }

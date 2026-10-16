@@ -106,13 +106,13 @@ describe('政策利率 vs 通膨面板', () => {
     expect(screen.getByRole('button', { name: '核心 PCE' }).getAttribute('aria-pressed')).toBe('false');
   });
 
-  it('切換核心 PCE 會加序列並記住；區間預設 10 年', async () => {
+  it('切換核心 PCE 會加序列並記住；區間預設 5 年', async () => {
     render(<PolicyInflationPanel version="v1" themeKey="auto-false-tw" />);
     await waitFor(() => expect(chartLog.series.length).toBe(4));
     fireEvent.click(screen.getByRole('button', { name: '核心 PCE' }));
     await waitFor(() => expect(chartLog.series.some((s) => s.title === '核心PCE')).toBe(true));
     expect(window.localStorage.getItem('pi-pce')).toBe('1');
-    expect(screen.getByRole('button', { name: '10年' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: '5年' }).getAttribute('aria-pressed')).toBe('true');
     fireEvent.click(screen.getByRole('button', { name: '全部' }));
     expect(window.localStorage.getItem('pi-range')).toBe('ALL');
   });
