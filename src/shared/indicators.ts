@@ -115,6 +115,7 @@ export const CATEGORY_LABEL: Record<Category, string> = {
   rates: '美債利率',
   fx: '美元／匯率',
   energy: '能源',
+  commodity: '原物料',
   macro: '美國總經',
   us_equity: '美股',
   asia_equity: '亞股',
@@ -122,7 +123,7 @@ export const CATEGORY_LABEL: Record<Category, string> = {
   tw_chips: '台股籌碼',
 };
 
-export const CATEGORY_ORDER: Category[] = ['tw_equity', 'tw_chips', 'us_equity', 'asia_equity', 'rates', 'fx', 'energy', 'macro'];
+export const CATEGORY_ORDER: Category[] = ['tw_equity', 'tw_chips', 'us_equity', 'asia_equity', 'rates', 'fx', 'energy', 'commodity', 'macro'];
 
 /**
  * 權重與規則依 2010–2026 回測審查後調整（2026-10，scripts/fetch-data/backtest.ts）：
@@ -192,6 +193,23 @@ export const INDICATORS: IndicatorDef[] = [
     transform: 'none', market: true,
     rule: { kind: 'risingIsBearish', lookback: 20, mode: 'pct', bearAt: 15, bullAt: null },
     weight: 0, maxAgeDays: 10, note: '國際油價基準，與 WTI 互相驗證；僅供參考不計分',
+  },
+  // ── 原物料／風險（跨市場對照面板用；只抓取、不列入指標表與計分） ──
+  // 黃金不是戰爭預測器：金價＝實質利率＋美元＋央行買盤＋避險情緒，地緣事件多為事後反應且常反轉；
+  // 用途是分辨「今天是哪種行情」（黃金↑油↑殖利率↓＝地緣避險；黃金↑美元↑殖利率↑＝通膨；黃金↑美元↓＝降息預期）
+  {
+    id: 'gold', name: '黃金（COMEX 近月期貨）', short: '黃金', category: 'commodity', frequency: 'daily',
+    subtitle: '黃金期貨｜避險與實質利率',
+    unit: 'USD', decimals: 2, sources: [{ provider: 'yahoo', symbol: 'GC=F' }], transform: 'none',
+    market: true, rule: { kind: 'info' }, weight: 0, maxAgeDays: 10, hidden: true,
+    note: 'COMEX 黃金近月期貨（美元／盎司）；跨市場對照面板用，不計分',
+  },
+  {
+    id: 'vix', name: 'VIX 恐慌指數', short: 'VIX', category: 'us_equity', frequency: 'daily',
+    subtitle: 'S&P500 隱含波動率｜市場為風險付的保費',
+    unit: 'pt', decimals: 2, sources: [{ provider: 'yahoo', symbol: '^VIX' }], transform: 'none',
+    market: true, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true,
+    note: 'CBOE 以 S&P 500 選擇權計算的 30 日隱含波動率；比黃金乾淨的風險情緒量尺（不混利率）。跨市場對照面板用，不計分',
   },
   // ── 美國總經 ───────────────────────────────
   {

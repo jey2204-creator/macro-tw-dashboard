@@ -173,8 +173,8 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas }: Props) {
         session: spec.session,
         bars,
         closeOnly: f.data.closeOnly,
-        // 指數類在對照窗格用整數，價格軸較不占寬度（匯率、利率、油價維持原精度）
-        decimals: def?.unit === 'pt' ? 0 : (def?.decimals ?? 2),
+        // 數值 ≥ 1000（指數、黃金）在對照窗格用整數，價格軸較不占寬度；匯率、利率、油價、VIX 維持原精度
+        decimals: (raw.at(-1)?.[4] ?? 0) >= 1000 ? 0 : (def?.decimals ?? 2),
         corr: correlationSeries(pairedReturns(twBars, bars)),
         ma: maLines(bars, mas),
       });
@@ -338,6 +338,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas }: Props) {
       <p className="small muted ms-rule">
         美股、美債、美元、原油在台股開盤前收盤，是台股的「前一晚」：對齊後，同一直線上的美系 K 棒＝台股開盤時看到的那根（連假期間多根合併成一根）。
         日經、KOSPI、櫃買、USD/TWD 與台股同時段，不移。ρ20／ρ60＝日報酬 20／60 日相關係數，看背離與關係斷裂，不是預測；三張圖同向不等於三個證據。
+        黃金、VIX 用來分辨今天是哪種行情（黃金↑油↑殖利率↓＝地緣避險；黃金↑美元↑殖利率↑＝通膨），不是預測戰爭。
       </p>
 
       <div className="cp-mas" role="group" aria-label="對照組合">

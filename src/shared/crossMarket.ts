@@ -29,6 +29,8 @@ export const COMPARE_SERIES: CompareSpec[] = [
   { id: 'us2y', session: 'us' },
   { id: 'wti', session: 'us' },
   { id: 'brent', session: 'us' },
+  { id: 'gold', session: 'us' },
+  { id: 'vix', session: 'us' },
 ];
 
 /** 預設對照：三個不同資訊來源（前一晚美國半導體、同時段亞股、資金流向），而不是三個最像的 */
@@ -40,7 +42,7 @@ export const MAX_COMPARE = 5;
 export const COMPARE_PRESETS: { key: string; label: string; ids: string[] }[] = [
   { key: 'equity', label: '股市', ids: ['tpex', 'sox', 'nasdaq', 'kospi', 'nikkei'] },
   { key: 'rates', label: '匯率利率', ids: ['usdtwd', 'dxy', 'us10y', 'us2y'] },
-  { key: 'oil', label: '原油', ids: ['wti', 'brent'] },
+  { key: 'hedge', label: '避險', ids: ['gold', 'wti', 'brent', 'vix'] },
 ];
 
 /** 選取規則：已選的點一下取消；未選的加到最後，已滿 MAX_COMPARE 時換掉最早選的 */

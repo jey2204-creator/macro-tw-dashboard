@@ -115,7 +115,9 @@ describe('跨市場對照：可選序列', () => {
       expect(g.ids.length).toBeLessThanOrEqual(MAX_COMPARE);
       for (const id of g.ids) expect(ids, `${g.label}:${id}`).toContain(id);
     }
-    expect(COMPARE_PRESETS.map((g) => g.label)).toEqual(['股市', '匯率利率', '原油']);
+    expect(COMPARE_PRESETS.map((g) => g.label)).toEqual(['股市', '匯率利率', '避險']);
+    expect(COMPARE_SERIES.map((s) => s.id)).toContain('gold');
+    expect(COMPARE_SERIES.map((s) => s.id)).toContain('vix');
   });
 
   it('已滿 5 個時再選會換掉最早選的；已選的點一下取消', () => {
