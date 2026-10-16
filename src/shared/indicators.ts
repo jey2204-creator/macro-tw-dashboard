@@ -204,6 +204,14 @@ export const INDICATORS: IndicatorDef[] = [
     market: true, rule: { kind: 'info' }, weight: 0, maxAgeDays: 10, hidden: true,
     note: 'COMEX 黃金近月期貨（美元／盎司）；跨市場對照面板用，不計分',
   },
+  // TLT 是美債10Y 殖利率的價格鏡像（存續期間約 16 年：殖利率 +10bp ≈ TLT −1.6%）；Yahoo 即時，比 FRED 的 DGS10 早 1–2 天
+  {
+    id: 'tlt', name: 'iShares 20 年期以上美債 ETF', short: 'TLT', category: 'rates', frequency: 'daily',
+    subtitle: '美債20年ETF｜殖利率升＝價格跌',
+    unit: 'USD', decimals: 2, sources: [{ provider: 'yahoo', symbol: 'TLT' }], transform: 'none',
+    market: true, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true,
+    note: '美債價格代理：殖利率升則跌，與 10Y 走勢相關約 0.9；可比 FRED 早 1–2 天看到昨晚美債實際走勢。跨市場對照面板用，不計分',
+  },
   {
     id: 'vix', name: 'VIX 恐慌指數', short: 'VIX', category: 'us_equity', frequency: 'daily',
     subtitle: 'S&P500 隱含波動率｜市場為風險付的保費',

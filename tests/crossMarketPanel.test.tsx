@@ -123,7 +123,7 @@ describe('跨市場對照面板', () => {
   });
 
   it('一鍵切換組合：股市／匯率利率／原油，與目前選擇相同時顯示為按下', () => {
-    window.localStorage.setItem('cm-ids', JSON.stringify(['dxy', 'usdtwd', 'us2y', 'us10y']));
+    window.localStorage.setItem('cm-ids', JSON.stringify(['dxy', 'usdtwd', 'us2y', 'tlt', 'us10y']));
     render(<CrossMarketPanel version="v1" themeKey="auto-false-tw" mas={[60, 240]} onMas={() => {}} />);
     expect(screen.getByRole('button', { name: '匯率利率' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('button', { name: '股市' }).getAttribute('aria-pressed')).toBe('false');

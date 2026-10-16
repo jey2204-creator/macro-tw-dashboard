@@ -120,6 +120,15 @@ describe('跨市場對照：可選序列', () => {
     expect(COMPARE_SERIES.map((s) => s.id)).toContain('vix');
   });
 
+  it('TLT 緊接在美債10Y 之後（窗格順序），前一晚時段，列入匯率利率組合，隱藏且不計分', () => {
+    const ids = COMPARE_SERIES.map((s) => s.id);
+    expect(ids[ids.indexOf('us10y') + 1]).toBe('tlt');
+    expect(COMPARE_SERIES.find((s) => s.id === 'tlt')!.session).toBe('us');
+    expect(COMPARE_PRESETS.find((g) => g.key === 'rates')!.ids).toEqual(['usdtwd', 'dxy', 'us10y', 'tlt', 'us2y']);
+    expect(INDICATOR_MAP.tlt!.hidden).toBe(true);
+    expect(INDICATOR_MAP.tlt!.weight).toBe(0);
+  });
+
   it('已滿 5 個時再選會換掉最早選的；已選的點一下取消', () => {
     const five = ['usdtwd', 'dxy', 'us10y', 'us2y', 'wti'];
     expect(toggleCompare(five, 'sox')).toEqual(['dxy', 'us10y', 'us2y', 'wti', 'sox']);
