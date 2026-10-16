@@ -233,6 +233,13 @@ export const INDICATORS: IndicatorDef[] = [
     market: false, rule: { kind: 'policyRate', lookbackDays: 120 }, weight: 0, maxAgeDays: 10,
     note: '', hidden: true,
   },
+  // 2008-12-16 前 FRED 沒有目標區間，只有單一目標利率（DFEDTAR，1982-09～2008-12-15）：
+  // 只給「政策利率 vs 通膨」面板拼接長期歷史用，不列入指標表與計分；序列已結束，maxAgeDays 設大避免判過時
+  {
+    id: 'fed_target_legacy', name: 'Fed 目標利率（2008 年前，單一目標）', short: 'Fed舊目標', category: 'macro', frequency: 'daily',
+    unit: '%', decimals: 2, sources: [{ provider: 'fred', symbol: 'DFEDTAR' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 100_000, note: '', hidden: true,
+  },
   {
     id: 'cpi', name: 'CPI 年增率', short: 'CPI', category: 'macro', frequency: 'monthly',
     subtitle: '消費者物價｜下游，你買的價',

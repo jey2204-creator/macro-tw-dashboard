@@ -1022,3 +1022,16 @@ th {
   font-weight: 700;
   background: color-mix(in srgb, currentColor 12%, transparent);
 }
+/* 政策利率 vs 通膨：上窗格利率與通膨、下窗格實質政策利率 */
+.pi-host {
+  height: max(360px, 50vh);
+}
+.wide .pi-host {
+  height: 440px;
+}
+.pi-state {
+  margin: 2px 0 0;
+}
+.pi .ma-chip[aria-disabled='true'] {
+  cursor: default;
+}
