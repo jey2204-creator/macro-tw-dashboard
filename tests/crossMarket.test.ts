@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
   alignToTwCalendar,
+  COMPARE_PRESETS,
   COMPARE_SERIES,
   correlationSeries,
   DEFAULT_COMPARE,
+  MAX_COMPARE,
   nextWeekday,
   pairedReturns,
   pearson,
   rollingCorrelation,
+  toggleCompare,
 } from '../src/shared/crossMarket';
 import { INDICATOR_MAP } from '../src/shared/indicators';
 import type { Bar } from '../src/shared/types';
@@ -98,10 +101,28 @@ describe('跨市場對照：報酬配對與滾動相關', () => {
 });
 
 describe('跨市場對照：可選序列', () => {
-  it('每個對照 id 都在指標註冊表內，預設三個分別來自不同資訊來源', () => {
+  it('每個對照 id 都在指標註冊表內，櫃買排第一，預設三個分別來自不同資訊來源', () => {
     for (const s of COMPARE_SERIES) expect(INDICATOR_MAP[s.id], s.id).toBeDefined();
+    expect(COMPARE_SERIES[0]!.id).toBe('tpex');
     expect(DEFAULT_COMPARE).toEqual(['sox', 'kospi', 'usdtwd']);
     const sessions = DEFAULT_COMPARE.map((id) => COMPARE_SERIES.find((s) => s.id === id)!.session);
     expect(sessions).toEqual(['us', 'tw', 'tw']);
+  });
+
+  it('組合內的 id 都可選且不超過上限', () => {
+    const ids = COMPARE_SERIES.map((s) => s.id);
+    for (const g of COMPARE_PRESETS) {
+      expect(g.ids.length).toBeLessThanOrEqual(MAX_COMPARE);
+      for (const id of g.ids) expect(ids, `${g.label}:${id}`).toContain(id);
+    }
+    expect(COMPARE_PRESETS.map((g) => g.label)).toEqual(['股市', '匯率利率', '原油']);
+  });
+
+  it('已滿 5 個時再選會換掉最早選的；已選的點一下取消', () => {
+    const five = ['usdtwd', 'dxy', 'us10y', 'us2y', 'wti'];
+    expect(toggleCompare(five, 'sox')).toEqual(['dxy', 'us10y', 'us2y', 'wti', 'sox']);
+    expect(toggleCompare(five, 'dxy')).toEqual(['usdtwd', 'us10y', 'us2y', 'wti']);
+    expect(toggleCompare(['sox'], 'tpex')).toEqual(['sox', 'tpex']);
+    expect(toggleCompare([], 'tpex')).toEqual(['tpex']);
   });
 });

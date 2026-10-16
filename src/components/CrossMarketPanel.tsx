@@ -17,12 +17,14 @@ import { loadIdList, loadPref, savePref } from '../lib/storage';
 import { cssVar } from '../lib/stressFormat';
 import {
   alignToTwCalendar,
+  COMPARE_PRESETS,
   COMPARE_SERIES,
   CORR_WINDOWS,
   correlationSeries,
   DEFAULT_COMPARE,
   MAX_COMPARE,
   pairedReturns,
+  toggleCompare,
   type CorrSeries,
   type Session,
 } from '../shared/crossMarket';
@@ -136,12 +138,11 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas }: Props) {
   const taiex = files.taiex;
   const twBars = useMemo(() => (taiex?.status === 'ready' ? taiex.data.data : []), [taiex]);
 
-  const toggle = (id: string) => {
-    const next = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id];
-    if (next.length > MAX_COMPARE) return;
+  const select = (next: string[]) => {
     setSelected(next);
     savePref('cm-ids', JSON.stringify(next));
   };
+  const toggle = (id: string) => select(toggleCompare(selected, id));
   const setAlign = (v: boolean) => {
     setAligned(v);
     savePref('cm-align', v ? '1' : '0');
@@ -318,6 +319,8 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas }: Props) {
     return selected.includes(s.id) && f && f.status === 'error' ? [`${INDICATOR_MAP[s.id]?.short ?? s.id}：${f.error}`] : [];
   });
   const atMax = selected.length >= MAX_COMPARE;
+  const oldest = atMax ? INDICATOR_MAP[selected[0]!]?.short ?? selected[0] : null;
+  const sameSet = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x) => b.includes(x));
   const hostStyle = { ['--cm-panes' as string]: String(panes.length) } as CSSProperties;
 
   return (
@@ -337,6 +340,19 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas }: Props) {
         日經、KOSPI、櫃買、USD/TWD 與台股同時段，不移。ρ20／ρ60＝日報酬 20／60 日相關係數，看背離與關係斷裂，不是預測；三張圖同向不等於三個證據。
       </p>
 
+      <div className="cp-mas" role="group" aria-label="對照組合">
+        <div className="seg" role="group" aria-label="一鍵切換組合">
+          {COMPARE_PRESETS.map((g) => (
+            <button key={g.key} type="button" aria-pressed={sameSet(selected, g.ids)} onClick={() => select(g.ids)}>
+              {g.label}
+            </button>
+          ))}
+        </div>
+        <button type="button" className="ma-chip" aria-pressed={aligned} onClick={() => setAlign(!aligned)} title="美系序列往後對齊一個台股交易日">
+          ⏰ 美系對齊台股交易日
+        </button>
+      </div>
+
       <div className="cp-mas" role="group" aria-label="對照序列">
         {COMPARE_SERIES.map((s) => {
           const on = selected.includes(s.id);
@@ -346,7 +362,6 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas }: Props) {
               type="button"
               className="ma-chip"
               aria-pressed={on}
-              disabled={!on && atMax}
               title={s.session === 'us' ? '台股收盤後交易（前一晚）' : '與台股同時段'}
               onClick={() => toggle(s.id)}
             >
@@ -354,10 +369,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas }: Props) {
             </button>
           );
         })}
-        <button type="button" className="ma-chip" aria-pressed={aligned} onClick={() => setAlign(!aligned)} title="美系序列往後對齊一個台股交易日">
-          ⏰ 美系對齊台股交易日
-        </button>
-        {atMax && <span className="small muted">最多 {MAX_COMPARE} 個</span>}
+        {atMax && <span className="small muted">已滿 {MAX_COMPARE} 個，再選會換掉最早選的（{oldest}）</span>}
       </div>
 
       <div className="cp-mas" role="group" aria-label="均線">

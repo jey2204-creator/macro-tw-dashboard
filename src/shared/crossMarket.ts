@@ -17,12 +17,12 @@ export interface CompareSpec {
 
 /** 可選的對照序列（依顯示順序；id 對應指標註冊表） */
 export const COMPARE_SERIES: CompareSpec[] = [
+  { id: 'tpex', session: 'tw' },
   { id: 'sox', session: 'us' },
   { id: 'nasdaq', session: 'us' },
   { id: 'spx', session: 'us' },
   { id: 'kospi', session: 'tw' },
   { id: 'nikkei', session: 'tw' },
-  { id: 'tpex', session: 'tw' },
   { id: 'usdtwd', session: 'tw' },
   { id: 'dxy', session: 'us' },
   { id: 'us10y', session: 'us' },
@@ -33,8 +33,22 @@ export const COMPARE_SERIES: CompareSpec[] = [
 
 /** 預設對照：三個不同資訊來源（前一晚美國半導體、同時段亞股、資金流向），而不是三個最像的 */
 export const DEFAULT_COMPARE = ['sox', 'kospi', 'usdtwd'];
-/** 手機高度考量：最多同時顯示的對照窗格數 */
+/** 手機高度考量：最多同時顯示的對照窗格數；已滿時再選會換掉最早選的那個 */
 export const MAX_COMPARE = 5;
+
+/** 一鍵切換的組合（每組 ≤ MAX_COMPARE） */
+export const COMPARE_PRESETS: { key: string; label: string; ids: string[] }[] = [
+  { key: 'equity', label: '股市', ids: ['tpex', 'sox', 'nasdaq', 'kospi', 'nikkei'] },
+  { key: 'rates', label: '匯率利率', ids: ['usdtwd', 'dxy', 'us10y', 'us2y'] },
+  { key: 'oil', label: '原油', ids: ['wti', 'brent'] },
+];
+
+/** 選取規則：已選的點一下取消；未選的加到最後，已滿 MAX_COMPARE 時換掉最早選的 */
+export function toggleCompare(selected: readonly string[], id: string): string[] {
+  if (selected.includes(id)) return selected.filter((x) => x !== id);
+  const next = [...selected, id];
+  return next.length > MAX_COMPARE ? next.slice(next.length - MAX_COMPARE) : next;
+}
 
 export const CORR_WINDOWS = [20, 60] as const;
 

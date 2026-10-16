@@ -867,9 +867,8 @@ th {
 .cm .cp-mas {
   align-items: center;
 }
-.cm .ma-chip:disabled {
-  cursor: not-allowed;
-  opacity: 0.35;
+.cm .cp-mas .seg {
+  margin-right: 4px;
 }
 .ms-state {
   padding: 0 4px;

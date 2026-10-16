@@ -63,6 +63,7 @@ const FILES: Record<string, SeriesFile> = {
   usdtwd: series('usdtwd', DATES.map((d, i) => flat(d, 32 + i * 0.01))),
   us10y: series('us10y', DATES.map((d, i) => flat(d, 5 + i * 0.01)), true),
   nikkei: series('nikkei', DATES.map((d, i) => flat(d, 48000 + i * 50))),
+  tpex: series('tpex', DATES.map((d, i) => flat(d, 300 + i))),
 };
 
 beforeEach(() => {
@@ -110,13 +111,27 @@ describe('跨市場對照面板', () => {
     expect(window.localStorage.getItem('cm-align')).toBe('0');
   });
 
-  it('最多 5 個對照序列：達上限後其餘按鈕停用', async () => {
+  it('已滿 5 個時再選會換掉最早選的，不必先取消；窗格依固定順序（櫃買在費半前）', async () => {
     window.localStorage.setItem('cm-ids', JSON.stringify(['sox', 'kospi', 'usdtwd', 'us10y', 'nikkei']));
     render(<CrossMarketPanel version="v1" themeKey="auto-false-tw" mas={[60, 240]} onMas={() => {}} />);
-    expect(screen.getByText(/最多 5 個/)).toBeTruthy();
-    expect((screen.getByRole('button', { name: 'NASDAQ' }) as HTMLButtonElement).disabled).toBe(true);
-    expect((screen.getByRole('button', { name: '日經225' }) as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByText(/已滿 5 個，再選會換掉最早選的（費半SOX）/)).toBeTruthy();
     await waitFor(() => expect(chartLog.watermarks.length).toBe(6));
+    fireEvent.click(screen.getByRole('button', { name: '櫃買指數' }));
+    expect(JSON.parse(window.localStorage.getItem('cm-ids')!)).toEqual(['kospi', 'usdtwd', 'us10y', 'nikkei', 'tpex']);
+    expect(screen.getByText(/再選會換掉最早選的（KOSPI）/)).toBeTruthy();
+    await waitFor(() => expect(chartLog.watermarks.at(-5)).toBe('櫃買指數（同時段）'));
+  });
+
+  it('一鍵切換組合：股市／匯率利率／原油，與目前選擇相同時顯示為按下', () => {
+    window.localStorage.setItem('cm-ids', JSON.stringify(['dxy', 'usdtwd', 'us2y', 'us10y']));
+    render(<CrossMarketPanel version="v1" themeKey="auto-false-tw" mas={[60, 240]} onMas={() => {}} />);
+    expect(screen.getByRole('button', { name: '匯率利率' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: '股市' }).getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(screen.getByRole('button', { name: '股市' }));
+    expect(JSON.parse(window.localStorage.getItem('cm-ids')!)).toEqual(['tpex', 'sox', 'nasdaq', 'kospi', 'nikkei']);
+    expect(screen.getByRole('button', { name: '股市' }).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: '原油' }));
+    expect(JSON.parse(window.localStorage.getItem('cm-ids')!)).toEqual(['wti', 'brent']);
   });
 
   it('對照序列載入失敗時顯示原因，其餘窗格照常', async () => {
