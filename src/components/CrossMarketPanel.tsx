@@ -52,6 +52,7 @@ const RANGES: { k: RangeKey; label: string }[] = [
   { k: '6M', label: '半年' },
   { k: '1Y', label: '1年' },
   { k: '5Y', label: '5年' },
+  { k: '10Y', label: '10年' },
   { k: 'ALL', label: '全部' },
 ];
 const COMPARE_IDS = COMPARE_SERIES.map((s) => s.id);
@@ -156,7 +157,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
   const near = useNearViewport(sectionRef);
   const [selected, setSelected] = useState<string[]>(() => loadIdList('cm-ids', COMPARE_IDS, DEFAULT_COMPARE));
   const [aligned, setAligned] = useState(() => loadPref('cm-align', ['1', '0'] as const, '1') === '1');
-  const [range, setRange] = useState<RangeKey>(() => loadPref<RangeKey>('cm-range', ['3M', '6M', '1Y', '5Y', 'ALL'], '3M'));
+  const [range, setRange] = useState<RangeKey>(() => loadPref<RangeKey>('cm-range', ['3M', '6M', '1Y', '5Y', '10Y', 'ALL'], '3M'));
   const [resetKey, setResetKey] = useState(0);
   const [hoverTime, setHoverTime] = useState<string | null>(null);
   const [chartGen, setChartGen] = useState(0);

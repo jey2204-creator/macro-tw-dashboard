@@ -29,6 +29,7 @@ const RANGES: { k: RangeKey; label: string }[] = [
   { k: '6M', label: '半年' },
   { k: '1Y', label: '1年' },
   { k: '5Y', label: '5年' },
+  { k: '10Y', label: '10年' },
   { k: 'ALL', label: '全部' },
 ];
 const TYPES: BreadthEventType[] = ['panic', 'capitulate', 'divergence', 'stabilized'];
