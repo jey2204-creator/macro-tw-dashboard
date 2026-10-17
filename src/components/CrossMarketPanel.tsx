@@ -15,7 +15,7 @@ import {
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useSeriesMap } from '../hooks/useData';
 import { MA_COLOR_VAR } from '../lib/chartData';
-import { CHART_INTERACTION, resetPaneStretch, resetPriceScales } from '../lib/chartInteraction';
+import { CHART_INTERACTION, resetPaneStretch, resetPriceScales, attachTimeAxis, TIME_AXIS } from '../lib/chartInteraction';
 import { loadIdList, loadPref, savePref } from '../lib/storage';
 import { cssVar } from '../lib/stressFormat';
 import {
@@ -233,7 +233,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
       autoSize: true,
       crosshair: { mode: CrosshairMode.Normal },
       localization: { locale: 'zh-TW', dateFormat: 'yyyy-MM-dd' },
-      timeScale: { rightOffset: 2, fixLeftEdge: true, fixRightEdge: true, minBarSpacing: 0.2, borderColor: grid },
+      timeScale: { ...TIME_AXIS, rightOffset: 2, fixLeftEdge: true, fixRightEdge: true, minBarSpacing: 0.2, borderColor: grid },
       ...CHART_INTERACTION,
       layout: {
         ...CHART_INTERACTION.layout,
@@ -295,6 +295,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
 
     const handler = (param: MouseEventParams<Time>) => setHoverTime(typeof param.time === 'string' ? param.time : null);
     chart.subscribeCrosshairMove(handler);
+    attachTimeAxis(chart);
     chartRef.current = chart;
     setChartGen((g) => g + 1);
     return () => {

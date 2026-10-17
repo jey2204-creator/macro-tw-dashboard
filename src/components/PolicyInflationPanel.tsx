@@ -13,7 +13,7 @@ import {
 } from 'lightweight-charts';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSeriesMap } from '../hooks/useData';
-import { CHART_INTERACTION, resetPaneStretch, resetPriceScales } from '../lib/chartInteraction';
+import { CHART_INTERACTION, resetPaneStretch, resetPriceScales, attachTimeAxis, TIME_AXIS } from '../lib/chartInteraction';
 import { loadPref, savePref } from '../lib/storage';
 import { cssVar } from '../lib/stressFormat';
 import {
@@ -135,7 +135,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       autoSize: true,
       crosshair: { mode: CrosshairMode.Normal },
       localization: { locale: 'zh-TW', dateFormat: 'yyyy-MM-dd' },
-      timeScale: { rightOffset: 2, fixLeftEdge: true, fixRightEdge: true, minBarSpacing: 0.05, borderColor: grid },
+      timeScale: { ...TIME_AXIS, rightOffset: 2, fixLeftEdge: true, fixRightEdge: true, minBarSpacing: 0.05, borderColor: grid },
       ...CHART_INTERACTION,
       layout: {
         ...CHART_INTERACTION.layout,
@@ -219,6 +219,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
 
     const handler = (param: MouseEventParams<Time>) => setHoverTime(typeof param.time === 'string' ? param.time : null);
     chart.subscribeCrosshairMove(handler);
+    attachTimeAxis(chart);
     chartRef.current = chart;
     setChartGen((g) => g + 1);
     return () => {
