@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Bar, SeriesFile } from '../src/shared/types';
 
 // lightweight-charts 需要 canvas，jsdom 沒有：以假物件記錄呼叫，驗證窗格與序列的配置
-const chartLog = { seriesPanes: [] as number[], watermarks: [] as string[], removed: 0 };
+const chartLog = { seriesPanes: [] as number[], watermarks: [] as string[], removed: 0, markers: [] as { time: string; text?: string }[] };
 vi.mock('lightweight-charts', () => {
   const makeChart = () => {
     const panes = new Map<number, { setStretchFactor: () => void }>();
@@ -27,6 +27,11 @@ vi.mock('lightweight-charts', () => {
   };
   return {
     createChart: () => makeChart(),
+    createSeriesMarkers: () => ({
+      setMarkers: (m: { time: string; text?: string }[]) => {
+        chartLog.markers = m;
+      },
+    }),
     createTextWatermark: (_pane: unknown, opts: { lines: { text: string }[] }) => {
       chartLog.watermarks.push(opts.lines[0]!.text);
       return { detach: () => {} };
@@ -55,7 +60,7 @@ function series(id: string, bars: Bar[], closeOnly = false): SeriesFile {
   };
 }
 const flat = (d: string, c: number): Bar => [d, c, c, c, c];
-const DATES = ['2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09', '2026-10-12', '2026-10-13'];
+const DATES = ['2026-10-01', '2026-10-02', '2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09', '2026-10-12', '2026-10-13'];
 const FILES: Record<string, SeriesFile> = {
   taiex: series('taiex', DATES.map((d, i) => flat(d, 46000 + i * 100))),
   sox: series('sox', DATES.map((d, i) => flat(d, 7000 + i * 10))),
@@ -70,6 +75,7 @@ beforeEach(() => {
   chartLog.seriesPanes = [];
   chartLog.watermarks = [];
   chartLog.removed = 0;
+  chartLog.markers = [];
   window.localStorage.clear();
   vi.stubGlobal('fetch', (url: string) => {
     const id = /series\/([a-z0-9_]+)\.json/.exec(url)?.[1] ?? '';
@@ -156,5 +162,24 @@ describe('跨市場對照面板', () => {
     expect(legend.textContent).toContain('MA240 —');
     fireEvent.click(screen.getByRole('button', { name: 'MA5' }));
     expect(onMas).toHaveBeenCalledWith([10, 20, 60, 120, 240]);
+  });
+
+  it('公布日標記：10/14 CPI 公布 → 10/15 加權 K 棒標記；關閉後清空並記住', async () => {
+    render(<CrossMarketPanel version="v1" themeKey="auto-false-tw" mas={[]} onMas={() => {}} now={new Date('2026-10-16T08:00:00Z')} />);
+    await waitFor(() => expect(chartLog.markers.length).toBeGreaterThan(0));
+    // 2026-10-02 就業報告（ET 08:30）→ 10/05 台股；10/14 CPI 的反應日 10/15 不在資料內，9 月前的事件早於資料起點不標
+    expect(chartLog.markers).toEqual([
+      { time: '2026-10-05', position: 'belowBar', shape: 'circle', size: 0.6, color: expect.any(String), text: '非農' },
+    ]);
+    expect(screen.getByText(/2022 年起加權反應日/)).toBeTruthy();
+    // 5 年以上不顯示
+    fireEvent.click(screen.getByRole('button', { name: '5年' }));
+    await waitFor(() => expect(chartLog.markers).toEqual([]));
+    fireEvent.click(screen.getByRole('button', { name: '1年' }));
+    await waitFor(() => expect(chartLog.markers.length).toBe(1));
+    expect(chartLog.markers[0]!.text).toBeUndefined(); // 1 年只有圓點
+    fireEvent.click(screen.getByRole('button', { name: /公布日標記/ }));
+    await waitFor(() => expect(chartLog.markers).toEqual([]));
+    expect(window.localStorage.getItem('cm-events')).toBe('0');
   });
 });
