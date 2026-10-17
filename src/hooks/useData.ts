@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { CalendarFile } from '../shared/calendar';
 import type { BreadthStressFile } from '../shared/breadthStress';
+import type { ForeignChipsFile } from '../shared/foreignChips';
 import type { MarginStressFile } from '../shared/marginStress';
 import type { BacktestFile, SeriesFile, SummaryFile } from '../shared/types';
 
@@ -157,6 +158,22 @@ export function useBreadthStress(version: string | null): BreadthStressFile | nu
     if (!version) return;
     const ctrl = new AbortController();
     getJson<BreadthStressFile>(`${DATA_BASE}/breadth-stress.json?v=${encodeURIComponent(version)}`, ctrl.signal)
+      .then((data) => setState({ v: version, data: data.schemaVersion === 1 && Array.isArray(data.rows) ? data : null }))
+      .catch(() => {
+        if (!ctrl.signal.aborted) setState({ v: version, data: null });
+      });
+    return () => ctrl.abort();
+  }, [version]);
+  return state && state.v === version ? state.data : null;
+}
+
+/** 外資籌碼對照（選用資料）：載入失敗時回傳 null */
+export function useForeignChips(version: string | null): ForeignChipsFile | null {
+  const [state, setState] = useState<{ v: string; data: ForeignChipsFile | null } | null>(null);
+  useEffect(() => {
+    if (!version) return;
+    const ctrl = new AbortController();
+    getJson<ForeignChipsFile>(`${DATA_BASE}/foreign-chips.json?v=${encodeURIComponent(version)}`, ctrl.signal)
       .then((data) => setState({ v: version, data: data.schemaVersion === 1 && Array.isArray(data.rows) ? data : null }))
       .catch(() => {
         if (!ctrl.signal.aborted) setState({ v: version, data: null });

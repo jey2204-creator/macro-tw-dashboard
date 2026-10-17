@@ -1056,3 +1056,18 @@ th {
 .cm-event .swatch {
   border-radius: 50%;
 }
+/* 外資籌碼對照：四窗格 */
+.fc-host {
+  height: max(520px, 72vh);
+}
+.fc .verdict.fc-extreme,
+.fc-legend .fc-extreme {
+  color: var(--warn);
+}
+.fc-legend {
+  min-height: 0;
+  line-height: 1.5;
+}
+.fc .ms-pane-labels {
+  white-space: normal;
+}
