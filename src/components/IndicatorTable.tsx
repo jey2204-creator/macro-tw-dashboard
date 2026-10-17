@@ -201,6 +201,10 @@ export function IndicatorTable({
 }) {
   return (
     <div className="groups">
+      {/* 整張表只放一行說明（不放每個分類標頭，避免每組多一行）：手機沒有 hover，日期意思要看得到 */}
+      <p className="table-legend">
+        日期＝<b>資料截止日</b>（最後一筆，非事件日）；9月／2026Q3＝數據期間
+      </p>
       {CATEGORY_ORDER.map((cat) => {
         const list = rows.filter((r) => r.ev.def.category === cat);
         if (list.length === 0) return null;
