@@ -68,7 +68,7 @@ export function dataDateLabel(
     const q = Math.floor((Number(m) - 1) / 3) + 1;
     return { text: `${y}Q${q}`, title: `數據所屬季度：${y} 年第 ${q} 季` };
   }
-  return { text: `至 ${shortDate(d, today)}`, title: `資料截止日：${d}（最後一筆資料的日期，不是事件或公布日）` };
+  return { text: shortDate(d, today), title: `資料截止日：${d}（最後一筆資料的日期，不是事件或公布日）` };
 }
 
 /** 帶正負號與單位（流量型累計值） */
