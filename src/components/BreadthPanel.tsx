@@ -11,7 +11,7 @@ import {
   type SeriesMarker,
   type Time,
 } from 'lightweight-charts';
-import { CHART_INTERACTION, resetPaneStretch, resetPriceScales } from '../lib/chartInteraction';
+import { CHART_INTERACTION, resetPaneStretch, resetPriceScales, attachTimeAxis, TIME_AXIS } from '../lib/chartInteraction';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { cssVar, f2, pctCell } from '../lib/stressFormat';
 import {
@@ -48,9 +48,10 @@ function BreadthChart({ data, range, themeKey, resetKey }: { data: BreadthStress
       autoSize: true,
       crosshair: { mode: CrosshairMode.Normal },
       localization: { locale: 'zh-TW', dateFormat: 'yyyy-MM-dd' },
-      timeScale: { rightOffset: 2, fixLeftEdge: true, fixRightEdge: true, minBarSpacing: 0.1 },
+      timeScale: { ...TIME_AXIS, rightOffset: 2, fixLeftEdge: true, fixRightEdge: true, minBarSpacing: 0.1 },
       ...CHART_INTERACTION,
     });
+    attachTimeAxis(chart);
     chartRef.current = chart;
     return () => {
       chart.remove();

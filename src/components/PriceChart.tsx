@@ -12,7 +12,7 @@ import {
   type SeriesType,
   type Time,
 } from 'lightweight-charts';
-import { CHART_INTERACTION, resetPriceScales } from '../lib/chartInteraction';
+import { CHART_INTERACTION, resetPriceScales, attachTimeAxis, TIME_AXIS } from '../lib/chartInteraction';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { MA_PERIODS, rangeStart, sma, type MaPeriod, type RangeKey } from '../shared/timeseries';
 import type { Bar } from '../shared/types';
@@ -81,10 +81,11 @@ export function PriceChart({ bars, kind, mas, range, decimals, showPct, themeKey
       autoSize: true,
       crosshair: { mode: CrosshairMode.Normal },
       localization: { locale: 'zh-TW', dateFormat: 'yyyy-MM-dd' },
-      timeScale: { rightOffset: 2, fixLeftEdge: true, fixRightEdge: true, minBarSpacing: 0.2 },
+      timeScale: { ...TIME_AXIS, rightOffset: 2, fixLeftEdge: true, fixRightEdge: true, minBarSpacing: 0.2 },
       ...CHART_INTERACTION,
       rightPriceScale: { autoScale: true, scaleMargins: { top: 0.12, bottom: 0.06 } },
     });
+    attachTimeAxis(chart);
     chartRef.current = chart;
     return () => {
       chart.remove();

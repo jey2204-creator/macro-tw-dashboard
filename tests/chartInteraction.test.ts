@@ -31,3 +31,12 @@ describe('圖表手機互動設定', () => {
     expect(setStretchFactor).toHaveBeenCalledWith(PANE_STRETCH[0]);
   });
 });
+
+describe('finestTickType', () => {
+  it('依可視天數決定最細印到哪一層', async () => {
+    const { finestTickType } = await import('../src/lib/chartInteraction');
+    expect(finestTickType(90)).toBe(3); // 3個月：到日
+    expect(finestTickType(365)).toBe(1); // 1年：到月
+    expect(finestTickType(365 * 5)).toBe(0); // 5年：只印年
+  });
+});
