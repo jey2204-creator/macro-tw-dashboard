@@ -1,10 +1,10 @@
-import { formatChange, formatSigned, formatValue, shortDate } from '../lib/format';
+import { dataDateLabel, formatChange, formatSigned, formatValue } from '../lib/format';
 import { releaseLines } from '../lib/release';
 import type { IndicatorReleases } from '../shared/calendar';
 import { statusTags, type RowModel } from '../lib/rows';
 import { CATEGORY_LABEL, CATEGORY_ORDER, INDICATOR_MAP, toneClass } from '../shared/indicators';
 import { SIGNAL_LABEL } from '../shared/regime';
-import { quarterLabel, sumLast } from '../shared/signals';
+import { sumLast } from '../shared/signals';
 import { SignalBadge } from './SignalBadge';
 import { fmtValue, impactPieces, thresholdPieces } from '../lib/outlookText';
 import type { IndicatorOutlook } from '../shared/outlook';
@@ -92,7 +92,8 @@ function Row({
   const chVal = def.flow ? sum5 : row.change.abs;
   const chDir = toneClass(def, chVal === null ? '' : chVal > 0 ? 'up' : chVal < 0 ? 'down' : '');
   const trendTone = toneClass(def, row.direction.dir) || 'flat';
-  const dateText = def.frequency === 'quarterly' && last ? quarterLabel(last[0]) : shortDate(last?.[0], today);
+  // 日資料「至 10/16」＝資料截止日；月資料「9月」、季資料「2026Q3」＝數據期間（同一行，不多佔一列）
+  const dateLabel = dataDateLabel(def.frequency, last?.[0], today);
   const value =
     def.pairId && row.pairValue !== null && last
       ? `${row.pairValue.toFixed(2)}–${last[1].toFixed(2)}%`
@@ -115,8 +116,8 @@ function Row({
           {/* 日期接在短名後同一行，名稱格少一行；過時等標籤仍跟著日期 */}
           <span className="head">
             <span className="name">{def.short}</span>
-            <span className="date">
-              {dateText}
+            <span className="date" title={dateLabel.title}>
+              {dateLabel.text}
               {tags.map((t) => (
                 <span key={t.text} className={`tag ${t.cls}`} title={t.title}>
                   {t.text}

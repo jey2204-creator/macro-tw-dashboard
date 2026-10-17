@@ -46,6 +46,31 @@ export function shortDate(d: string | null | undefined, today?: string): string 
   return `${y!.slice(2)}/${m}/${day}`;
 }
 
+/**
+ * 指標列短名後的日期標籤，依資料頻率區分「資料截止日」與「數據所屬期間」：
+ * - 日資料（FRED 每個營業日一筆、Yahoo 收盤）：「至 10/16」＝最後一筆資料日，不是公布日或事件日（Fed 9/17 升息，列上仍顯示「至 10/16」）
+ * - 月資料：「9月」＝該筆數據所屬月份（跨年才加年份）
+ * - 季資料：「2026Q3」
+ */
+export function dataDateLabel(
+  frequency: IndicatorDef['frequency'],
+  d: string | null | undefined,
+  today?: string,
+): { text: string; title: string } {
+  if (!d) return { text: '—', title: '沒有資料' };
+  const [y, m] = d.split('-');
+  if (frequency === 'monthly') {
+    const mon = `${Number(m)}月`;
+    const text = today && today.slice(0, 4) === y ? mon : `${y!.slice(2)}年${mon}`;
+    return { text, title: `數據所屬月份：${y} 年 ${Number(m)} 月` };
+  }
+  if (frequency === 'quarterly') {
+    const q = Math.floor((Number(m) - 1) / 3) + 1;
+    return { text: `${y}Q${q}`, title: `數據所屬季度：${y} 年第 ${q} 季` };
+  }
+  return { text: shortDate(d, today), title: `資料截止日：${d}（最後一筆資料的日期，不是事件或公布日）` };
+}
+
 /** 帶正負號與單位（流量型累計值） */
 export function formatSigned(def: Pick<IndicatorDef, 'unit' | 'decimals'>, v: number | null): string {
   if (v === null || !Number.isFinite(v)) return '—';
