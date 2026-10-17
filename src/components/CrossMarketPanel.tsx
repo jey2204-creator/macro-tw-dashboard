@@ -4,9 +4,12 @@ import {
   CrosshairMode,
   LineSeries,
   createChart,
+  createSeriesMarkers,
   createTextWatermark,
   type IChartApi,
+  type ISeriesMarkersPluginApi,
   type MouseEventParams,
+  type SeriesMarker,
   type Time,
 } from 'lightweight-charts';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
@@ -28,9 +31,21 @@ import {
   type CorrSeries,
   type Session,
 } from '../shared/crossMarket';
+import type { CalendarFile } from '../shared/calendar';
+import { todayInTaipei } from '../shared/dates';
+import {
+  EVENT_KIND_TEXT,
+  eventLabel,
+  eventStats,
+  eventsByReactionDay,
+  pastEvents,
+  surprisesFor,
+  type EventKind,
+  type MarkedEvent,
+} from '../shared/eventMarkers';
 import { INDICATOR_MAP } from '../shared/indicators';
 import { MA_PERIODS, rangeStart, sma, type MaPeriod, type RangeKey } from '../shared/timeseries';
-import type { Bar } from '../shared/types';
+import type { Bar, SummaryFile } from '../shared/types';
 
 const RANGES: { k: RangeKey; label: string }[] = [
   { k: '3M', label: '3個月' },
@@ -42,6 +57,13 @@ const RANGES: { k: RangeKey; label: string }[] = [
 const COMPARE_IDS = COMPARE_SERIES.map((s) => s.id);
 /** 上窗格（加權）較高，其餘對照窗格等高 */
 const TOP_STRETCH = 1.6;
+/** 公布日標記顏色（CSS 變數）；只在 1 年以內的區間顯示（5 年約 180 個點會蓋住 K 線、撐開 Y 軸） */
+const EVENT_COLOR_VAR: Record<EventKind, string> = { cpi: '--accent', jobs: '--warn', fomc: '--text-1' };
+const EVENT_RANGES: RangeKey[] = ['3M', '6M', '1Y'];
+/** 文字標籤只在半年以內顯示（1 年約 36 個標記，加文字會互相蓋住） */
+const EVENT_TEXT_RANGES: RangeKey[] = ['3M', '6M'];
+/** 波動統計起算日（通膨主題期） */
+const STATS_SINCE = '2022-01-01';
 
 interface PaneData {
   id: string;
@@ -119,12 +141,18 @@ interface Props {
   /** 均線週期，與單一指標圖共用同一個設定 */
   mas: MaPeriod[];
   onMas: (mas: MaPeriod[]) => void;
+  /** 公布日標記的市場預期與實績（選用） */
+  calendar?: CalendarFile | null;
+  summary?: SummaryFile | null;
+  now?: Date;
 }
 
-export function CrossMarketPanel({ version, themeKey, mas, onMas }: Props) {
+export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = null, summary = null, now }: Props) {
   const sectionRef = useRef<HTMLElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
+  const [showEvents, setShowEvents] = useState(() => loadPref('cm-events', ['1', '0'] as const, '1') === '1');
   const near = useNearViewport(sectionRef);
   const [selected, setSelected] = useState<string[]>(() => loadIdList('cm-ids', COMPARE_IDS, DEFAULT_COMPARE));
   const [aligned, setAligned] = useState(() => loadPref('cm-align', ['1', '0'] as const, '1') === '1');
@@ -156,6 +184,15 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas }: Props) {
 
   const twDates = useMemo(() => twBars.map((b) => b[0]), [twBars]);
   const twMa = useMemo(() => maLines(twBars, mas), [twBars, mas]);
+  const nowDate = now ?? new Date();
+  const today = todayInTaipei(nowDate);
+  // 公布日標記：歷史清單＋日程表已發生者 → 反應日（公布後第一個台股交易日）
+  const eventsByDay = useMemo(() => (twDates.length ? eventsByReactionDay(pastEvents(today), twDates) : new Map<string, MarkedEvent[]>()), [twDates, today]);
+  const stats = useMemo(() => (twBars.length ? eventStats(twBars, eventsByDay, STATS_SINCE) : null), [twBars, eventsByDay]);
+  const toggleEvents = () => {
+    setShowEvents(!showEvents);
+    savePref('cm-events', showEvents ? '0' : '1');
+  };
 
   const panes = useMemo<PaneData[]>(() => {
     if (twBars.length === 0) return [];
@@ -237,6 +274,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas }: Props) {
 
     const tw = chart.addSeries(CandlestickSeries, { ...candleOpts, priceFormat: { type: 'price', precision: 0, minMove: 1 } }, 0);
     tw.setData(twBars.map((b) => ({ time: b[0] as Time, open: b[1], high: b[2], low: b[3], close: b[4] })));
+    markersRef.current = createSeriesMarkers(tw, []);
     addMas(0, twBars, twMa);
     watermark(0, `加權指數${maText}`);
 
@@ -262,8 +300,35 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas }: Props) {
       chart.unsubscribeCrosshairMove(handler);
       chart.remove();
       chartRef.current = null;
+      markersRef.current = null;
     };
   }, [twBars, twMa, panes, aligned, mas, themeKey]);
+
+  // 公布日標記：加權 K 棒下方一個圓點＋文字（CPI 藍、非農橘、FOMC 黑）；只在 1 年以內區間顯示
+  useEffect(() => {
+    const m = markersRef.current;
+    if (!m) return;
+    if (!showEvents || !EVENT_RANGES.includes(range)) {
+      m.setMarkers([]);
+      return;
+    }
+    const withText = EVENT_TEXT_RANGES.includes(range);
+    const markers: SeriesMarker<Time>[] = [];
+    for (const [day, evs] of eventsByDay) {
+      // 同一天多個事件只畫一個點，顏色取最先的；文字合併
+      const first = evs[0]!;
+      markers.push({
+        time: day as Time,
+        position: 'belowBar',
+        shape: 'circle',
+        size: 0.6,
+        color: cssVar(EVENT_COLOR_VAR[first.kind]),
+        text: withText ? [...new Set(evs.map((e) => EVENT_KIND_TEXT[e.kind]))].join('+') : undefined,
+      });
+    }
+    markers.sort((a, b) => (a.time as string).localeCompare(b.time as string));
+    m.setMarkers(markers);
+  }, [chartGen, showEvents, range, eventsByDay]);
 
   // 時間區間與重設：每個窗格 Y 軸自動縮放、高度比例設回預設
   useEffect(() => {
@@ -304,14 +369,28 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas }: Props) {
         rho: Object.fromEntries(CORR_WINDOWS.map((n) => [n, p.corr[n][ci] ?? null])) as Record<(typeof CORR_WINDOWS)[number], number | null>,
       };
     });
+    const day = hoverTime ?? twBar?.[0] ?? '';
+    const events = (showEvents ? eventsByDay.get(day) ?? [] : []).map((e) => {
+      const sv = surprisesFor(e, calendar, summary, nowDate).filter((v) => v.actual !== null);
+      const text = sv
+        .map((v) => {
+          const short = INDICATOR_MAP[v.def.indicatorId]?.short ?? v.def.indicatorId;
+          const name = v.def.label === short ? short : `${short} ${v.def.label}`;
+          return `${name} ${v.actual}${v.def.unit === '%' ? '%' : 'k'}${v.event.forecast !== null ? `（預期 ${v.event.forecast}，${v.diff! > 0 ? '+' : ''}${v.diff}）` : ''}`;
+        })
+        .join('、');
+      return { label: eventLabel(e), kind: e.kind, text };
+    });
     return {
-      date: hoverTime ?? twBar?.[0] ?? '',
+      date: day,
+      events,
       twBar,
       twPct: twBar && twPrev ? ((twBar[4] - twPrev[4]) / Math.abs(twPrev[4])) * 100 : null,
       ma: Object.fromEntries(mas.map((p) => [p, twBar ? twMa[p]?.[twIdx] : null])) as Partial<Record<MaPeriod, number | null | undefined>>,
       rows,
     };
-  }, [twBars, twDates, twMa, panes, hoverTime, mas]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [twBars, twDates, twMa, panes, hoverTime, mas, showEvents, eventsByDay, calendar, summary]);
 
   const latestRho = panes.map((p) => ({ label: p.label, rho60: p.corr[60].at(-1) ?? null }));
   const failed = COMPARE_SERIES.flatMap((s) => {
@@ -340,7 +419,17 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas }: Props) {
         日經、KOSPI、櫃買、USD/TWD 與台股同時段，不移。ρ20／ρ60＝日報酬 20／60 日相關係數，看背離與關係斷裂，不是預測；三張圖同向不等於三個證據。
         黃金、VIX 用來分辨今天是哪種行情（黃金↑油↑殖利率↓＝地緣避險；黃金↑美元↑殖利率↑＝通膨），不是預測戰爭。
         TLT 是美債價格，與 10Y 殖利率鏡像（殖利率 +10bp ≈ TLT −1.6%），兩張圖是同一件事，不算兩個證據；用途是比 FRED 早 1–2 天看到昨晚美債走勢。
+        加權 K 棒下方的圓點是 CPI（藍）、就業報告（橘）、FOMC（黑）公布後台股第一個交易日：美東 08:30／14:00 公布時台股已收盤，反應落在隔天。
+        動市場的是「實績 vs 預期」不是年增率本身，所以用標記不畫月線；2026-10 起有市場預期，點到該日圖例會列出驚喜值。標記只在 1 年以內的區間顯示（半年以內才附文字）。
       </p>
+      {stats && Number.isFinite(stats.normal.meanAbs) && (
+        <p className="small muted num cm-stats">
+          {STATS_SINCE.slice(0, 4)} 年起加權反應日 |漲跌| 均值：平常日 {stats.normal.meanAbs.toFixed(2)}%（≥1.5% 佔 {stats.normal.bigPct.toFixed(0)}%）｜
+          {(['cpi', 'jobs', 'fomc'] as const)
+            .map((k) => `${EVENT_KIND_TEXT[k]} ${stats.kinds[k].meanAbs.toFixed(2)}%（${stats.kinds[k].bigPct.toFixed(0)}%，n=${stats.kinds[k].n}）`)
+            .join('｜')}
+        </p>
+      )}
 
       <div className="cp-mas" role="group" aria-label="對照組合">
         <div className="seg" role="group" aria-label="一鍵切換組合">
@@ -352,6 +441,9 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas }: Props) {
         </div>
         <button type="button" className="ma-chip" aria-pressed={aligned} onClick={() => setAlign(!aligned)} title="美系序列往後對齊一個台股交易日">
           ⏰ 美系對齊台股交易日
+        </button>
+        <button type="button" className="ma-chip" aria-pressed={showEvents} onClick={toggleEvents} title="CPI／就業報告／FOMC 公布後台股第一個交易日">
+          📌 公布日標記
         </button>
       </div>
 
@@ -408,6 +500,13 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas }: Props) {
                 <span className="muted">{legend.date}</span> 加權 <b>{fmtNum(legend.twBar?.[4], 0)}</b>{' '}
                 <span className={legend.twPct !== null ? (legend.twPct > 0 ? 'up' : legend.twPct < 0 ? 'down' : '') : ''}>{fmtPct(legend.twPct)}</span>
               </div>
+              {legend.events.map((e) => (
+                <div key={e.label} className="cm-event">
+                  <i className="swatch" style={{ background: `var(${EVENT_COLOR_VAR[e.kind]})` }} />
+                  {e.label}
+                  {e.text && <span className="muted">：{e.text}</span>}
+                </div>
+              ))}
               {mas.length > 0 && (
                 <div className="ma-legend">
                   {mas.map((p) => (

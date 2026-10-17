@@ -189,6 +189,9 @@ export default function App() {
               themeKey={themeKey}
               mas={prefs.mas}
               onMas={(mas) => onPrefs({ ...prefs, mas })}
+              calendar={calendar}
+              summary={summary}
+              now={new Date(nowMs)}
             />
             <PolicyInflationPanel version={summary.generatedAt} themeKey={themeKey} />
             <MarginStressPanel data={marginStress} themeKey={themeKey} />

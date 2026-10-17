@@ -1035,3 +1035,11 @@ th {
 .pi .ma-chip[aria-disabled='true'] {
   cursor: default;
 }
+/* 跨市場對照：公布日標記統計與圖例 */
+.cm-stats {
+  margin: 0 0 6px;
+  line-height: 1.5;
+}
+.cm-event .swatch {
+  border-radius: 50%;
+}
