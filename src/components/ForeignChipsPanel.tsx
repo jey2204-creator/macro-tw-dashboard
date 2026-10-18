@@ -267,7 +267,8 @@ export function ForeignChipsPanel({ data, themeKey }: { data: ForeignChipsFile |
   const firstOf = (k: 2 | 5) => data.rows.find((r) => r[k] !== null)?.[0] ?? null;
   const netFrom = firstOf(2);
   const oiFrom = firstOf(5);
-  const shortHistory = !netFrom || netFrom > '2015-01-01' || !oiFrom || oiFrom > '2015-01-01';
+  // 買賣超可回補到 2010、期貨淨 OI 免費來源只到 2018-06
+  const shortHistory = !netFrom || netFrom > '2011-01-01' || !oiFrom || oiFrom > '2019-01-01';
   const extreme = [
     latest.foreignOiPctl !== null && latest.foreignOiPctl <= EXTREME_LOW && '外資期空單極端',
     latest.foreignOiPctl !== null && latest.foreignOiPctl >= EXTREME_HIGH && '外資期多單極端',

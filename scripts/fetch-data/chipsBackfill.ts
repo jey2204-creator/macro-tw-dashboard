@@ -1,10 +1,11 @@
 /**
- * 外資籌碼「長期歷史」回補：外資買賣超（證交所 BFI82U，上市）＋外資台指期／散戶小台淨未平倉（期交所）。
+ * 外資籌碼「長期歷史」回補：外資買賣超（證交所 BFI82U，上市，2010 起）＋外資台指期／散戶小台淨未平倉（2018-06 起）。
  *
  * 每日排程只保留約 1～2 年；外資籌碼對照的百分位與事件回測需要 2010 年起的資料，
  * 因此另以此腳本回補，結果存進 repo 的 data/chips-history.json（由 workflow commit）。
  *
- *  - 期交所：TXF、MXF 各以 300 天一段查詢（約 40 個請求），第一次執行時一次抓完
+ *  - 期貨淨未平倉：期交所官方只回溯約 3 年，2018-06-05 起改用 FinMind（逐年一段，約 18 個請求）；
+ *    2010～2018-06 沒有免費來源，不回補
  *  - 證交所：BFI82U 一次只能查一天，由新到舊逐日抓；兩次請求至少間隔 --interval-ms（預設 2500ms）
  *  - 可續傳：cursor 記錄已處理到的最早日期，下次從 cursor 前一天繼續
  *  - 時間預算 --budget-min 用完就存檔結束；連續網路錯誤視為被擋，存檔後以代碼 2 結束
@@ -17,8 +18,8 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { addDays, todayInTaipei } from '../../src/shared/dates';
 import type { ChipsHistoryFile, ChipsHistoryRow } from '../../src/shared/foreignChips';
-import type { Bar } from '../../src/shared/types';
 import { getJson, getText, sleep, type HttpOptions } from './http';
+import { FINMIND_FUTURES_START, fetchFinmindFutures, finmindToBars } from './sources/finmind';
 import { fetchTaifexRange } from './sources/taifex';
 import { parseBfi82u, weekdaysBackward } from './sources/twseChips';
 
@@ -90,20 +91,33 @@ function rowFor(f: ChipsHistoryFile, index: Map<string, ChipsHistoryRow>, date: 
   return r;
 }
 
-/** 期交所：TXF 外資、MXF 散戶推算，一次抓完 [target, 今天] */
+/**
+ * 期貨淨未平倉歷史：期交所官方查詢只回溯約 3 年，更早改用 FinMind（2018-06-05 起，匿名可用，
+ * 數值與期交所一致：2026-10-16 外資 −93,675、散戶 +11,123 兩邊相同）。逐年一段，每段 TX、MTX 各一個請求。
+ * 同一天若每日排程（期交所）也有資料，合併時以每日排程為準。
+ */
 async function backfillFutures(f: ChipsHistoryFile, index: Map<string, ChipsHistoryRow>, target: string, today: string) {
-  const put = (bars: Bar[], k: 2 | 3) => {
-    for (const b of bars) rowFor(f, index, b[0])[k] = b[4];
-  };
-  const log = (sym: string) => (s: string, e: string, n: number) => console.log(`  [futures] ${sym} ${s}～${e}：${n} 天`);
-  const txf = await fetchTaifexRange('TXF_FOREIGN_OI', target, today, http, false, log('TXF'));
-  put(txf, 2);
-  const mxf = await fetchTaifexRange('MXF_RETAIL_OI', target, today, http, false, log('MXF'));
-  put(mxf, 3);
-  f.futuresFrom = txf[0]?.[0] ?? null;
-  console.log(
-    `::notice title=futures::TXF ${txf.length} 天（${txf[0]?.[0]}～${txf.at(-1)?.[0]}）、MXF ${mxf.length} 天（${mxf[0]?.[0]}～${mxf.at(-1)?.[0]}）`,
-  );
+  const start = target > FINMIND_FUTURES_START ? target : FINMIND_FUTURES_START;
+  let txfN = 0;
+  let mxfN = 0;
+  let first: string | null = null;
+  for (let s = start; s <= today; ) {
+    const e0 = `${s.slice(0, 4)}-12-31`;
+    const e = e0 < today ? e0 : today;
+    const tx = finmindToBars(await fetchFinmindFutures(http, 'TX', s, e), 'foreign');
+    await sleep(1500);
+    const mtx = finmindToBars(await fetchFinmindFutures(http, 'MTX', s, e), 'retail');
+    await sleep(1500);
+    for (const b of tx) rowFor(f, index, b[0])[2] = b[4];
+    for (const b of mtx) rowFor(f, index, b[0])[3] = b[4];
+    txfN += tx.length;
+    mxfN += mtx.length;
+    first ??= tx[0]?.[0] ?? null;
+    console.log(`  [futures] FinMind ${s}～${e}：外資 ${tx.length} 天、散戶 ${mtx.length} 天`);
+    s = addDays(e, 1);
+  }
+  f.futuresFrom = first;
+  console.log(`::notice title=futures::FinMind 外資台指期 ${txfN} 天、散戶小台 ${mxfN} 天，自 ${first}`);
 }
 
 /** 診斷：印出期交所回應開頭（CSV 下載與單日 HTML 查詢頁各一） */
@@ -132,37 +146,6 @@ export async function probeTaifexRaw(d: string) {
   }
 }
 
-interface FinmindRow {
-  date: string;
-  institutional_investors: string;
-  long_open_interest_balance_volume: number;
-  short_open_interest_balance_volume: number;
-}
-
-/** FinMind 期貨三大法人（2018-06 起，匿名可用）：外資台指期淨 OI 與散戶小台淨 OI（−三大法人合計） */
-export function finmindToBars(rows: FinmindRow[], kind: 'foreign' | 'retail'): Bar[] {
-  const by = new Map<string, FinmindRow[]>();
-  for (const r of rows) by.set(r.date, [...(by.get(r.date) ?? []), r]);
-  const out: Bar[] = [];
-  for (const [date, list] of [...by.entries()].sort(([x], [y]) => (x < y ? -1 : 1))) {
-    const net = (r: FinmindRow) => r.long_open_interest_balance_volume - r.short_open_interest_balance_volume;
-    let v: number | null = null;
-    if (kind === 'foreign') {
-      const f = list.find((r) => r.institutional_investors.startsWith('外資'));
-      v = f ? net(f) : null;
-    } else if (list.length >= 3) v = -list.reduce((s, r) => s + net(r), 0);
-    if (v !== null && Number.isFinite(v)) out.push([date, v, v, v, v]);
-  }
-  return out;
-}
-
-async function fetchFinmind(id: 'TX' | 'MTX', start: string, end: string): Promise<FinmindRow[]> {
-  const url = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanFuturesInstitutionalInvestors&data_id=${id}&start_date=${start}&end_date=${end}`;
-  const j = await getJson<{ status?: number; msg?: string; data?: FinmindRow[] }>(url, http);
-  if (j.status !== 200) throw new Error(`FinMind ${id} status=${j.status} ${j.msg}`);
-  return j.data ?? [];
-}
-
 async function probe(dates: string[], intervalMs: number) {
   if (process.argv.includes('--raw')) {
     for (const d of dates) {
@@ -171,8 +154,8 @@ async function probe(dates: string[], intervalMs: number) {
       const mxf = await fetchTaifexRange('MXF_RETAIL_OI', d, d, http);
       let fm: string;
       try {
-        const tx = finmindToBars(await fetchFinmind('TX', d, d), 'foreign');
-        const mtx = finmindToBars(await fetchFinmind('MTX', d, d), 'retail');
+        const tx = finmindToBars(await fetchFinmindFutures(http, 'TX', d, d), 'foreign');
+        const mtx = finmindToBars(await fetchFinmindFutures(http, 'MTX', d, d), 'retail');
         fm = `FinMind 外資=${tx[0]?.[4] ?? '無'} 散戶=${mtx[0]?.[4] ?? '無'}`;
       } catch (e) {
         fm = `FinMind 錯誤 ${e instanceof Error ? e.message : String(e)}`;
@@ -216,13 +199,14 @@ async function main() {
   f.target = target;
   const index = new Map(f.rows.map((r) => [r[0], r]));
 
-  // 1) 期交所：還沒抓過（或目標更早）才抓；失敗不影響證交所回補
-  if (f.futuresFrom === null || f.futuresFrom > addDays(target, 14)) {
+  // 1) 期貨：還沒抓過（或目標更早）才抓；失敗不影響證交所回補
+  const futuresTarget = target > FINMIND_FUTURES_START ? target : FINMIND_FUTURES_START;
+  if (f.futuresFrom === null || f.futuresFrom > addDays(futuresTarget, 14)) {
     try {
       await backfillFutures(f, index, target, today);
       await save(file, f);
     } catch (e) {
-      console.log(`::warning title=futures::期交所回補失敗：${e instanceof Error ? e.message : String(e)}`);
+      console.log(`::warning title=futures::期貨回補失敗：${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
