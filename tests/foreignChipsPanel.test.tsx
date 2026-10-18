@@ -17,7 +17,7 @@ vi.mock('lightweight-charts', () => {
       removeSeries: () => {},
       panes: () => [...panes.keys()].sort((a, b) => a - b).map((k) => panes.get(k)!),
       priceScale: () => ({ applyOptions: () => {} }),
-      timeScale: () => ({ setVisibleLogicalRange: () => {}, applyOptions: () => {}, subscribeVisibleLogicalRangeChange: () => {}, getVisibleRange: () => null, timeToCoordinate: () => null }),
+      timeScale: () => ({ setVisibleLogicalRange: () => {}, width: () => 0, applyOptions: () => {}, subscribeVisibleLogicalRangeChange: () => {}, unsubscribeVisibleLogicalRangeChange: () => {}, getVisibleRange: () => null, timeToCoordinate: () => null }),
       subscribeCrosshairMove: () => {},
       unsubscribeCrosshairMove: () => {},
       applyOptions: () => {},
@@ -89,5 +89,15 @@ describe('外資籌碼對照面板', () => {
   it('沒有資料時不渲染', () => {
     const { container } = render(<ForeignChipsPanel data={null} themeKey="x" />);
     expect(container.innerHTML).toBe('');
+  });
+});
+
+describe('rightGapBars', () => {
+  it('把 24px 換算成 K 棒數，至少 2 根', async () => {
+    const { rightGapBars } = await import('../src/components/ForeignChipsPanel');
+    expect(rightGapBars(0, 60)).toBe(2);
+    expect(rightGapBars(340, 62)).toBeCloseTo(24 / (340 / 64), 5);
+    expect(rightGapBars(340, 250)).toBeGreaterThan(17);
+    expect(rightGapBars(2000, 20)).toBe(2);
   });
 });
