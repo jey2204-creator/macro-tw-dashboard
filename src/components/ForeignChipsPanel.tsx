@@ -40,6 +40,8 @@ const RANGES: { k: RangeKey; label: string }[] = [
   { k: '10Y', label: '10年' },
   { k: 'ALL', label: '全部' },
 ];
+/** 事件文字最少相隔幾根 K 棒，避免疊字 */
+const MARKER_GAP = 6;
 /** 四個窗格高度比例：加權／買賣超／外資期 OI／散戶小台 OI */
 const FC_PANE_STRETCH = [0.34, 0.22, 0.22, 0.22] as const;
 
@@ -113,21 +115,31 @@ function ChipsChart({ data, range, themeKey, resetKey }: { data: ForeignChipsFil
       retail_long: warn,
       sell_no_fall: accent,
     };
-    const markers: SeriesMarker<Time>[] = data.events.map((e) => ({
-      time: e.date as Time,
-      position: e.type === 'oi_long' || e.type === 'buy_extreme' || e.type === 'retail_long' ? 'aboveBar' : 'belowBar',
-      shape: 'circle',
-      color: markerColor[e.type],
-      text: FOREIGN_MARKER_TEXT[e.type],
-    }));
-    // 同一波內再創極端：小一號的標記，不進回測表
+    // 同日事件合併成一個點（文字以「／」相連）；相鄰 ≤ MARKER_GAP 根 K 棒的事件只有第一個帶文字
+    const byDate = new Map<string, ForeignEventType[]>();
+    for (const e of data.events) byDate.set(e.date, [...(byDate.get(e.date) ?? []), e.type]);
+    const markers: SeriesMarker<Time>[] = [];
+    let lastTextIdx = -Infinity;
+    for (const [date, types] of byDate) {
+      const idx = indexByDate.get(date) ?? 0;
+      const above = types.some((t) => t === 'oi_long' || t === 'buy_extreme' || t === 'retail_long');
+      const withText = idx - lastTextIdx > MARKER_GAP;
+      if (withText) lastTextIdx = idx;
+      markers.push({
+        time: date as Time,
+        position: above ? 'aboveBar' : 'belowBar',
+        shape: 'circle',
+        color: markerColor[types[0]!],
+        text: withText ? types.map((t) => FOREIGN_MARKER_TEXT[t]).join('／') : undefined,
+      });
+    }
+    // 同一波內再創極端：小一號、不帶文字（圖例會顯示）
     for (const m of data.deeper) {
       markers.push({
         time: m.date as Time,
         position: m.kind === 'oi_long' ? 'aboveBar' : 'belowBar',
         shape: 'circle',
         color: m.kind === 'oi_long' ? up : down,
-        text: m.kind === 'oi_long' ? 'OI多↑' : 'OI空↓',
         size: 0.6,
       });
     }
@@ -180,7 +192,7 @@ function ChipsChart({ data, range, themeKey, resetKey }: { data: ForeignChipsFil
     return () => {
       for (const s of all.reverse()) chart.removeSeries(s);
     };
-  }, [data, themeKey]);
+  }, [data, themeKey, indexByDate]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -213,11 +225,18 @@ function ChipsChart({ data, range, themeKey, resetKey }: { data: ForeignChipsFil
   const i = hoverIdx ?? data.rows.length - 1;
   const row = data.rows[i];
   const sgn = (v: number | null) => (v === null ? '' : v > 0 ? 'up' : v < 0 ? 'down' : '');
+  const dayEvents = row
+    ? [
+        ...data.events.filter((e) => e.date === row[0]).map((e) => FOREIGN_EVENT_LABEL[e.type]),
+        ...data.deeper.filter((m) => m.date === row[0]).map((m) => (m.kind === 'oi_long' ? '外資期多單再增' : '外資期空單再增')),
+      ]
+    : [];
   return (
     <div className="pricechart ms-chart">
       {row && (
         <div className="legend num fc-legend" aria-live="off">
           <span className="muted">{row[0]}</span> 加權 <b>{row[1].toLocaleString('en-US', { maximumFractionDigits: 0 })}</b>
+          {dayEvents.length > 0 && <span className="fc-day-events">● {dayEvents.join('、')}</span>}
           <br />
           外資買賣超 <b className={sgn(row[2])}>{f2(row[2], true)}</b> 億｜5日 <b className={sgn(row[3])}>{f2(row[3], true)}</b>｜20日{' '}
           <b className={sgn(row[4])}>{f2(row[4], true)}</b> <span className={`muted ${pctlClass(data.pctl.cum20[i])}`}>（{pctlText(data.pctl.cum20[i])}）</span>
@@ -228,7 +247,7 @@ function ChipsChart({ data, range, themeKey, resetKey }: { data: ForeignChipsFil
         </div>
       )}
       <div className="ms-pane-labels small muted" aria-hidden>
-        上：加權（● 事件、小● 再創極端） ｜ 二：外資買賣超（億）＋5日細／20日粗累計 ｜ 三：外資期淨OI（口）＋日增減 ｜ 四：散戶小台淨OI（口）＋日增減
+        上：加權（● 事件、小● 再創極端，點一下看名稱） ｜ 二：外資買賣超（億）＋5日細／20日粗累計 ｜ 三：外資期淨OI（口）＋日增減 ｜ 四：散戶小台淨OI（口）＋日增減
       </div>
       <div ref={hostRef} className="chart-host fc-host" />
     </div>

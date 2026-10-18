@@ -1071,3 +1071,8 @@ th {
 .fc .ms-pane-labels {
   white-space: normal;
 }
+.fc-day-events {
+  margin-left: 6px;
+  color: var(--warn);
+  font-weight: 600;
+}
