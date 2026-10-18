@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { ChartPanel, type ChartPrefs } from './components/ChartPanel';
 import { IndicatorTable } from './components/IndicatorTable';
+import { BackToTop, JumpNav } from './components/JumpNav';
 import { BreadthPanel } from './components/BreadthPanel';
 import { CrossMarketPanel } from './components/CrossMarketPanel';
 import { EventsBar } from './components/EventsBar';
@@ -121,6 +122,7 @@ export default function App() {
 
   return (
     <div className="app">
+      <div className="sticky-top">
       <header className="topbar">
         <div className="brand">
           <h1>美國總經 → 台股儀表板</h1>
@@ -154,6 +156,8 @@ export default function App() {
           </button>
         </div>
       </header>
+      {summary && regime && <JumpNav />}
+      </div>
 
       {summaryState.status === 'loading' && <p className="pad muted">載入中…</p>}
       {summaryState.status === 'error' && (
@@ -220,6 +224,7 @@ export default function App() {
           )}
         </main>
       )}
+      {summary && regime && !overlay && <BackToTop />}
     </div>
   );
 }
