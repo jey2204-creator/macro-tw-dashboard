@@ -103,7 +103,7 @@ describe('政策利率 vs 通膨面板', () => {
     await waitFor(() =>
       expect(chartLog.watermarks).toEqual([
         'Fed 利率 vs 通膨年增（%）｜虛線 2% 目標',
-        '實質政策利率＝Fed − 核心CPI（pp）｜虛線 +1 緊縮、0 中性',
+        '實質＝Fed − 核心CPI（pp）｜虛線 +1 緊縮、0 中性',
       ]),
     );
     // 圖內不畫名稱方框；只有 Fed、核心CPI、實質三個最新值標籤，參考線不佔軸標籤（避免被推開、蓋住線）
