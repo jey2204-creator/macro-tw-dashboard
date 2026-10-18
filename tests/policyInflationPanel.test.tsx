@@ -106,12 +106,12 @@ describe('政策利率 vs 通膨面板', () => {
         '實質＝Fed − 核心CPI（pp）｜虛線 +1 緊縮、0 中性',
       ]),
     );
-    // 圖內不畫名稱方框；只有 Fed、核心CPI、實質三個最新值標籤，參考線不佔軸標籤（避免被推開、蓋住線）
+    // 圖內不畫名稱方框、軸上不放最新值標籤（短區間會壓住刻度）；參考線也不佔軸標籤
     expect(chartLog.series).toEqual([
-      { pane: 0, title: undefined, label: true },
-      { pane: 0, title: undefined, label: true },
       { pane: 0, title: undefined, label: false },
-      { pane: 1, title: undefined, label: true },
+      { pane: 0, title: undefined, label: false },
+      { pane: 0, title: undefined, label: false },
+      { pane: 1, title: undefined, label: false },
     ]);
     expect(chartLog.priceLines).toEqual([
       { price: 2, title: undefined, axis: false },
@@ -126,8 +126,8 @@ describe('政策利率 vs 通膨面板', () => {
     render(<PolicyInflationPanel version="v1" themeKey="auto-false-tw" />);
     await waitFor(() => expect(chartLog.series.length).toBe(4));
     fireEvent.click(screen.getByRole('button', { name: '核心 PCE' }));
-    // 重建圖表：第一次 1 條無標籤（整體CPI），加 PCE 後再 2 條
-    await waitFor(() => expect(chartLog.series.filter((s) => !s.label).length).toBe(3));
+    // 重建圖表：第一次 4 條，加 PCE 後 5 條
+    await waitFor(() => expect(chartLog.series.length).toBe(9));
     expect(chartLog.series.every((s) => s.title === undefined)).toBe(true);
     expect(window.localStorage.getItem('pi-pce')).toBe('1');
     expect(screen.getByRole('button', { name: '5年' }).getAttribute('aria-pressed')).toBe('true');

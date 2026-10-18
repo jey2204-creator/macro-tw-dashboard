@@ -1,5 +1,6 @@
 import {
   BaselineSeries,
+  type AutoscaleInfoProvider,
   ColorType,
   CrosshairMode,
   LineSeries,
@@ -150,15 +151,26 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
     });
     const pct = { type: 'price' as const, precision: 2, minMove: 0.01 };
     const toData = (pts: readonly Point[]) => pts.map(([d, v]) => ({ time: d as Time, value: v }));
+    // 軸上不放最新值標籤（區間短時刻度密，標籤一定會壓住刻度數字）；數值看上方讀數列，水平虛線標出位置
+    // Y 軸至少涵蓋參考線，避免短區間把小幅變化放大成陡升、門檻線跑出畫面
+    const includeRange = (lo: number, hi: number): AutoscaleInfoProvider => (original) => {
+      const r = original();
+      if (!r?.priceRange) return r;
+      return { ...r, priceRange: { minValue: Math.min(r.priceRange.minValue, lo), maxValue: Math.max(r.priceRange.maxValue, hi) } };
+    };
 
     // 上窗格：Fed（階梯，深色粗線）、核心 CPI（強調色）、整體 CPI（細虛線）、核心 PCE（細線）
     const fedS = chart.addSeries(
       LineSeries,
-      { color: cssVar('--text-1'), lineWidth: 2, lineType: LineType.WithSteps, priceFormat: pct },
+      { color: cssVar('--text-1'), lineWidth: 2, lineType: LineType.WithSteps, priceFormat: pct, lastValueVisible: false },
       0,
     );
     fedS.setData(toData(fed));
-    const coreS = chart.addSeries(LineSeries, { color: cssVar('--accent'), lineWidth: 2, priceFormat: pct }, 0);
+    const coreS = chart.addSeries(
+      LineSeries,
+      { color: cssVar('--accent'), lineWidth: 2, priceFormat: pct, lastValueVisible: false, autoscaleInfoProvider: includeRange(FED_TARGET, FED_TARGET) },
+      0,
+    );
     coreS.setData(toData(coreCpi));
     coreS.createPriceLine({
       price: FED_TARGET,
@@ -197,6 +209,8 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
         bottomFillColor2: 'rgba(42, 120, 214, 0.25)',
         lineWidth: 2,
         priceFormat: pct,
+        lastValueVisible: false,
+        autoscaleInfoProvider: includeRange(0, REAL_RATE_TIGHT),
       },
       1,
     );
