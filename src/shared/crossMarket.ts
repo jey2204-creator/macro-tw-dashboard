@@ -70,6 +70,18 @@ export function nextWeekday(date: string): string {
 }
 
 /**
+ * 去掉週六、日的 K 棒。Yahoo 亞洲匯率（TWD=X、KRW=X）週末抓取時會多一根當日報價（OHLC 常相同），
+ * 放進共用時間軸會在加權沒有 K 棒的位置多出一格。
+ */
+export function dropWeekendBars(bars: Bar[]): Bar[] {
+  const isWeekend = (d: string) => {
+    const dow = new Date(parseDate(d)).getUTCDay();
+    return dow === 0 || dow === 6;
+  };
+  return bars.some((b) => isWeekend(b[0])) ? bars.filter((b) => !isWeekend(b[0])) : bars;
+}
+
+/**
  * 把「台股收盤後才交易」的序列往後對齊到台股下一個交易日。
  * 日期 d 的 K 棒 → 第一個 ≥ d+1 的台股交易日；超出已知台股日期時取下一個平日。
  * 多根落在同一個台股交易日（連假）→ 合併成一根：開＝第一根開、高低取極值、收＝最後一根收。

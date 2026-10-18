@@ -20,6 +20,7 @@ import { loadIdList, loadPref, savePref } from '../lib/storage';
 import { cssVar } from '../lib/stressFormat';
 import {
   alignToTwCalendar,
+  dropWeekendBars,
   COMPARE_PRESETS,
   COMPARE_SERIES,
   CORR_WINDOWS,
@@ -202,7 +203,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
       if (!selected.includes(spec.id)) continue;
       const f = files[spec.id];
       if (!f || f.status !== 'ready' || f.data.data.length === 0) continue;
-      const raw = f.data.data;
+      const raw = dropWeekendBars(f.data.data);
       const bars = spec.session === 'us' && aligned ? alignToTwCalendar(raw, twDates) : raw;
       const def = INDICATOR_MAP[spec.id];
       out.push({
