@@ -36,63 +36,47 @@ jobs:
             return rows;
           }
           const group = process.argv[2];
-          if (group === 'krx') {
-            const loader = await get('https://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201020302', { headers: { 'User-Agent': CH } });
-            const cookie = (loader.headers.getSetCookie?.() ?? []).map((c) => c.split(';')[0]).join('; ');
-            note('KRX loader', `status=${loader.status} ${loader.ms}ms size=${loader.buf.length} cookie=${cookie.slice(0, 60)}`);
-            const body = new URLSearchParams({ bld: 'dbms/MDC/STAT/standard/MDC02203', locale: 'ko_KR', inqTpCd: '2', trdVolVal: '2', askBid: '3', mktId: 'STK', etf: 'EF', etn: 'EN', elw: 'EW', strtDd: '20261005', endDd: '20261016', share: '1', money: '1', csvxls_isNo: 'false' });
-            for (const [name, ua, ck] of [['KRX MDC02203 ch+cookie', CH, cookie], ['KRX MDC02203 me', ME, '']]) {
-              const r = await get('https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd', {
-                method: 'POST', body,
-                headers: { 'User-Agent': ua, 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', Referer: 'https://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201020302', 'X-Requested-With': 'XMLHttpRequest', ...(ck ? { Cookie: ck } : {}) },
-              });
-              note(name, `status=${r.status} ${r.ms}ms size=${r.buf.length} | ${new TextDecoder().decode(r.buf).slice(0, 400)}`);
-            }
+          async function show(name, url, h = {}) {
+            const r = await get(url, { headers: { 'User-Agent': CH, Accept: 'application/json, text/plain, */*', ...h } });
+            const ct = r.headers.get('content-type') ?? '';
+            let txt = new TextDecoder().decode(r.buf);
+            if (!/json/.test(ct)) txt = strip(txt.replace(/<script[\s\S]*?<\/script>/g, ''));
+            const keys = /json/.test(ct) ? [...new Set([...txt.matchAll(/"([A-Za-z]*(?:[Dd]eal|[Tt]rend|[Ii]nvest|[Ff]oreign)[A-Za-z]*)"/g)].map((m) => m[1]))].join(',') : '';
+            note(name, `status=${r.status} ${r.ms}ms ct=${ct.split(';')[0]} size=${r.buf.length} keys=[${keys}] | ${txt.slice(0, 380)}`);
           }
-          if (group === 'naver') {
-            const dec = new TextDecoder('euc-kr');
-            for (const [name, q, ua] of [
-              ['Naver sosok=空 ch', 'bizdate=20261016&sosok=&page=1', CH],
-              ['Naver sosok=01 ch', 'bizdate=20261016&sosok=01&page=1', CH],
-              ['Naver sosok=02 ch', 'bizdate=20261016&sosok=02&page=1', CH],
-              ['Naver sosok=01 me', 'bizdate=20261016&sosok=01&page=1', ME],
-              ['Naver 01 page2', 'bizdate=20261016&sosok=01&page=2', CH],
-              ['Naver 01 2010', 'bizdate=20100115&sosok=01&page=1', CH],
-              ['Naver 01 2005', 'bizdate=20050114&sosok=01&page=1', CH],
-              ['Naver 01 2020crash', 'bizdate=20200320&sosok=01&page=1', CH],
-            ]) {
-              const r = await get(`https://finance.naver.com/sise/investorDealTrendDay.naver?${q}`, { headers: { 'User-Agent': ua, Referer: 'https://finance.naver.com/sise/sise_trans_style.naver' } });
-              const html = dec.decode(r.buf);
-              const rows = naverRows(html);
-              const mk = /코스닥/.test(html) ? 'KOSDAQ字樣' : /코스피|유가증권/.test(html) ? 'KOSPI字樣' : '無市場字樣';
-              note(name, `status=${r.status} ${r.ms}ms size=${r.buf.length} rows=${rows.length} ${mk} | ${rows.slice(0, 4).join(' ;; ')}`);
-            }
+          const NV = 'https://m.stock.naver.com/api/index/KOSPI';
+          const DR = { Referer: 'https://finance.daum.net/domestic/investors' };
+          if (group === 'naver1') {
+            await show('NV trend bizdate', `${NV}/trend?bizdate=20261010`);
+            await show('NV trend page', `${NV}/trend?pageSize=20&page=1`);
+            await show('NV trend startIdx', `${NV}/trend?startIdx=0&pageSize=20`);
+            await show('NV integration', `${NV}/integration`);
+            await show('NV price', `${NV}/price?pageSize=3&page=1`);
+            await show('NV investorTrend', `${NV}/investorTrend?pageSize=5&page=1`);
+            await show('NV trend list', `${NV}/trend/list?pageSize=5&page=1`);
+            await show('NV trend day', `${NV}/trend/day?pageSize=5&page=1`);
           }
-          if (group === 'other') {
-            const dec = new TextDecoder('euc-kr');
-            const outer = await get('https://finance.naver.com/sise/sise_trans_style.naver?sosok=01', { headers: { 'User-Agent': CH } });
-            const oh = dec.decode(outer.buf);
-            const iframes = [...oh.matchAll(/<iframe[^>]*src="([^"]+)"/g)].map((m) => m[1]);
-            const tabs = [...oh.matchAll(/sosok=(\d*)[^>]*>([^<]{1,12})</g)].map((m) => `${m[1]}=${strip(m[2])}`).slice(0, 10);
-            note('Naver 外框', `status=${outer.status} iframes=${iframes.join(' , ').slice(0, 300)} tabs=${tabs.join(' ')}`);
-            for (const [name, url, h] of [
-              ['Naver m index basic', 'https://m.stock.naver.com/api/index/KOSPI/basic', {}],
-              ['Naver m index trend', 'https://m.stock.naver.com/api/index/KOSPI/trend', {}],
-              ['Naver m investor', 'https://m.stock.naver.com/api/index/KOSPI/investor', {}],
-              ['Naver sise_index KOSPI', 'https://finance.naver.com/sise/sise_index.naver?code=KOSPI', {}],
-              ['Daum investor KOSPI', 'https://finance.daum.net/api/market_index/investor?market=KOSPI&page=1&perPage=10', { Referer: 'https://finance.daum.net/domestic/investors' }],
-            ]) {
-              const r = await get(url, { headers: { 'User-Agent': CH, Accept: 'application/json, text/plain, */*', ...h } });
-              const ct = r.headers.get('content-type') ?? '';
-              const txt = (/euc-kr/i.test(ct) ? dec : new TextDecoder()).decode(r.buf);
-              const body = /json/.test(ct) ? txt : strip(txt.replace(/<script[\s\S]*?<\/script>/g, '')).replace(/^.*?(외국인)/, '$1');
-              note(name, `status=${r.status} ${r.ms}ms ct=${ct} size=${r.buf.length} | ${body.slice(0, 400)}`);
-            }
+          if (group === 'naver2') {
+            await show('NV stock integ', 'https://m.stock.naver.com/api/stock/005930/integration');
+            await show('NV stock trend', 'https://m.stock.naver.com/api/stock/005930/trend?pageSize=3&bizdate=20261016');
+            await show('NV front investor', 'https://m.stock.naver.com/front-api/index/investorTrend?indexCode=KOSPI&pageSize=5');
+            await show('NV front deal', 'https://m.stock.naver.com/front-api/marketIndex/investorDealTrend?category=KOSPI&pageSize=5');
+            await show('NV KOSDAQ trend', 'https://m.stock.naver.com/api/index/KOSDAQ/trend');
+            await show('NV trend 2010', `${NV}/trend?bizdate=20100115`);
+          }
+          if (group === 'daum') {
+            await show('Daum index days', 'https://finance.daum.net/api/market_index/days?page=1&perPage=3&market=KOSPI&pagination=true', DR);
+            await show('Daum investor days', 'https://finance.daum.net/api/investor/days?page=1&perPage=5&market=KOSPI&pagination=true', DR);
+            await show('Daum investor KOSPI days', 'https://finance.daum.net/api/investor/KOSPI/days?page=1&perPage=5&pagination=true', DR);
+            await show('Daum investor market', 'https://finance.daum.net/api/investor/market?market=KOSPI&page=1&perPage=5', DR);
+            await show('Daum investor trend', 'https://finance.daum.net/api/investor/trend?market=KOSPI&page=1&perPage=5', DR);
+            await show('Daum investor', 'https://finance.daum.net/api/investor?market=KOSPI&page=1&perPage=5', DR);
+            await show('Daum page', 'https://finance.daum.net/domestic/investors', {});
           }
           EOF
-      - name: KRX
-        run: node /tmp/probe.mjs krx
-      - name: Naver 投資人別
-        run: node /tmp/probe.mjs naver
-      - name: 其他候選
-        run: node /tmp/probe.mjs other
+      - name: Naver 新版 API（指數）
+        run: node /tmp/probe.mjs naver1
+      - name: Naver 新版 API（其他）
+        run: node /tmp/probe.mjs naver2
+      - name: Daum
+        run: node /tmp/probe.mjs daum
