@@ -132,27 +132,52 @@ export async function probeTaifexRaw(d: string) {
   }
 }
 
-/** 診斷：FinMind 期貨三大法人（2018-06 起）匿名能否取得、欄位與外資淨未平倉 */
-async function probeFinmind(d: string) {
-  for (const id of ['TX', 'MTX']) {
-    try {
-      const url = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanFuturesInstitutionalInvestors&data_id=${id}&start_date=${d}&end_date=${addDays(d, 3)}`;
-      const j = await getJson<{ status?: number; msg?: string; data?: Record<string, unknown>[] }>(url, http);
-      const rows = j.data ?? [];
-      console.log(`::notice title=finmind ${id} ${d}::status=${j.status} msg=${j.msg} n=${rows.length} ${JSON.stringify(rows.slice(0, 3)).slice(0, 700)}`);
-    } catch (e) {
-      console.log(`::warning title=finmind ${id} ${d}::${e instanceof Error ? e.message : String(e)}`);
-    }
+interface FinmindRow {
+  date: string;
+  institutional_investors: string;
+  long_open_interest_balance_volume: number;
+  short_open_interest_balance_volume: number;
+}
+
+/** FinMind 期貨三大法人（2018-06 起，匿名可用）：外資台指期淨 OI 與散戶小台淨 OI（−三大法人合計） */
+export function finmindToBars(rows: FinmindRow[], kind: 'foreign' | 'retail'): Bar[] {
+  const by = new Map<string, FinmindRow[]>();
+  for (const r of rows) by.set(r.date, [...(by.get(r.date) ?? []), r]);
+  const out: Bar[] = [];
+  for (const [date, list] of [...by.entries()].sort(([x], [y]) => (x < y ? -1 : 1))) {
+    const net = (r: FinmindRow) => r.long_open_interest_balance_volume - r.short_open_interest_balance_volume;
+    let v: number | null = null;
+    if (kind === 'foreign') {
+      const f = list.find((r) => r.institutional_investors.startsWith('外資'));
+      v = f ? net(f) : null;
+    } else if (list.length >= 3) v = -list.reduce((s, r) => s + net(r), 0);
+    if (v !== null && Number.isFinite(v)) out.push([date, v, v, v, v]);
   }
+  return out;
+}
+
+async function fetchFinmind(id: 'TX' | 'MTX', start: string, end: string): Promise<FinmindRow[]> {
+  const url = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanFuturesInstitutionalInvestors&data_id=${id}&start_date=${start}&end_date=${end}`;
+  const j = await getJson<{ status?: number; msg?: string; data?: FinmindRow[] }>(url, http);
+  if (j.status !== 200) throw new Error(`FinMind ${id} status=${j.status} ${j.msg}`);
+  return j.data ?? [];
 }
 
 async function probe(dates: string[], intervalMs: number) {
   if (process.argv.includes('--raw')) {
     for (const d of dates) {
-      // 期交所：單日（結束日＝起始日）
+      // 期交所單日 vs FinMind，同一天外資台指期淨 OI 與散戶小台
       const txf = await fetchTaifexRange('TXF_FOREIGN_OI', d, d, http);
-      console.log(`::notice title=taifex ${d}::TXF外資=${txf[0]?.[4] ?? '無'}`);
-      await probeFinmind(d);
+      const mxf = await fetchTaifexRange('MXF_RETAIL_OI', d, d, http);
+      let fm: string;
+      try {
+        const tx = finmindToBars(await fetchFinmind('TX', d, d), 'foreign');
+        const mtx = finmindToBars(await fetchFinmind('MTX', d, d), 'retail');
+        fm = `FinMind 外資=${tx[0]?.[4] ?? '無'} 散戶=${mtx[0]?.[4] ?? '無'}`;
+      } catch (e) {
+        fm = `FinMind 錯誤 ${e instanceof Error ? e.message : String(e)}`;
+      }
+      console.log(`::notice title=fut ${d}::期交所 外資=${txf[0]?.[4] ?? '無'} 散戶=${mxf[0]?.[4] ?? '無'}｜${fm}`);
     }
     return;
   }
