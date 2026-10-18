@@ -31,6 +31,43 @@ export type ForeignRow = [
   retailOiChg: number | null,
 ];
 
+/**
+ * data/chips-history.json（由 chipsBackfill.ts 產生、workflow commit）每列：
+ * [日期, 外資買賣超（億，上市）, 外資台指期淨未平倉（口）, 散戶小台淨未平倉（口，推算）]，缺值為 null。
+ */
+export type ChipsHistoryRow = [date: string, net: number | null, foreignOi: number | null, retailOi: number | null];
+
+export interface ChipsHistoryFile {
+  schemaVersion: 1;
+  note: string;
+  /** 回補目標（最早日期） */
+  target: string;
+  /** 證交所買賣超已處理到的最早日期（含） */
+  cursor: string;
+  /** 期交所期貨已抓到的最早日期；null＝尚未抓 */
+  futuresFrom: string | null;
+  updatedAt: string;
+  parseErrors: string[];
+  rows: ChipsHistoryRow[];
+}
+
+/** 長期歷史（舊）＋每日排程（新）合併成三條 Bar 序列；同一天以每日排程為準 */
+export function mergeChipsHistory(
+  history: ChipsHistoryRow[],
+  live: { net?: Bar[]; foreignOi?: Bar[]; retailOi?: Bar[] },
+): { net: Bar[]; foreignOi: Bar[]; retailOi: Bar[] } {
+  const col = (k: 1 | 2 | 3, bars: Bar[] | undefined): Bar[] => {
+    const m = new Map<string, Bar>();
+    for (const r of history) {
+      const v = r[k];
+      if (v !== null && Number.isFinite(v)) m.set(r[0], [r[0], v, v, v, v]);
+    }
+    for (const b of bars ?? []) m.set(b[0], b);
+    return [...m.values()].sort((a, b) => (a[0] < b[0] ? -1 : 1));
+  };
+  return { net: col(1, live.net), foreignOi: col(2, live.foreignOi), retailOi: col(3, live.retailOi) };
+}
+
 export type ForeignEventType = 'oi_short' | 'oi_long' | 'sell_extreme' | 'buy_extreme' | 'retail_long' | 'sell_no_fall' | 'sell_exhaust';
 
 export const PCTL_WINDOW = 250;

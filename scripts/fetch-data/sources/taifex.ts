@@ -185,6 +185,41 @@ export function splitRange(start: string, end: string, maxDays: number): [string
   return out;
 }
 
+/**
+ * 抓 [start, end] 期間的每日數值（依資料集切段）。
+ * 實測：結束日晚於「最新已公布日」（例如盤後資料尚未公布、週末）時，期交所回傳錯誤頁，
+ * 因此某段查無資料時把結束日逐日往前退，最多 7 天。整段都沒有資料（例如早於資料起點）就跳過。
+ */
+export async function fetchTaifexRange(
+  symbol: TaifexSymbol,
+  start: string,
+  end: string,
+  http: HttpOptions,
+  fast = false,
+  onSegment?: (s: string, e: string, n: number) => void,
+): Promise<Bar[]> {
+  const q = queryFor(symbol);
+  const opts: HttpOptions = q.timeoutMs ? { ...http, timeoutMs: Math.max(http.timeoutMs ?? 0, q.timeoutMs) } : http;
+  const byDate = new Map<string, Bar>();
+  for (const [s, e0] of splitRange(start, end, q.maxDays)) {
+    let e = e0;
+    let n = 0;
+    for (let tries = 0; tries < 8 && e >= s; tries++) {
+      const text = await getText(q.url, opts, { method: 'POST', form: q.form(s, e), encoding: 'big5' });
+      if (!fast) await sleep(500);
+      const got = q.parse(text);
+      if (got.length > 0) {
+        for (const b of got) byDate.set(b[0], b);
+        n = got.length;
+        break;
+      }
+      e = addDays(e, -1);
+    }
+    onSegment?.(s, e0, n);
+  }
+  return [...byDate.values()].sort((a, b) => (a[0] < b[0] ? -1 : 1));
+}
+
 export async function fetchTaifex(
   symbol: TaifexSymbol,
   since: string | null,
@@ -193,28 +228,8 @@ export async function fetchTaifex(
   fast = false,
 ): Promise<SourceFetchResult> {
   // 有快取：從快取最後一天前 10 天抓到今天（涵蓋修正與連假）；無快取：回補 2 年。
-  // 期交所單次查詢有期間上限，因此依資料集切段。
-  const q = queryFor(symbol);
-  const opts: HttpOptions = q.timeoutMs ? { ...http, timeoutMs: Math.max(http.timeoutMs ?? 0, q.timeoutMs) } : http;
   const start = since ? addDays(since, -10) : addDays(today, -TAIFEX_BACKFILL_DAYS);
-  const ranges = splitRange(start, today, q.maxDays);
-  const byDate = new Map<string, Bar>();
-  for (const [s, e0] of ranges) {
-    // 實測：結束日晚於「最新已公布日」（例如盤後資料尚未公布、週末）時，期交所回傳錯誤頁。
-    // 因此查無資料時把結束日逐日往前退，最多 7 天。
-    let e = e0;
-    for (let tries = 0; tries < 8 && e >= s; tries++) {
-      const text = await getText(q.url, opts, { method: 'POST', form: q.form(s, e), encoding: 'big5' });
-      if (!fast) await sleep(500);
-      const got = q.parse(text);
-      if (got.length > 0) {
-        for (const b of got) byDate.set(b[0], b);
-        break;
-      }
-      e = addDays(e, -1);
-    }
-  }
-  const bars = [...byDate.values()].sort((a, b) => (a[0] < b[0] ? -1 : 1));
+  const bars = await fetchTaifexRange(symbol, start, today, http, fast);
   if (bars.length === 0) throw new Error('期交所沒有回傳任何資料');
   return { bars, closeOnly: true, partial: false, incremental: since !== null };
 }
