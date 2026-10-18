@@ -4,15 +4,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Bar, SeriesFile } from '../src/shared/types';
 
 // lightweight-charts 需要 canvas，jsdom 沒有：以假物件記錄序列配置
-const chartLog = { series: [] as { pane: number; title?: string }[], watermarks: [] as string[], priceLines: [] as string[] };
+const chartLog = {
+  series: [] as { pane: number; title?: string; label: boolean }[],
+  watermarks: [] as string[],
+  priceLines: [] as { price: number; title?: string; axis: boolean }[],
+};
 vi.mock('lightweight-charts', () => {
   const makeChart = () => {
     const panes = new Map<number, { setStretchFactor: () => void }>();
     return {
-      addSeries: (_type: unknown, opts: { title?: string }, paneIndex = 0) => {
-        chartLog.series.push({ pane: paneIndex, title: opts.title });
+      addSeries: (_type: unknown, opts: { title?: string; lastValueVisible?: boolean }, paneIndex = 0) => {
+        chartLog.series.push({ pane: paneIndex, title: opts.title, label: opts.lastValueVisible !== false });
         if (!panes.has(paneIndex)) panes.set(paneIndex, { setStretchFactor: () => {} });
-        return { setData: () => {}, createPriceLine: (o: { title: string }) => chartLog.priceLines.push(o.title) };
+        return { setData: () => {}, createPriceLine: (o: { price: number; title?: string; axisLabelVisible?: boolean }) =>
+            chartLog.priceLines.push({ price: o.price, title: o.title, axis: o.axisLabelVisible !== false }),
+        };
       },
       panes: () => [...panes.keys()].sort((a, b) => a - b).map((k) => panes.get(k)!),
       priceScale: () => ({ applyOptions: () => {} }),
@@ -94,14 +100,24 @@ describe('政策利率 vs 通膨面板', () => {
     const state = document.querySelector('.pi-state')!.textContent ?? '';
     expect(state).toMatch(/\+1\.10pp（Fed 4\.10% − 核心CPI 3\.0%）→ 緊縮（≥ \+1pp）/);
     expect(state).toMatch(/距 2% 目標 \+1\.00pp/);
-    await waitFor(() => expect(chartLog.watermarks).toEqual(['Fed 利率 vs 通膨年增（%）', '實質政策利率＝Fed − 核心CPI（pp）']));
+    await waitFor(() =>
+      expect(chartLog.watermarks).toEqual([
+        'Fed 利率 vs 通膨年增（%）｜虛線 2% 目標',
+        '實質政策利率＝Fed − 核心CPI（pp）｜虛線 +1 緊縮、0 中性',
+      ]),
+    );
+    // 圖內不畫名稱方框；只有 Fed、核心CPI、實質三個最新值標籤，參考線不佔軸標籤（避免被推開、蓋住線）
     expect(chartLog.series).toEqual([
-      { pane: 0, title: 'Fed' },
-      { pane: 0, title: '核心CPI' },
-      { pane: 0, title: 'CPI' },
-      { pane: 1, title: '實質' },
+      { pane: 0, title: undefined, label: true },
+      { pane: 0, title: undefined, label: true },
+      { pane: 0, title: undefined, label: false },
+      { pane: 1, title: undefined, label: true },
     ]);
-    expect(chartLog.priceLines).toEqual(['Fed 目標 2%', '0 中性', '+1 緊縮']);
+    expect(chartLog.priceLines).toEqual([
+      { price: 2, title: undefined, axis: false },
+      { price: 0, title: undefined, axis: false },
+      { price: 1, title: undefined, axis: false },
+    ]);
     expect(screen.getByRole('button', { name: '整體 CPI' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('button', { name: '核心 PCE' }).getAttribute('aria-pressed')).toBe('false');
   });
@@ -110,7 +126,9 @@ describe('政策利率 vs 通膨面板', () => {
     render(<PolicyInflationPanel version="v1" themeKey="auto-false-tw" />);
     await waitFor(() => expect(chartLog.series.length).toBe(4));
     fireEvent.click(screen.getByRole('button', { name: '核心 PCE' }));
-    await waitFor(() => expect(chartLog.series.some((s) => s.title === '核心PCE')).toBe(true));
+    // 重建圖表：第一次 1 條無標籤（整體CPI），加 PCE 後再 2 條
+    await waitFor(() => expect(chartLog.series.filter((s) => !s.label).length).toBe(3));
+    expect(chartLog.series.every((s) => s.title === undefined)).toBe(true);
     expect(window.localStorage.getItem('pi-pce')).toBe('1');
     expect(screen.getByRole('button', { name: '5年' }).getAttribute('aria-pressed')).toBe('true');
     fireEvent.click(screen.getByRole('button', { name: '全部' }));
