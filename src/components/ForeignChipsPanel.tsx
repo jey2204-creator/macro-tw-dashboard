@@ -62,7 +62,7 @@ function ChipsChart({ data, range, themeKey, resetKey }: { data: ForeignChipsFil
       autoSize: true,
       crosshair: { mode: CrosshairMode.Normal },
       localization: { locale: 'zh-TW', dateFormat: 'yyyy-MM-dd' },
-      timeScale: { ...TIME_AXIS, rightOffset: 2, fixLeftEdge: true, fixRightEdge: true, minBarSpacing: 0.1 },
+      timeScale: { ...TIME_AXIS, rightOffset: 8, fixLeftEdge: true, fixRightEdge: false, minBarSpacing: 0.1 },
       ...CHART_INTERACTION,
     });
     attachTimeAxis(chart);
@@ -102,7 +102,7 @@ function ChipsChart({ data, range, themeKey, resetKey }: { data: ForeignChipsFil
     };
 
     // 上：加權指數＋事件標記
-    const taiex = add(chart.addSeries(LineSeries, { color: text1, lineWidth: 2, priceFormat: lotsFmt, title: '加權' }, 0));
+    const taiex = add(chart.addSeries(LineSeries, { color: text1, lineWidth: 2, priceFormat: lotsFmt }, 0));
     taiex.setData(data.rows.map((r) => ({ time: r[0] as Time, value: r[1] })));
     const markerColor: Record<ForeignEventType, string> = {
       oi_short: down,
@@ -123,16 +123,16 @@ function ChipsChart({ data, range, themeKey, resetKey }: { data: ForeignChipsFil
 
     // 中：外資買賣超柱＋5／20 日累計線
     // 單日柱用獨立刻度貼在窗格底部，否則被 ±數千億的累計線壓得看不見
-    const net = add(chart.addSeries(HistogramSeries, { priceFormat: lotsFmt, title: '買賣超', priceScaleId: 'net', priceLineVisible: false }, 1));
+    const net = add(chart.addSeries(HistogramSeries, { priceFormat: lotsFmt, priceScaleId: 'net', priceLineVisible: false, lastValueVisible: false }, 1));
     net.priceScale().applyOptions({ scaleMargins: { top: 0.55, bottom: 0 } });
     net.setData(data.rows.filter((r) => r[2] !== null).map((r) => ({ time: r[0] as Time, value: r[2]!, color: r[2]! >= 0 ? up : down })));
-    const cum5 = add(chart.addSeries(LineSeries, { color: warn, lineWidth: 1, priceFormat: lotsFmt, title: '5日' }, 1));
+    const cum5 = add(chart.addSeries(LineSeries, { color: warn, lineWidth: 1, priceFormat: lotsFmt, priceLineVisible: false, lastValueVisible: false }, 1));
     cum5.setData(data.rows.filter((r) => r[3] !== null).map((r) => ({ time: r[0] as Time, value: r[3]! })));
-    const cum20 = add(chart.addSeries(LineSeries, { color: accent, lineWidth: 2, priceFormat: lotsFmt, title: '20日' }, 1));
+    const cum20 = add(chart.addSeries(LineSeries, { color: accent, lineWidth: 2, priceFormat: lotsFmt }, 1));
     cum20.setData(data.rows.filter((r) => r[4] !== null).map((r) => ({ time: r[0] as Time, value: r[4]! })));
 
     // 下兩格：淨未平倉（0 軸填色）＋日增減柱（獨立小刻度，貼在窗格底部）
-    const oiPane = (pane: number, title: string, oi: (r: ForeignChipsFile['rows'][number]) => number | null, chg: (r: ForeignChipsFile['rows'][number]) => number | null) => {
+    const oiPane = (pane: number, oi: (r: ForeignChipsFile['rows'][number]) => number | null, chg: (r: ForeignChipsFile['rows'][number]) => number | null) => {
       const s = add(
         chart.addSeries(
           BaselineSeries,
@@ -146,7 +146,6 @@ function ChipsChart({ data, range, themeKey, resetKey }: { data: ForeignChipsFil
             bottomFillColor2: 'rgba(34, 150, 94, 0.22)',
             lineWidth: 2,
             priceFormat: lotsFmt,
-            title,
           },
           pane,
         ),
@@ -162,8 +161,8 @@ function ChipsChart({ data, range, themeKey, resetKey }: { data: ForeignChipsFil
           .map((r) => ({ time: r[0] as Time, value: chg(r)!, color: chg(r)! >= 0 ? `${up}99` : `${down}99` })),
       );
     };
-    oiPane(2, '外資期', (r) => r[5], (r) => r[6]);
-    oiPane(3, '散戶小台', (r) => r[7], (r) => r[8]);
+    oiPane(2, (r) => r[5], (r) => r[6]);
+    oiPane(3, (r) => r[7], (r) => r[8]);
     resetPaneStretch(chart, FC_PANE_STRETCH);
     return () => {
       for (const s of all.reverse()) chart.removeSeries(s);
@@ -177,7 +176,7 @@ function ChipsChart({ data, range, themeKey, resetKey }: { data: ForeignChipsFil
     const start = rangeStart(last[0], range);
     const from = start ? Math.max(0, data.rows.findIndex((r) => r[0] >= start)) : 0;
     const apply = () => {
-      chart.timeScale().setVisibleLogicalRange({ from, to: data.rows.length + 1 });
+      chart.timeScale().setVisibleLogicalRange({ from, to: data.rows.length + 8 });
       resetPriceScales(chart);
       resetPaneStretch(chart, FC_PANE_STRETCH);
     };

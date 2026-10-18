@@ -4,13 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { analyzeForeignChips, type ForeignRow } from '../src/shared/foreignChips';
 
 // lightweight-charts 需要 canvas，jsdom 沒有：以假物件記錄序列配置
-const chartLog = { series: [] as { pane: number; title?: string; scale?: string }[], markers: [] as string[], stretch: [] as number[] };
+const chartLog = { series: [] as { pane: number; type: string; label: boolean; scale?: string }[], markers: [] as string[], stretch: [] as number[] };
 vi.mock('lightweight-charts', () => {
   const makeChart = () => {
     const panes = new Map<number, { setStretchFactor: (f: number) => void }>();
     return {
-      addSeries: (_type: unknown, opts: { title?: string; priceScaleId?: string }, paneIndex = 0) => {
-        chartLog.series.push({ pane: paneIndex, title: opts.title, scale: opts.priceScaleId });
+      addSeries: (type: string, opts: { lastValueVisible?: boolean; priceScaleId?: string }, paneIndex = 0) => {
+        chartLog.series.push({ pane: paneIndex, type, label: opts.lastValueVisible !== false, scale: opts.priceScaleId });
         if (!panes.has(paneIndex)) panes.set(paneIndex, { setStretchFactor: (f) => chartLog.stretch.push(f) });
         return { setData: () => {}, priceScale: () => ({ applyOptions: () => {} }) };
       },
@@ -54,17 +54,17 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 describe('外資籌碼對照面板', () => {
-  it('四個窗格：加權／買賣超＋5日＋20日／外資期＋增減／散戶小台＋增減；頁首讀數與極端標示', () => {
+  it('四個窗格：加權／買賣超＋5日＋20日／外資期＋增減／散戶小台＋增減；每格只留一個最新值標籤、不畫序列標題', () => {
     render(<ForeignChipsPanel data={data} themeKey="auto-false-tw" />);
     expect(chartLog.series).toEqual([
-      { pane: 0, title: '加權', scale: undefined },
-      { pane: 1, title: '買賣超', scale: 'net' },
-      { pane: 1, title: '5日', scale: undefined },
-      { pane: 1, title: '20日', scale: undefined },
-      { pane: 2, title: '外資期', scale: undefined },
-      { pane: 2, title: undefined, scale: 'chg-2' },
-      { pane: 3, title: '散戶小台', scale: undefined },
-      { pane: 3, title: undefined, scale: 'chg-3' },
+      { pane: 0, type: 'Line', label: true, scale: undefined },
+      { pane: 1, type: 'Histogram', label: false, scale: 'net' },
+      { pane: 1, type: 'Line', label: false, scale: undefined },
+      { pane: 1, type: 'Line', label: true, scale: undefined },
+      { pane: 2, type: 'Baseline', label: true, scale: undefined },
+      { pane: 2, type: 'Histogram', label: false, scale: 'chg-2' },
+      { pane: 3, type: 'Baseline', label: true, scale: undefined },
+      { pane: 3, type: 'Histogram', label: false, scale: 'chg-3' },
     ]);
     expect(chartLog.stretch.slice(0, 4)).toEqual([0.34, 0.22, 0.22, 0.22]);
     expect(chartLog.markers).toEqual(['OI空', '散戶多']);
