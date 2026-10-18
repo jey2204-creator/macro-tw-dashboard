@@ -2,7 +2,9 @@ import {
   CandlestickSeries,
   ColorType,
   CrosshairMode,
+  HistogramSeries,
   LineSeries,
+  LineStyle,
   createChart,
   createSeriesMarkers,
   createTextWatermark,
@@ -13,7 +15,7 @@ import {
   type Time,
 } from 'lightweight-charts';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { useSeriesMap } from '../hooks/useData';
+import { useForeignChips, useSeriesMap } from '../hooks/useData';
 import { MA_COLOR_VAR } from '../lib/chartData';
 import { CHART_INTERACTION, resetPaneStretch, resetPriceScales, attachTimeAxis, TIME_AXIS } from '../lib/chartInteraction';
 import { loadIdList, loadPref, savePref } from '../lib/storage';
@@ -23,12 +25,17 @@ import {
   dropWeekendBars,
   COMPARE_PRESETS,
   COMPARE_SERIES,
+  compareFetchIds,
+  compareLabel,
   CORR_WINDOWS,
   correlationSeries,
   DEFAULT_COMPARE,
+  FLOW_CUM_DAYS,
   MAX_COMPARE,
   pairedReturns,
+  rollingSum,
   toggleCompare,
+  toUsdFlow,
   type CorrSeries,
   type Session,
 } from '../shared/crossMarket';
@@ -78,7 +85,16 @@ interface PaneData {
   corr: CorrSeries;
   /** 依勾選均線週期計算（以顯示用 K 棒的收盤） */
   ma: Partial<Record<MaPeriod, (number | null)[]>>;
+  /** 流量型（外資買賣超，億美元）：bars 為每日值，cum 為 20 日累計 */
+  flow?: { cum: (number | null)[] };
 }
+
+const NO_CORR: CorrSeries = { 20: [], 60: [] };
+const SPEC_BY_ID = new Map(COMPARE_SERIES.map((s) => [s.id, s]));
+const specLabel = (id: string) => {
+  const spec = SPEC_BY_ID.get(id);
+  return spec ? compareLabel(spec, INDICATOR_MAP[id]?.short) : (INDICATOR_MAP[id]?.short ?? id);
+};
 
 /** 依勾選的週期算均線 */
 function maLines(bars: readonly Bar[], mas: readonly MaPeriod[]): Partial<Record<MaPeriod, (number | null)[]>> {
@@ -92,6 +108,9 @@ const fmtNum = (v: number | null | undefined, decimals: number) =>
     : v.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 const fmtPct = (v: number | null) => (v === null || !Number.isFinite(v) ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(2)}%`);
 const fmtRho = (v: number | null | undefined) => (v === null || v === undefined ? '—' : v.toFixed(2));
+const fmtSigned = (v: number | null | undefined, decimals: number) =>
+  v === null || v === undefined || !Number.isFinite(v) ? '—' : `${v > 0 ? '+' : ''}${fmtNum(v, decimals)}`;
+const signClass = (v: number | null | undefined) => (v === null || v === undefined || v === 0 ? '' : v > 0 ? 'up' : 'down');
 
 /** ≤ date 的最後一個索引（dates 遞增） */
 function indexAtOrBefore(dates: readonly string[], date: string): number {
@@ -163,8 +182,10 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
   const [hoverTime, setHoverTime] = useState<string | null>(null);
   const [chartGen, setChartGen] = useState(0);
 
-  const ids = useMemo(() => ['taiex', ...COMPARE_IDS.filter((id) => selected.includes(id))], [selected]);
+  const ids = useMemo(() => ['taiex', ...compareFetchIds(selected)], [selected]);
   const files = useSeriesMap(near ? ids : [], version);
+  // 台灣外資買賣超用 foreign-chips.json（2010 年起；序列檔只有近一年）
+  const chips = useForeignChips(near && selected.includes('net_foreign') ? version : null);
   const taiex = files.taiex;
   const twBars = useMemo(() => (taiex?.status === 'ready' ? taiex.data.data : []), [taiex]);
 
@@ -201,14 +222,31 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
     const out: PaneData[] = [];
     for (const spec of COMPARE_SERIES) {
       if (!selected.includes(spec.id)) continue;
+      const def = INDICATOR_MAP[spec.id];
+      const label = compareLabel(spec, def?.short);
+      if (spec.flow) {
+        const fx = files[spec.flow.fx];
+        if (!fx || fx.status !== 'ready') continue;
+        const f = files[spec.id];
+        const raw: Bar[] | null =
+          spec.flow.from === 'foreignChips'
+            ? (chips?.rows.flatMap((r): Bar[] => (r[2] === null ? [] : [[r[0], r[2], r[2], r[2], r[2]]])) ?? null)
+            : f?.status === 'ready'
+              ? f.data.data
+              : null;
+        if (!raw) continue;
+        const bars = toUsdFlow(raw, dropWeekendBars(fx.data.data));
+        if (bars.length === 0) continue;
+        out.push({ id: spec.id, label, session: spec.session, bars, closeOnly: true, decimals: 1, corr: NO_CORR, ma: {}, flow: { cum: rollingSum(bars, FLOW_CUM_DAYS) } });
+        continue;
+      }
       const f = files[spec.id];
       if (!f || f.status !== 'ready' || f.data.data.length === 0) continue;
       const raw = dropWeekendBars(f.data.data);
       const bars = spec.session === 'us' && aligned ? alignToTwCalendar(raw, twDates) : raw;
-      const def = INDICATOR_MAP[spec.id];
       out.push({
         id: spec.id,
-        label: def?.short ?? spec.id,
+        label,
         session: spec.session,
         bars,
         closeOnly: f.data.closeOnly,
@@ -219,7 +257,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
       });
     }
     return out;
-  }, [twBars, twDates, files, selected, aligned, mas]);
+  }, [twBars, twDates, files, chips, selected, aligned, mas]);
 
   // 圖表：窗格數會隨選擇變動，資料或選擇改變時整個重建（比逐一增刪窗格單純）
   useEffect(() => {
@@ -283,6 +321,18 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
     panes.forEach((p, k) => {
       const paneIndex = k + 1;
       const priceFormat = { type: 'price' as const, precision: p.decimals, minMove: 1 / 10 ** p.decimals };
+      if (p.flow) {
+        // 每日買賣超柱放獨立小刻度貼底（否則被累計線壓扁）；20 日累計線用右側刻度，0 軸虛線
+        const h = chart.addSeries(HistogramSeries, { priceFormat, priceScaleId: `flow-${p.id}`, priceLineVisible: false, lastValueVisible: false }, paneIndex);
+        h.priceScale().applyOptions({ scaleMargins: { top: 0.55, bottom: 0 } });
+        h.setData(p.bars.map((b) => ({ time: b[0] as Time, value: b[4], color: b[4] >= 0 ? `${up}99` : `${down}99` })));
+        const cum = p.flow.cum;
+        const line = chart.addSeries(LineSeries, { color: cssVar('--accent'), lineWidth: 2, priceFormat, priceLineVisible: false }, paneIndex);
+        line.setData(p.bars.flatMap((b, i) => (cum[i] == null ? [] : [{ time: b[0] as Time, value: cum[i]! }])));
+        line.createPriceLine({ price: 0, color: textColor, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false });
+        watermark(paneIndex, `${p.label}（億美元｜柱＝每日、線＝${FLOW_CUM_DAYS}日累計）`);
+        return;
+      }
       if (p.closeOnly) {
         const s = chart.addSeries(LineSeries, { color: cssVar('--accent'), lineWidth: 2, priceFormat }, paneIndex);
         s.setData(p.bars.map((b) => ({ time: b[0] as Time, value: b[4] })));
@@ -367,6 +417,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         id: p.id,
         label: p.label,
         decimals: p.decimals,
+        flowCum: p.flow ? (bar ? (p.flow.cum[i] ?? null) : null) : undefined,
         bar,
         pct: bar && prev ? ((bar[4] - prev[4]) / Math.abs(prev[4])) * 100 : null,
         rho: Object.fromEntries(CORR_WINDOWS.map((n) => [n, p.corr[n][ci] ?? null])) as Record<(typeof CORR_WINDOWS)[number], number | null>,
@@ -395,13 +446,13 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [twBars, twDates, twMa, panes, hoverTime, mas, showEvents, eventsByDay, calendar, summary]);
 
-  const latestRho = panes.map((p) => ({ label: p.label, rho60: p.corr[60].at(-1) ?? null }));
+  const latestRho = panes.filter((p) => !p.flow).map((p) => ({ label: p.label, rho60: p.corr[60].at(-1) ?? null }));
   const failed = COMPARE_SERIES.flatMap((s) => {
     const f = files[s.id];
-    return selected.includes(s.id) && f && f.status === 'error' ? [`${INDICATOR_MAP[s.id]?.short ?? s.id}：${f.error}`] : [];
+    return selected.includes(s.id) && f && f.status === 'error' ? [`${specLabel(s.id)}：${f.error}`] : [];
   });
   const atMax = selected.length >= MAX_COMPARE;
-  const oldest = atMax ? INDICATOR_MAP[selected[0]!]?.short ?? selected[0] : null;
+  const oldest = atMax ? specLabel(selected[0]!) : null;
   const sameSet = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x) => b.includes(x));
   const hostStyle = { ['--cm-panes' as string]: String(panes.length) } as CSSProperties;
 
@@ -421,7 +472,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         美股、美債、美元、原油在台股開盤前收盤，是台股的「前一晚」：對齊後，同一直線上的美系 K 棒＝台股開盤時看到的那根（連假期間多根合併成一根）。
         日經、KOSPI、櫃買、亞洲匯率（USD/TWD、KRW、JPY）與台股同時段，不移。ρ20／ρ60＝日報酬 20／60 日相關係數，看背離與關係斷裂，不是預測；三張圖同向不等於三個證據。
         黃金、VIX 用來分辨今天是哪種行情（黃金↑油↑殖利率↓＝地緣避險；黃金↑美元↑殖利率↑＝通膨），不是預測戰爭。
-        「亞洲資金」看外資有沒有撤出：股跌＋當地貨幣貶（USD/xxx 上升）＋DXY 沒漲＝資金離開該國；DXY 也漲＝全球美元回流，不是針對該國。日圓是避險貨幣，恐慌時常升值，不能用來判斷外資撤出日股。
+        「亞洲資金」看外資有沒有撤出：台外資、韓外資是外資每日買賣超換算成億美元（柱＝每日、線＝20 日累計），是直接證據；兩國同時賣＝亞洲撤出，只有一國賣＝該國個別因素。匯率是結果：當地貨幣貶（USD/xxx 上升）而 DXY 沒漲＝資金離開該國，DXY 也漲＝全球美元回流。日圓是避險貨幣，恐慌時常升值，不能用來判斷外資撤出日股。韓國資料來自 Naver（韓國交易所數字）。
         TLT 是美債價格，與 10Y 殖利率鏡像（殖利率 +10bp ≈ TLT −1.6%），兩張圖是同一件事，不算兩個證據；用途是比 FRED 早 1–2 天看到昨晚美債走勢。
         加權 K 棒下方的圓點是 CPI（藍）、就業報告（橘）、FOMC（黑）公布後台股第一個交易日：美東 08:30／14:00 公布時台股已收盤，反應落在隔天。
         動市場的是「實績 vs 預期」不是年增率本身，所以用標記不畫月線；2026-10 起有市場預期，點到該日圖例會列出驚喜值。標記只在 1 年以內的區間顯示（半年以內才附文字）。
@@ -460,10 +511,10 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
               type="button"
               className="ma-chip"
               aria-pressed={on}
-              title={s.session === 'us' ? '台股收盤後交易（前一晚）' : '與台股同時段'}
+              title={s.flow ? '外資每日買賣超（億美元）與 20 日累計' : s.session === 'us' ? '台股收盤後交易（前一晚）' : '與台股同時段'}
               onClick={() => toggle(s.id)}
             >
-              {INDICATOR_MAP[s.id]?.short ?? s.id}
+              {compareLabel(s, INDICATOR_MAP[s.id]?.short)}
             </button>
           );
         })}
@@ -521,7 +572,13 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
                   ))}
                 </div>
               )}
-              {legend.rows.map((r) => (
+              {legend.rows.map((r) =>
+                r.flowCum !== undefined ? (
+                  <div key={r.id}>
+                    {r.label} <b className={signClass(r.bar?.[4])}>{fmtSigned(r.bar?.[4], r.decimals)}</b> 億美元{' '}
+                    <span className="muted">{FLOW_CUM_DAYS}日</span> <span className={signClass(r.flowCum)}>{fmtSigned(r.flowCum, r.decimals)}</span>
+                  </div>
+                ) : (
                 <div key={r.id}>
                   {r.label} <b>{fmtNum(r.bar?.[4], r.decimals)}</b>{' '}
                   <span className={r.pct !== null ? (r.pct > 0 ? 'up' : r.pct < 0 ? 'down' : '') : ''}>{fmtPct(r.pct)}</span>{' '}
@@ -529,7 +586,8 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
                     ρ20 {fmtRho(r.rho[20])} ρ60 {fmtRho(r.rho[60])}
                   </span>
                 </div>
-              ))}
+                ),
+              )}
             </div>
           )}
           <div ref={hostRef} className="chart-host cm-host" style={hostStyle} />

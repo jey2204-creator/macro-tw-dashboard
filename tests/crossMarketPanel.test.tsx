@@ -12,7 +12,7 @@ vi.mock('lightweight-charts', () => {
       addSeries: (_type: unknown, _opts: unknown, paneIndex = 0) => {
         chartLog.seriesPanes.push(paneIndex);
         if (!panes.has(paneIndex)) panes.set(paneIndex, { setStretchFactor: () => {} });
-        return { setData: () => {}, createPriceLine: () => {} };
+        return { setData: () => {}, createPriceLine: () => {}, priceScale: () => ({ applyOptions: () => {} }) };
       },
       panes: () => [...panes.keys()].sort((a, b) => a - b).map((k) => panes.get(k)!),
       priceScale: () => ({ applyOptions: () => {} }),
@@ -38,6 +38,8 @@ vi.mock('lightweight-charts', () => {
     },
     CandlestickSeries: 'Candlestick',
     LineSeries: 'Line',
+    HistogramSeries: 'Histogram',
+    LineStyle: { Dashed: 2 },
     ColorType: { Solid: 'solid' },
     CrosshairMode: { Normal: 0 },
   };
@@ -69,7 +71,13 @@ const FILES: Record<string, SeriesFile> = {
   us10y: series('us10y', DATES.map((d, i) => flat(d, 5 + i * 0.01)), true),
   nikkei: series('nikkei', DATES.map((d, i) => flat(d, 48000 + i * 50))),
   tpex: series('tpex', DATES.map((d, i) => flat(d, 300 + i))),
+  usdkrw: series('usdkrw', DATES.map((d) => flat(d, 1340))),
+  // 韓國外資買賣超（億韓元）：最後一天 −12,060 ÷ 1,340 ＝ −9.0 億美元
+  kr_foreign: series('kr_foreign', DATES.map((d, i) => flat(d, -1340 * (i + 1))), true),
 };
+// 台灣外資買賣超（億台幣）來自 foreign-chips.json：最後一天 −321 ÷ 32.08 ≈ −10.0 億美元
+const CHIPS = { schemaVersion: 1, rows: DATES.map((d) => [d, 46000, -321, null, null, null, null, null, null]) };
+const fetched: string[] = [];
 
 beforeEach(() => {
   chartLog.seriesPanes = [];
@@ -77,7 +85,10 @@ beforeEach(() => {
   chartLog.removed = 0;
   chartLog.markers = [];
   window.localStorage.clear();
+  fetched.length = 0;
   vi.stubGlobal('fetch', (url: string) => {
+    fetched.push(url);
+    if (url.includes('foreign-chips.json')) return Promise.resolve(new Response(JSON.stringify(CHIPS), { status: 200 }));
     const id = /series\/([a-z0-9_]+)\.json/.exec(url)?.[1] ?? '';
     const f = FILES[id];
     return Promise.resolve(
@@ -117,15 +128,37 @@ describe('跨市場對照面板', () => {
     expect(window.localStorage.getItem('cm-align')).toBe('0');
   });
 
-  it('已滿 5 個時再選會換掉最早選的，不必先取消；窗格依固定順序（櫃買在費半前）', async () => {
-    window.localStorage.setItem('cm-ids', JSON.stringify(['sox', 'kospi', 'usdtwd', 'us10y', 'nikkei']));
+  it('已滿 6 個時再選會換掉最早選的，不必先取消；窗格依固定順序（櫃買在費半前）', async () => {
+    window.localStorage.setItem('cm-ids', JSON.stringify(['sox', 'kospi', 'usdtwd', 'us10y', 'nikkei', 'tpex']));
     render(<CrossMarketPanel version="v1" themeKey="auto-false-tw" mas={[60, 240]} onMas={() => {}} />);
-    expect(screen.getByText(/已滿 5 個，再選會換掉最早選的（費半SOX）/)).toBeTruthy();
-    await waitFor(() => expect(chartLog.watermarks.length).toBe(6));
-    fireEvent.click(screen.getByRole('button', { name: '櫃買指數' }));
-    expect(JSON.parse(window.localStorage.getItem('cm-ids')!)).toEqual(['kospi', 'usdtwd', 'us10y', 'nikkei', 'tpex']);
+    expect(screen.getByText(/已滿 6 個，再選會換掉最早選的（費半SOX）/)).toBeTruthy();
+    await waitFor(() => expect(chartLog.watermarks.length).toBe(7));
+    expect(chartLog.watermarks[1]).toBe('櫃買指數（同時段）');
+    fireEvent.click(screen.getByRole('button', { name: 'NASDAQ' }));
+    expect(JSON.parse(window.localStorage.getItem('cm-ids')!)).toEqual(['kospi', 'usdtwd', 'us10y', 'nikkei', 'tpex', 'nasdaq']);
     expect(screen.getByText(/再選會換掉最早選的（KOSPI）/)).toBeTruthy();
-    await waitFor(() => expect(chartLog.watermarks.at(-5)).toBe('櫃買指數（同時段）'));
+  });
+
+  it('台外資、韓外資：換算成億美元，每格畫每日柱＋20 日累計線；台灣用 foreign-chips.json，不算 ρ', async () => {
+    window.localStorage.setItem('cm-ids', JSON.stringify(['kr_foreign', 'net_foreign']));
+    render(<CrossMarketPanel version="v1" themeKey="auto-false-tw" mas={[60]} onMas={() => {}} />);
+    expect(screen.getByRole('button', { name: '台外資' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: '韓外資' }).getAttribute('aria-pressed')).toBe('true');
+    await waitFor(() =>
+      expect(chartLog.watermarks).toEqual([
+        '加權指數（MA60）',
+        '台外資（億美元｜柱＝每日、線＝20日累計）',
+        '韓外資（億美元｜柱＝每日、線＝20日累計）',
+      ]),
+    );
+    // 流量窗格不畫均線：柱＋累計線各 2 條
+    expect(chartLog.seriesPanes).toEqual([0, 0, 1, 1, 2, 2]);
+    expect(fetched.some((u) => u.includes('series/net_foreign.json'))).toBe(false);
+    expect(fetched.some((u) => u.includes('foreign-chips.json'))).toBe(true);
+    const legend = document.querySelector('.cm-legend')!.textContent!;
+    expect(legend).toMatch(/台外資 -10\.0 億美元/);
+    expect(legend).toMatch(/韓外資 -9\.0 億美元/);
+    expect(screen.queryByText(/ρ60：/)).toBeNull();
   });
 
   it('一鍵切換組合：股市／匯率利率／原油，與目前選擇相同時顯示為按下', () => {

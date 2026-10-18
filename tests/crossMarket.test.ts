@@ -3,6 +3,9 @@ import {
   alignToTwCalendar,
   COMPARE_PRESETS,
   dropWeekendBars,
+  compareFetchIds,
+  rollingSum,
+  toUsdFlow,
   COMPARE_SERIES,
   correlationSeries,
   DEFAULT_COMPARE,
@@ -142,7 +145,7 @@ describe('跨市場對照：可選序列', () => {
     }
     expect(INDICATOR_MAP.usdkrw!.sources[0]!.symbol).toBe('KRW=X');
     expect(INDICATOR_MAP.usdjpy!.sources[0]!.symbol).toBe('JPY=X');
-    expect(COMPARE_PRESETS.find((g) => g.key === 'asia')!.ids).toEqual(['kospi', 'usdtwd', 'usdkrw', 'usdjpy', 'dxy']);
+    expect(COMPARE_PRESETS.find((g) => g.key === 'asia')!.ids).toEqual(['kospi', 'net_foreign', 'kr_foreign', 'usdtwd', 'usdkrw', 'dxy']);
   });
 
   it('去掉 Yahoo 亞洲匯率週末多出來的那根；沒有週末 K 棒時回傳原陣列', () => {
@@ -156,11 +159,31 @@ describe('跨市場對照：可選序列', () => {
     expect(dropWeekendBars(weekdays)).toBe(weekdays);
   });
 
-  it('已滿 5 個時再選會換掉最早選的；已選的點一下取消', () => {
-    const five = ['usdtwd', 'dxy', 'us10y', 'us2y', 'wti'];
-    expect(toggleCompare(five, 'sox')).toEqual(['dxy', 'us10y', 'us2y', 'wti', 'sox']);
-    expect(toggleCompare(five, 'dxy')).toEqual(['usdtwd', 'us10y', 'us2y', 'wti']);
+  it('已滿 6 個時再選會換掉最早選的；已選的點一下取消', () => {
+    const six = ['usdtwd', 'dxy', 'us10y', 'us2y', 'wti', 'gold'];
+    expect(MAX_COMPARE).toBe(6);
+    expect(toggleCompare(six, 'sox')).toEqual(['dxy', 'us10y', 'us2y', 'wti', 'gold', 'sox']);
+    expect(toggleCompare(six, 'dxy')).toEqual(['usdtwd', 'us10y', 'us2y', 'wti', 'gold']);
     expect(toggleCompare(['sox'], 'tpex')).toEqual(['sox', 'tpex']);
     expect(toggleCompare([], 'tpex')).toEqual(['tpex']);
+  });
+
+  it('流量型（台外資、韓外資）：只載入需要的序列與匯率；換算億美元用當日或之前最近的匯率', () => {
+    expect(compareFetchIds(['kr_foreign', 'sox'])).toEqual(['sox', 'kr_foreign', 'usdkrw']);
+    // 台外資的歷史在 foreign-chips.json，不載入 net_foreign 序列檔，只要匯率
+    expect(compareFetchIds(['net_foreign', 'usdtwd'])).toEqual(['usdtwd']);
+    const fx: Bar[] = [flat('2026-10-12', 1300), flat('2026-10-14', 1400)];
+    const flows: Bar[] = [flat('2026-10-09', -1000), flat('2026-10-12', -2600), flat('2026-10-13', 1300), flat('2026-10-14', -2800)];
+    // 10/09 早於匯率起點略過；10/13 用 10/12 的匯率
+    expect(toUsdFlow(flows, fx).map((b) => [b[0], b[4]])).toEqual([
+      ['2026-10-12', -2],
+      ['2026-10-13', 1],
+      ['2026-10-14', -2],
+    ]);
+    expect(rollingSum([flat('a', 1), flat('b', 2), flat('c', 3), flat('d', 4)], 3)).toEqual([null, null, 6, 9]);
+    const asia = COMPARE_PRESETS.find((g) => g.key === 'asia')!;
+    expect(asia.ids.length).toBeLessThanOrEqual(MAX_COMPARE);
+    expect(INDICATOR_MAP.kr_foreign!.hidden).toBe(true);
+    expect(INDICATOR_MAP.kr_foreign!.weight).toBe(0);
   });
 });
