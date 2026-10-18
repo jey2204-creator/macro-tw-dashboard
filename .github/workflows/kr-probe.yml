@@ -1,0 +1,98 @@
+name: 韓國外資資料來源探測
+
+# 一次性探測：KRX 是否仍可匿名查詢、Naver 投資人別日資料的格式與歷史深度。
+# 結果以 ::notice:: 輸出（工作環境讀不到 Actions 日誌，經 check-runs annotations API 讀取；每步驟上限 10 則）。
+on:
+  workflow_dispatch:
+  push:
+    paths: ['.github/workflows/kr-probe.yml']
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 準備探測腳本
+        run: |
+          cat > /tmp/probe.mjs <<'EOF'
+          const CH = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
+          const ME = 'macro-tw-dashboard/0.1 (+https://github.com/jey2204-creator/macro-tw-dashboard)';
+          const note = (t, m) => console.log(`::notice title=${t}::${String(m).replace(/[\r\n%]+/g, ' ').slice(0, 900)}`);
+          const strip = (s) => s.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+          async function get(url, opt = {}) {
+            const t0 = Date.now();
+            try {
+              const r = await fetch(url, { ...opt, signal: AbortSignal.timeout(30000) });
+              const buf = new Uint8Array(await r.arrayBuffer());
+              return { status: r.status, ms: Date.now() - t0, buf, headers: r.headers };
+            } catch (e) { return { status: 'ERR ' + String(e).slice(0, 120), ms: Date.now() - t0, buf: new Uint8Array(), headers: new Headers() }; }
+          }
+          function naverRows(html) {
+            const rows = [];
+            for (const m of html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)) {
+              const cells = [...m[1].matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/g)].map((c) => strip(c[1]));
+              if (cells.length >= 5) rows.push(cells.join('|'));
+            }
+            return rows;
+          }
+          const group = process.argv[2];
+          if (group === 'krx') {
+            const loader = await get('https://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201020302', { headers: { 'User-Agent': CH } });
+            const cookie = (loader.headers.getSetCookie?.() ?? []).map((c) => c.split(';')[0]).join('; ');
+            note('KRX loader', `status=${loader.status} ${loader.ms}ms size=${loader.buf.length} cookie=${cookie.slice(0, 60)}`);
+            const body = new URLSearchParams({ bld: 'dbms/MDC/STAT/standard/MDC02203', locale: 'ko_KR', inqTpCd: '2', trdVolVal: '2', askBid: '3', mktId: 'STK', etf: 'EF', etn: 'EN', elw: 'EW', strtDd: '20261005', endDd: '20261016', share: '1', money: '1', csvxls_isNo: 'false' });
+            for (const [name, ua, ck] of [['KRX MDC02203 ch+cookie', CH, cookie], ['KRX MDC02203 me', ME, '']]) {
+              const r = await get('https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd', {
+                method: 'POST', body,
+                headers: { 'User-Agent': ua, 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', Referer: 'https://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201020302', 'X-Requested-With': 'XMLHttpRequest', ...(ck ? { Cookie: ck } : {}) },
+              });
+              note(name, `status=${r.status} ${r.ms}ms size=${r.buf.length} | ${new TextDecoder().decode(r.buf).slice(0, 400)}`);
+            }
+          }
+          if (group === 'naver') {
+            const dec = new TextDecoder('euc-kr');
+            for (const [name, q, ua] of [
+              ['Naver sosok=空 ch', 'bizdate=20261016&sosok=&page=1', CH],
+              ['Naver sosok=01 ch', 'bizdate=20261016&sosok=01&page=1', CH],
+              ['Naver sosok=02 ch', 'bizdate=20261016&sosok=02&page=1', CH],
+              ['Naver sosok=01 me', 'bizdate=20261016&sosok=01&page=1', ME],
+              ['Naver 01 page2', 'bizdate=20261016&sosok=01&page=2', CH],
+              ['Naver 01 2010', 'bizdate=20100115&sosok=01&page=1', CH],
+              ['Naver 01 2005', 'bizdate=20050114&sosok=01&page=1', CH],
+              ['Naver 01 2020crash', 'bizdate=20200320&sosok=01&page=1', CH],
+            ]) {
+              const r = await get(`https://finance.naver.com/sise/investorDealTrendDay.naver?${q}`, { headers: { 'User-Agent': ua, Referer: 'https://finance.naver.com/sise/sise_trans_style.naver' } });
+              const html = dec.decode(r.buf);
+              const rows = naverRows(html);
+              const mk = /코스닥/.test(html) ? 'KOSDAQ字樣' : /코스피|유가증권/.test(html) ? 'KOSPI字樣' : '無市場字樣';
+              note(name, `status=${r.status} ${r.ms}ms size=${r.buf.length} rows=${rows.length} ${mk} | ${rows.slice(0, 4).join(' ;; ')}`);
+            }
+          }
+          if (group === 'other') {
+            const dec = new TextDecoder('euc-kr');
+            const outer = await get('https://finance.naver.com/sise/sise_trans_style.naver?sosok=01', { headers: { 'User-Agent': CH } });
+            const oh = dec.decode(outer.buf);
+            const iframes = [...oh.matchAll(/<iframe[^>]*src="([^"]+)"/g)].map((m) => m[1]);
+            const tabs = [...oh.matchAll(/sosok=(\d*)[^>]*>([^<]{1,12})</g)].map((m) => `${m[1]}=${strip(m[2])}`).slice(0, 10);
+            note('Naver 外框', `status=${outer.status} iframes=${iframes.join(' , ').slice(0, 300)} tabs=${tabs.join(' ')}`);
+            for (const [name, url, h] of [
+              ['Naver m index basic', 'https://m.stock.naver.com/api/index/KOSPI/basic', {}],
+              ['Naver m index trend', 'https://m.stock.naver.com/api/index/KOSPI/trend', {}],
+              ['Naver m investor', 'https://m.stock.naver.com/api/index/KOSPI/investor', {}],
+              ['Naver sise_index KOSPI', 'https://finance.naver.com/sise/sise_index.naver?code=KOSPI', {}],
+              ['Daum investor KOSPI', 'https://finance.daum.net/api/market_index/investor?market=KOSPI&page=1&perPage=10', { Referer: 'https://finance.daum.net/domestic/investors' }],
+            ]) {
+              const r = await get(url, { headers: { 'User-Agent': CH, Accept: 'application/json, text/plain, */*', ...h } });
+              const ct = r.headers.get('content-type') ?? '';
+              const txt = (/euc-kr/i.test(ct) ? dec : new TextDecoder()).decode(r.buf);
+              const body = /json/.test(ct) ? txt : strip(txt.replace(/<script[\s\S]*?<\/script>/g, '')).replace(/^.*?(외국인)/, '$1');
+              note(name, `status=${r.status} ${r.ms}ms ct=${ct} size=${r.buf.length} | ${body.slice(0, 400)}`);
+            }
+          }
+          EOF
+      - name: KRX
+        run: node /tmp/probe.mjs krx
+      - name: Naver 投資人別
+        run: node /tmp/probe.mjs naver
+      - name: 其他候選
+        run: node /tmp/probe.mjs other
