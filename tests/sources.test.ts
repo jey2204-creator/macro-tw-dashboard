@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { finmindToBars } from '../scripts/fetch-data/sources/finmind';
 import { parseFredCsv } from '../scripts/fetch-data/sources/fred';
 import { monthStarts, parseTpexMonth, parseTwseMonth } from '../scripts/fetch-data/sources/twExchanges';
 import { parseYahooChart } from '../scripts/fetch-data/sources/yahoo';
@@ -101,5 +102,28 @@ describe('櫃買中心 / 證交所 parser（真實回應）', () => {
   });
   it('monthStarts', () => {
     expect(monthStarts('2025-11-15', '2026-02-03')).toEqual(['2025-11-01', '2025-12-01', '2026-01-01', '2026-02-01']);
+  });
+});
+
+describe('FinMind 期貨三大法人', () => {
+  const row = (date: string, who: string, long: number, short: number) => ({
+    date,
+    institutional_investors: who,
+    long_open_interest_balance_volume: long,
+    short_open_interest_balance_volume: short,
+  });
+  const rows = [
+    row('2026-10-16', '自營商', 100, 300),
+    row('2026-10-16', '投信', 5000, 1000),
+    row('2026-10-16', '外資', 10000, 20000),
+    row('2026-10-15', '外資', 1, 2), // 只有外資一列：散戶不計算
+  ];
+  it('外資＝多−空未平倉；散戶＝−三大法人合計，三者皆有才算', () => {
+    expect(finmindToBars(rows, 'foreign').map((b) => [b[0], b[4]])).toEqual([
+      ['2026-10-15', -1],
+      ['2026-10-16', -10000],
+    ]);
+    // 三大法人淨額：−200 + 4000 − 10000 = −6200 → 散戶 +6200
+    expect(finmindToBars(rows, 'retail').map((b) => [b[0], b[4]])).toEqual([['2026-10-16', 6200]]);
   });
 });

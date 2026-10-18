@@ -13,6 +13,10 @@ on:
         description: '只測試這些日期（例如 2010-03-02,2020-03-19），留空＝正式回補'
         type: string
         default: ''
+      raw:
+        description: 'probe 時印出期交所原始回應（診斷用）'
+        type: boolean
+        default: false
       target:
         description: '回補到哪一天（最早）'
         type: string
@@ -23,7 +27,8 @@ permissions:
   actions: write
 
 concurrency:
-  group: chips-backfill
+  # probe 用不同群組，不必排在長時間回補後面
+  group: chips-backfill-${{ inputs.probe != '' && 'probe' || 'run' }}
   cancel-in-progress: false
 
 jobs:
@@ -40,7 +45,7 @@ jobs:
 
       - name: 測試解析
         if: ${{ inputs.probe != '' }}
-        run: npx tsx scripts/fetch-data/chipsBackfill.ts --probe "${{ inputs.probe }}"
+        run: npx tsx scripts/fetch-data/chipsBackfill.ts --probe "${{ inputs.probe }}" ${{ inputs.raw && '--raw' || '' }}
 
       - name: 回補
         id: run
