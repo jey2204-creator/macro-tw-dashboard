@@ -34,7 +34,7 @@ import { rangeStart, type RangeKey } from '../shared/timeseries';
 import { StatsRow } from './StatsRow';
 
 /** 右側留白（像素）：讓最新一天的事件文字（如「散戶多」約 40px）不被價格軸切掉，與縮放無關 */
-const FC_RIGHT_GAP_PX = 24;
+const FC_RIGHT_GAP_PX = 18;
 
 /** 把像素留白換算成 K 棒數（至少 2 根）；圖寬未知時退回 2 根 */
 export function rightGapBars(widthPx: number, bars: number): number {
@@ -215,7 +215,7 @@ function ChipsChart({ data, range, themeKey, resetKey }: { data: ForeignChipsFil
     const ts = chart.timeScale();
     const lastIdx = data.rows.length - 1;
     // 圖表庫的 fixRightEdge 會把右邊界卡在最後一根、吃掉留白，所以不用它，改成自己限制：
-    // 右側最多留 gap 根（約 24px，讓最新事件文字完整），往左滑不會拉出更多空白
+    // 右側最多留 gap 根（約 18px，讓最新事件文字完整），往左滑不會拉出更多空白
     let gap = 2;
     const clamp = (r: { from: number; to: number } | null) => {
       if (!r) return;

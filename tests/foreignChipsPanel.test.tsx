@@ -93,11 +93,11 @@ describe('外資籌碼對照面板', () => {
 });
 
 describe('rightGapBars', () => {
-  it('把 24px 換算成 K 棒數，至少 2 根', async () => {
+  it('把 18px 換算成 K 棒數，至少 2 根', async () => {
     const { rightGapBars } = await import('../src/components/ForeignChipsPanel');
     expect(rightGapBars(0, 60)).toBe(2);
-    expect(rightGapBars(340, 62)).toBeCloseTo(24 / (340 / 64), 5);
-    expect(rightGapBars(340, 250)).toBeGreaterThan(17);
+    expect(rightGapBars(340, 62)).toBeCloseTo(18 / (340 / 64), 5);
+    expect(rightGapBars(340, 250)).toBeGreaterThan(13);
     expect(rightGapBars(2000, 20)).toBe(2);
   });
 });
