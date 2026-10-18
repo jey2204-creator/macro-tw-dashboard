@@ -33,6 +33,16 @@ import {
 import { rangeStart, type RangeKey } from '../shared/timeseries';
 import { StatsRow } from './StatsRow';
 
+/** 右側留白（像素）：讓最新一天的事件文字（如「散戶多」約 40px）不被價格軸切掉，與縮放無關 */
+const FC_RIGHT_GAP_PX = 18;
+
+/** 把像素留白換算成 K 棒數（至少 2 根）；圖寬未知時退回 2 根 */
+export function rightGapBars(widthPx: number, bars: number): number {
+  if (!(widthPx > 0) || bars <= 0) return 2;
+  const spacing = widthPx / (bars + 2);
+  return Math.max(2, FC_RIGHT_GAP_PX / spacing);
+}
+
 const RANGES: { k: RangeKey; label: string }[] = [
   { k: '3M', label: '3個月' },
   { k: '6M', label: '半年' },
@@ -66,7 +76,7 @@ function ChipsChart({ data, range, themeKey, resetKey }: { data: ForeignChipsFil
       autoSize: true,
       crosshair: { mode: CrosshairMode.Normal },
       localization: { locale: 'zh-TW', dateFormat: 'yyyy-MM-dd' },
-      timeScale: { ...TIME_AXIS, rightOffset: 8, fixLeftEdge: true, fixRightEdge: false, minBarSpacing: 0.1 },
+      timeScale: { ...TIME_AXIS, rightOffset: 2, fixLeftEdge: true, fixRightEdge: false, minBarSpacing: 0.1 },
       ...CHART_INTERACTION,
     });
     attachTimeAxis(chart);
@@ -202,14 +212,30 @@ function ChipsChart({ data, range, themeKey, resetKey }: { data: ForeignChipsFil
     if (!chart || !last) return;
     const start = rangeStart(last[0], range);
     const from = start ? Math.max(0, data.rows.findIndex((r) => r[0] >= start)) : 0;
+    const ts = chart.timeScale();
+    const lastIdx = data.rows.length - 1;
+    // 圖表庫的 fixRightEdge 會把右邊界卡在最後一根、吃掉留白，所以不用它，改成自己限制：
+    // 右側最多留 gap 根（約 18px，讓最新事件文字完整），往左滑不會拉出更多空白
+    let gap = 2;
+    const clamp = (r: { from: number; to: number } | null) => {
+      if (!r) return;
+      const maxTo = lastIdx + gap;
+      if (r.to > maxTo + 0.01) ts.setVisibleLogicalRange({ from: r.from - (r.to - maxTo), to: maxTo });
+    };
     const apply = () => {
-      chart.timeScale().setVisibleLogicalRange({ from, to: data.rows.length + 8 });
+      gap = rightGapBars(ts.width(), data.rows.length - from);
+      ts.applyOptions({ rightOffset: gap });
+      ts.setVisibleLogicalRange({ from, to: lastIdx + gap });
       resetPriceScales(chart);
       resetPaneStretch(chart, FC_PANE_STRETCH);
     };
     apply();
     const raf = requestAnimationFrame(apply);
-    return () => cancelAnimationFrame(raf);
+    ts.subscribeVisibleLogicalRangeChange(clamp);
+    return () => {
+      cancelAnimationFrame(raf);
+      ts.unsubscribeVisibleLogicalRangeChange(clamp);
+    };
   }, [data, range, themeKey, resetKey]);
 
   useEffect(() => {
