@@ -46,37 +46,41 @@ jobs:
           }
           const NV = 'https://m.stock.naver.com/api/index/KOSPI';
           const DR = { Referer: 'https://finance.daum.net/domestic/investors' };
-          if (group === 'naver1') {
-            await show('NV trend bizdate', `${NV}/trend?bizdate=20261010`);
-            await show('NV trend page', `${NV}/trend?pageSize=20&page=1`);
-            await show('NV trend startIdx', `${NV}/trend?startIdx=0&pageSize=20`);
-            await show('NV integration', `${NV}/integration`);
-            await show('NV price', `${NV}/price?pageSize=3&page=1`);
-            await show('NV investorTrend', `${NV}/investorTrend?pageSize=5&page=1`);
-            await show('NV trend list', `${NV}/trend/list?pageSize=5&page=1`);
-            await show('NV trend day', `${NV}/trend/day?pageSize=5&page=1`);
+          async function json(url, h = {}) {
+            const r = await get(url, { headers: { 'User-Agent': CH, Accept: 'application/json', ...h } });
+            try { return { r, j: JSON.parse(new TextDecoder().decode(r.buf)) }; } catch { return { r, j: null }; }
           }
-          if (group === 'naver2') {
-            await show('NV stock integ', 'https://m.stock.naver.com/api/stock/005930/integration');
-            await show('NV stock trend', 'https://m.stock.naver.com/api/stock/005930/trend?pageSize=3&bizdate=20261016');
-            await show('NV front investor', 'https://m.stock.naver.com/front-api/index/investorTrend?indexCode=KOSPI&pageSize=5');
-            await show('NV front deal', 'https://m.stock.naver.com/front-api/marketIndex/investorDealTrend?category=KOSPI&pageSize=5');
-            await show('NV KOSDAQ trend', 'https://m.stock.naver.com/api/index/KOSDAQ/trend');
-            await show('NV trend 2010', `${NV}/trend?bizdate=20100115`);
+          if (group === 'compare') {
+            const days = ['20261016', '20261015', '20261014', '20261013', '20240805', '20200319', '20100115', '20080102'];
+            const daum = new Map();
+            for (const pg of [1]) {
+              const { j } = await json(`https://finance.daum.net/api/market_index/days?page=${pg}&perPage=10&market=KOSPI&pagination=true`, DR);
+              for (const d of j?.data ?? []) daum.set(d.date.slice(0, 10).replace(/-/g, ''), d);
+            }
+            const out = [];
+            for (const d of days) {
+              const { j } = await json(`${NV}/trend?bizdate=${d}`);
+              const dm = daum.get(d);
+              out.push(`${d} NV外${j?.foreignValue}/個${j?.personalValue}/機${j?.institutionalValue} DM外${dm ? Math.round(dm.foreignStraightPurchasePrice / 1e8) : '-'}/個${dm ? Math.round(dm.individualStraightPurchasePrice / 1e8) : '-'}/機${dm ? Math.round(dm.institutionStraightPurchasePrice / 1e8) : '-'}`);
+              await new Promise((res) => setTimeout(res, 300));
+            }
+            note('NV vs Daum (億)', out.slice(0, 4).join(' ;; '));
+            note('NV old days', out.slice(4).join(' ;; '));
           }
-          if (group === 'daum') {
-            await show('Daum index days', 'https://finance.daum.net/api/market_index/days?page=1&perPage=3&market=KOSPI&pagination=true', DR);
-            await show('Daum investor days', 'https://finance.daum.net/api/investor/days?page=1&perPage=5&market=KOSPI&pagination=true', DR);
-            await show('Daum investor KOSPI days', 'https://finance.daum.net/api/investor/KOSPI/days?page=1&perPage=5&pagination=true', DR);
-            await show('Daum investor market', 'https://finance.daum.net/api/investor/market?market=KOSPI&page=1&perPage=5', DR);
-            await show('Daum investor trend', 'https://finance.daum.net/api/investor/trend?market=KOSPI&page=1&perPage=5', DR);
-            await show('Daum investor', 'https://finance.daum.net/api/investor?market=KOSPI&page=1&perPage=5', DR);
-            await show('Daum page', 'https://finance.daum.net/domestic/investors', {});
+          if (group === 'depth') {
+            for (const [pg, per] of [[1, 100], [10, 100], [30, 100], [45, 100], [60, 100]]) {
+              const { r, j } = await json(`https://finance.daum.net/api/market_index/days?page=${pg}&perPage=${per}&market=KOSPI&pagination=true`, DR);
+              const data = j?.data ?? [];
+              const meta = j ? Object.entries(j).filter(([k]) => k !== 'data').map(([k, v]) => `${k}=${typeof v === 'object' ? JSON.stringify(v).slice(0, 80) : v}`).join(' ') : '';
+              const f = data[0], l = data.at(-1);
+              note(`Daum p${pg}x${per}`, `status=${r.status} ${r.ms}ms rows=${data.length} ${f?.date?.slice(0, 10)}→${l?.date?.slice(0, 10)} 外(億) ${f ? Math.round(f.foreignStraightPurchasePrice / 1e8) : '-'}…${l ? Math.round(l.foreignStraightPurchasePrice / 1e8) : '-'} meta: ${meta}`);
+              await new Promise((res) => setTimeout(res, 500));
+            }
+            const { r, j } = await json('https://finance.daum.net/api/investor/KOSPI/days?page=1&perPage=3&pagination=true&details=true', DR);
+            note('Daum investor details', `status=${r.status} | ${JSON.stringify(j).slice(0, 600)}`);
           }
           EOF
-      - name: Naver 新版 API（指數）
-        run: node /tmp/probe.mjs naver1
-      - name: Naver 新版 API（其他）
-        run: node /tmp/probe.mjs naver2
-      - name: Daum
-        run: node /tmp/probe.mjs daum
+      - name: Naver 與 Daum 數字比對
+        run: node /tmp/probe.mjs compare
+      - name: Daum 歷史深度
+        run: node /tmp/probe.mjs depth
