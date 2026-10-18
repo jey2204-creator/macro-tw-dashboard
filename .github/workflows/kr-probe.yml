@@ -50,37 +50,47 @@ jobs:
             const r = await get(url, { headers: { 'User-Agent': CH, Accept: 'application/json', ...h } });
             try { return { r, j: JSON.parse(new TextDecoder().decode(r.buf)) }; } catch { return { r, j: null }; }
           }
-          if (group === 'compare') {
-            const days = ['20261016', '20261015', '20261014', '20261013', '20240805', '20200319', '20100115', '20080102'];
-            const daum = new Map();
-            for (const pg of [1]) {
-              const { j } = await json(`https://finance.daum.net/api/market_index/days?page=${pg}&perPage=10&market=KOSPI&pagination=true`, DR);
-              for (const d of j?.data ?? []) daum.set(d.date.slice(0, 10).replace(/-/g, ''), d);
-            }
-            const out = [];
-            for (const d of days) {
-              const { j } = await json(`${NV}/trend?bizdate=${d}`);
-              const dm = daum.get(d);
-              out.push(`${d} NV外${j?.foreignValue}/個${j?.personalValue}/機${j?.institutionalValue} DM外${dm ? Math.round(dm.foreignStraightPurchasePrice / 1e8) : '-'}/個${dm ? Math.round(dm.individualStraightPurchasePrice / 1e8) : '-'}/機${dm ? Math.round(dm.institutionStraightPurchasePrice / 1e8) : '-'}`);
-              await new Promise((res) => setTimeout(res, 300));
-            }
-            note('NV vs Daum (億)', out.slice(0, 4).join(' ;; '));
-            note('NV old days', out.slice(4).join(' ;; '));
+          const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+          async function daumPage(pg, per = 100) {
+            const { j } = await json(`https://finance.daum.net/api/market_index/days?page=${pg}&perPage=${per}&market=KOSPI&pagination=true`, DR);
+            return j?.data ?? [];
           }
-          if (group === 'depth') {
-            for (const [pg, per] of [[1, 100], [10, 100], [30, 100], [45, 100], [60, 100]]) {
-              const { r, j } = await json(`https://finance.daum.net/api/market_index/days?page=${pg}&perPage=${per}&market=KOSPI&pagination=true`, DR);
-              const data = j?.data ?? [];
-              const meta = j ? Object.entries(j).filter(([k]) => k !== 'data').map(([k, v]) => `${k}=${typeof v === 'object' ? JSON.stringify(v).slice(0, 80) : v}`).join(' ') : '';
-              const f = data[0], l = data.at(-1);
-              note(`Daum p${pg}x${per}`, `status=${r.status} ${r.ms}ms rows=${data.length} ${f?.date?.slice(0, 10)}→${l?.date?.slice(0, 10)} 外(億) ${f ? Math.round(f.foreignStraightPurchasePrice / 1e8) : '-'}…${l ? Math.round(l.foreignStraightPurchasePrice / 1e8) : '-'} meta: ${meta}`);
-              await new Promise((res) => setTimeout(res, 500));
+          if (group === 'start') {
+            // 找 Daum 外資數值的起點：頁 10（2022）有值、頁 30（2014）全 0
+            let lo = 10, hi = 30;
+            while (hi - lo > 1) { const mid = (lo + hi) >> 1; const d = await daumPage(mid); (d.some((x) => x.foreignStraightPurchasePrice !== 0) ? (lo = mid) : (hi = mid)); await sleep(300); }
+            const d = await daumPage(lo);
+            const nz = d.filter((x) => x.foreignStraightPurchasePrice !== 0);
+            note('Daum 外資起點', `page ${lo} 最早非 0：${nz.at(-1)?.date?.slice(0, 10)} 外 ${Math.round((nz.at(-1)?.foreignStraightPurchasePrice ?? 0) / 1e8)} 億；page ${hi} 首日 ${(await daumPage(hi))[0]?.date?.slice(0, 10)}`);
+          }
+          if (group === 'compare2') {
+            const d10 = await daumPage(10);
+            const pick = [d10[0], d10[25], d10[50], d10[75], d10[99]].filter(Boolean);
+            const out = [];
+            for (const x of pick) {
+              const ymd = x.date.slice(0, 10).replace(/-/g, '');
+              const { j } = await json(`${NV}/trend?bizdate=${ymd}`);
+              out.push(`${ymd} NV ${j?.foreignValue} DM ${Math.round(x.foreignStraightPurchasePrice / 1e8)}`);
+              await sleep(300);
             }
-            const { r, j } = await json('https://finance.daum.net/api/investor/KOSPI/days?page=1&perPage=3&pagination=true&details=true', DR);
-            note('Daum investor details', `status=${r.status} | ${JSON.stringify(j).slice(0, 600)}`);
+            note('2022-23 比對', out.join(' ;; '));
+            const d1 = await daumPage(1, 10);
+            const out2 = [];
+            for (const x of d1.slice(0, 8)) {
+              const ymd = x.date.slice(0, 10).replace(/-/g, '');
+              const { j } = await json(`${NV}/trend?bizdate=${ymd}`);
+              out2.push(`${ymd} NV ${j?.foreignValue} DM ${Math.round(x.foreignStraightPurchasePrice / 1e8)}`);
+              await sleep(300);
+            }
+            note('最近 8 天比對', out2.join(' ;; '));
+            // Naver 非交易日與速度
+            const t0 = Date.now();
+            const sat = await json(`${NV}/trend?bizdate=20261017`);
+            const hol = await json(`${NV}/trend?bizdate=20261009`);
+            note('Naver 非交易日', `10/17(六) ${JSON.stringify(sat.j)} ;; 10/09(韓文日) ${JSON.stringify(hol.j)} ;; ${Date.now() - t0}ms`);
           }
           EOF
-      - name: Naver 與 Daum 數字比對
-        run: node /tmp/probe.mjs compare
-      - name: Daum 歷史深度
-        run: node /tmp/probe.mjs depth
+      - name: Daum 起點
+        run: node /tmp/probe.mjs start
+      - name: 歷史比對
+        run: node /tmp/probe.mjs compare2
