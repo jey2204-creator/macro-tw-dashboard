@@ -27,7 +27,8 @@ permissions:
   actions: write
 
 concurrency:
-  group: chips-backfill
+  # probe 用不同群組，不必排在長時間回補後面
+  group: chips-backfill-${{ inputs.probe != '' && 'probe' || 'run' }}
   cancel-in-progress: false
 
 jobs:

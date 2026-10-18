@@ -107,7 +107,7 @@ async function backfillFutures(f: ChipsHistoryFile, index: Map<string, ChipsHist
 }
 
 /** 診斷：印出期交所回應開頭（CSV 下載與單日 HTML 查詢頁各一） */
-async function probeTaifexRaw(d: string) {
+export async function probeTaifexRaw(d: string) {
   const slash = d.replace(/-/g, '/');
   const flat = (t: string) => t.replace(/\s+/g, ' ').slice(0, 400);
   try {
@@ -132,9 +132,28 @@ async function probeTaifexRaw(d: string) {
   }
 }
 
+/** 診斷：FinMind 期貨三大法人（2018-06 起）匿名能否取得、欄位與外資淨未平倉 */
+async function probeFinmind(d: string) {
+  for (const id of ['TX', 'MTX']) {
+    try {
+      const url = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanFuturesInstitutionalInvestors&data_id=${id}&start_date=${d}&end_date=${addDays(d, 3)}`;
+      const j = await getJson<{ status?: number; msg?: string; data?: Record<string, unknown>[] }>(url, http);
+      const rows = j.data ?? [];
+      console.log(`::notice title=finmind ${id} ${d}::status=${j.status} msg=${j.msg} n=${rows.length} ${JSON.stringify(rows.slice(0, 3)).slice(0, 700)}`);
+    } catch (e) {
+      console.log(`::warning title=finmind ${id} ${d}::${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+}
+
 async function probe(dates: string[], intervalMs: number) {
   if (process.argv.includes('--raw')) {
-    for (const d of dates) await probeTaifexRaw(d);
+    for (const d of dates) {
+      // 期交所：單日（結束日＝起始日）
+      const txf = await fetchTaifexRange('TXF_FOREIGN_OI', d, d, http);
+      console.log(`::notice title=taifex ${d}::TXF外資=${txf[0]?.[4] ?? '無'}`);
+      await probeFinmind(d);
+    }
     return;
   }
   for (const d of dates) {
