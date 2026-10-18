@@ -39,6 +39,15 @@ export const EXTREME_HIGH = 0.95;
 export const RESET_PCTL = 0.5;
 /** 賣超不跌：20 日累計賣超落在第 10 百分位以下，且加權 20 日報酬 ≥ 0 */
 export const DIVERGE_PCTL = 0.1;
+/** 再創極端：同一波內外資期淨 OI 比前次標記值再多 10%，補一個小標記（不進回測） */
+export const DEEPER_STEP = 0.1;
+
+/** 同一波內的「再創極端」小標記：oi_short 空單再增、oi_long 多單再增 */
+export interface DeeperMark {
+  date: string;
+  kind: 'oi_short' | 'oi_long';
+  value: number;
+}
 
 export const FOREIGN_EVENT_LABEL: Record<ForeignEventType, string> = {
   oi_short: '外資期空單極端',
@@ -77,6 +86,8 @@ export interface ForeignChipsFile {
   /** 近 250 日百分位（0～1；資料不足 null）：20 日累計買賣超、外資期淨 OI、散戶小台淨 OI */
   pctl: { cum20: (number | null)[]; foreignOi: (number | null)[]; retailOi: (number | null)[] };
   events: ForeignEvent[];
+  /** 同一波內再創極端的小標記（只畫在圖上，不計入事件統計） */
+  deeper: DeeperMark[];
   eventStats: Record<ForeignEventType, EventStats>;
   baseline: EventStats;
   latest: {
@@ -156,6 +167,38 @@ export function rollingPctl(values: (number | null)[], window = PCTL_WINDOW, min
   });
 }
 
+/**
+ * 再創極端：從 oi_short／oi_long 事件起，到下一次該類事件重新武裝前，
+ * 淨 OI 每比前次標記值再多 DEEPER_STEP（以前次絕對值計）就補一個標記。
+ */
+export function detectDeeper(rows: ForeignRow[], events: ForeignEvent[], pctl: ForeignChipsFile['pctl']): DeeperMark[] {
+  const out: DeeperMark[] = [];
+  const byDate = new Map(events.filter((e) => e.type === 'oi_short' || e.type === 'oi_long').map((e) => [e.date, e]));
+  let ref: { kind: 'oi_short' | 'oi_long'; value: number } | null = null;
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i]!;
+    const ev = byDate.get(row[0]);
+    if (ev) {
+      ref = { kind: ev.type as 'oi_short' | 'oi_long', value: ev.value };
+      continue;
+    }
+    if (!ref || row[5] === null) continue;
+    const p = pctl.foreignOi[i];
+    // 回到中位數另一側＝這一波結束
+    if (p !== null && p !== undefined && (ref.kind === 'oi_short' ? p >= RESET_PCTL : p <= RESET_PCTL)) {
+      ref = null;
+      continue;
+    }
+    const step = Math.abs(ref.value) * DEEPER_STEP;
+    const deeper = ref.kind === 'oi_short' ? row[5] <= ref.value - step : row[5] >= ref.value + step;
+    if (deeper) {
+      out.push({ date: row[0], kind: ref.kind, value: row[5] });
+      ref = { kind: ref.kind, value: row[5] };
+    }
+  }
+  return out;
+}
+
 export function detectForeignEvents(rows: ForeignRow[], pctl: ForeignChipsFile['pctl']): ForeignEvent[] {
   const events: ForeignEvent[] = [];
   const armed: Record<ForeignEventType, boolean> = {
@@ -213,6 +256,7 @@ export function analyzeForeignChips(rows: ForeignRow[], now = new Date()): Forei
     retailOi: rollingPctl(rows.map((r) => r[7])),
   };
   const events = detectForeignEvents(rows, pctl);
+  const deeper = detectDeeper(rows, events, pctl);
   const perDay = rows.map((_, i) => ({ ret20: forward(rows, i, 20), ret60: forward(rows, i, 60), mdd60: mdd(rows, i, 60) }));
   const eventStats = Object.fromEntries(FOREIGN_EVENT_TYPES.map((t) => [t, stats(events.filter((e) => e.type === t))])) as Record<
     ForeignEventType,
@@ -228,6 +272,7 @@ export function analyzeForeignChips(rows: ForeignRow[], now = new Date()): Forei
     rows,
     pctl,
     events,
+    deeper,
     eventStats,
     baseline: stats(perDay),
     latest: l

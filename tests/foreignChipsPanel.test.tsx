@@ -67,7 +67,7 @@ describe('外資籌碼對照面板', () => {
       { pane: 3, type: 'Histogram', label: false, scale: 'chg-3' },
     ]);
     expect(chartLog.stretch.slice(0, 4)).toEqual([0.34, 0.22, 0.22, 0.22]);
-    expect(chartLog.markers).toEqual(['OI空', '散戶多']);
+    expect(chartLog.markers).toEqual(['OI空', '散戶多', 'OI空↓']); // 持續創低 → 一個再創極端小標記
     const verdict = document.querySelector('.fc .verdict')!.textContent;
     expect(verdict).toBe('極端 2');
     expect(document.querySelector('.fc .score')!.textContent).toContain('外資期空單極端、散戶小台偏多極端');

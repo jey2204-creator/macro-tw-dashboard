@@ -17,6 +17,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { CHART_INTERACTION, attachTimeAxis, resetPaneStretch, resetPriceScales, TIME_AXIS } from '../lib/chartInteraction';
 import { cssVar, f2, pctCell } from '../lib/stressFormat';
 import {
+  DEEPER_STEP,
   DIVERGE_PCTL,
   EXTREME_HIGH,
   EXTREME_LOW,
@@ -119,6 +120,18 @@ function ChipsChart({ data, range, themeKey, resetKey }: { data: ForeignChipsFil
       color: markerColor[e.type],
       text: FOREIGN_MARKER_TEXT[e.type],
     }));
+    // 同一波內再創極端：小一號的標記，不進回測表
+    for (const m of data.deeper) {
+      markers.push({
+        time: m.date as Time,
+        position: m.kind === 'oi_long' ? 'aboveBar' : 'belowBar',
+        shape: 'circle',
+        color: m.kind === 'oi_long' ? up : down,
+        text: m.kind === 'oi_long' ? 'OI多↑' : 'OI空↓',
+        size: 0.6,
+      });
+    }
+    markers.sort((a, b) => (a.time < b.time ? -1 : a.time > b.time ? 1 : 0));
     createSeriesMarkers(taiex, markers);
 
     // 中：外資買賣超柱＋5／20 日累計線
@@ -215,7 +228,7 @@ function ChipsChart({ data, range, themeKey, resetKey }: { data: ForeignChipsFil
         </div>
       )}
       <div className="ms-pane-labels small muted" aria-hidden>
-        上：加權（● 事件） ｜ 二：外資買賣超（億）＋5日細／20日粗累計 ｜ 三：外資期淨OI（口）＋日增減 ｜ 四：散戶小台淨OI（口）＋日增減
+        上：加權（● 事件、小● 再創極端） ｜ 二：外資買賣超（億）＋5日細／20日粗累計 ｜ 三：外資期淨OI（口）＋日增減 ｜ 四：散戶小台淨OI（口）＋日增減
       </div>
       <div ref={hostRef} className="chart-host fc-host" />
     </div>
@@ -253,7 +266,7 @@ export function ForeignChipsPanel({ data, themeKey }: { data: ForeignChipsFile |
       <p className="small muted ms-rule">
         買賣超是流量、淨未平倉是部位，兩者與當日漲跌幾乎同步，單看柱子不會比看 K 棒多知道什麼；要看的是<b>累計 vs 指數的背離</b>與<b>部位極端</b>。
         百分位＝該值在近 {PCTL_WINDOW} 個交易日中的位置；事件只在首次 ≤ 第 {EXTREME_LOW * 100}／≥ 第 {EXTREME_HIGH * 100} 百分位時標一次，回到第 {RESET_PCTL * 100} 百分位另一側才算新的一波。賣超不跌：20 日累計 ≤ 第 {DIVERGE_PCTL * 100} 百分位且加權 20 日不跌。
-        外資期空單多為現貨避險，空單極端不等於看空；散戶小台為法人反推值。
+        同一波內外資期淨 OI 比前次標記再多 {DEEPER_STEP * 100}% 補一個小標記「OI空↓／OI多↑」，只畫在圖上不進回測。外資期空單多為現貨避險，空單極端不等於看空；散戶小台為法人反推值。
       </p>
 
       <div className="seg" role="group" aria-label="時間區間">

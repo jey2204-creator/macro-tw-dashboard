@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   analyzeForeignChips,
   combineForeignRows,
+  detectDeeper,
   detectForeignEvents,
   rollingPctl,
   type ForeignRow,
@@ -68,6 +69,21 @@ describe('外資籌碼對照：百分位與事件', () => {
     expect(ev3.map((e) => e.type)).toEqual(['sell_extreme']);
   });
 
+  it('再創極端：同一波內淨 OI 比前次標記再多 10% 補小標記，回到中位數另一側結束', () => {
+    // 130 天 -1000 附近；125 天 -9000（事件）、126 天 -9500（-5.6%，不標）、127 天 -11000（比 -9000 多 22% → 標）、
+    // 128 天 -11500（比 -11000 多 4.5%，不標）、129 天 -996（回到中位數以上 → 波結束）
+    const rows: ForeignRow[] = Array.from({ length: 130 }, (_, i) => [day(i), 100, 0, 0, 0, -1000 + (i % 7), null, 0, null]);
+    rows[125]![5] = -9000;
+    rows[126]![5] = -9500;
+    rows[127]![5] = -11000;
+    rows[128]![5] = -11500;
+    rows[129]![5] = -996;
+    const pctl = { cum20: rollingPctl(rows.map((r) => r[4])), foreignOi: rollingPctl(rows.map((r) => r[5])), retailOi: rollingPctl(rows.map((r) => r[7])) };
+    const events = detectForeignEvents(rows, pctl);
+    expect(events.filter((e) => e.type === 'oi_short').map((e) => e.date)).toEqual([day(125)]);
+    expect(detectDeeper(rows, events, pctl)).toEqual([{ date: day(127), kind: 'oi_short', value: -11000 }]);
+  });
+
   it('analyzeForeignChips：latest 含百分位，事件統計含基準', () => {
     const rows: ForeignRow[] = Array.from({ length: 200 }, (_, i) => [day(i), 100 + i, 1, 5, 20, -1000 - i, -1, 500 + i, 1]);
     const out = analyzeForeignChips(rows, new Date('2026-10-17T00:00:00Z'));
@@ -78,5 +94,7 @@ describe('外資籌碼對照：百分位與事件', () => {
     expect(out.baseline.n).toBe(200);
     expect(out.events.filter((e) => e.type === 'oi_short')).toHaveLength(1); // 首次進入極端後一直在極端，只標一次
     expect(out.events.filter((e) => e.type === 'retail_long')).toHaveLength(1);
+    // 每天只多 1 口，從未比事件值再低 20% → 沒有再創極端標記
+    expect(out.deeper).toEqual([]);
   });
 });
