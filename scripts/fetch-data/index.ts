@@ -8,6 +8,7 @@ import { INDICATORS } from '../../src/shared/indicators';
 import { updateCalendar } from './calendar';
 import { writeBacktest } from './writeBacktest';
 import { writeIcs } from './writeIcs';
+import { writeForeignChips } from './writeForeignChips';
 import { lastBreadth, writeMarginStress } from './writeMarginStress';
 import { runPipeline } from './pipeline';
 
@@ -62,6 +63,13 @@ async function main() {
     console.log(`[breadth-stress] ${lastBreadth?.start}～${lastBreadth?.end}，事件 ${lastBreadth?.events.length}，最新 ${JSON.stringify(lastBreadth?.latest)}`);
   } catch (e) {
     console.warn('[margin-stress] 略過：', e instanceof Error ? e.message : e);
+  }
+  // 外資籌碼對照失敗不影響資料更新
+  try {
+    const fc = await writeForeignChips(outDir);
+    console.log(`[foreign-chips] ${fc.start}～${fc.end}，${fc.rows.length} 天，事件 ${fc.events.length} 筆，最新 ${JSON.stringify(fc.latest)}`);
+  } catch (e) {
+    console.warn('[foreign-chips] 略過：', e instanceof Error ? e.message : e);
   }
 }
 
