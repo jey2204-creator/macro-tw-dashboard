@@ -18,7 +18,7 @@ import path from 'node:path';
 import { addDays, todayInTaipei } from '../../src/shared/dates';
 import type { ChipsHistoryFile, ChipsHistoryRow } from '../../src/shared/foreignChips';
 import type { Bar } from '../../src/shared/types';
-import { getJson, sleep, type HttpOptions } from './http';
+import { getJson, getText, sleep, type HttpOptions } from './http';
 import { fetchTaifexRange } from './sources/taifex';
 import { parseBfi82u, weekdaysBackward } from './sources/twseChips';
 
@@ -106,7 +106,37 @@ async function backfillFutures(f: ChipsHistoryFile, index: Map<string, ChipsHist
   );
 }
 
+/** 診斷：印出期交所回應開頭（CSV 下載與單日 HTML 查詢頁各一） */
+async function probeTaifexRaw(d: string) {
+  const slash = d.replace(/-/g, '/');
+  const flat = (t: string) => t.replace(/\s+/g, ' ').slice(0, 400);
+  try {
+    const csv = await getText(
+      'https://www.taifex.com.tw/cht/3/futContractsDateDown',
+      http,
+      { method: 'POST', form: { queryStartDate: slash, queryEndDate: addDays(d, 20).replace(/-/g, '/'), commodityId: 'TXF' }, encoding: 'big5' },
+    );
+    console.log(`::notice title=raw csv ${d}::len=${csv.length} ${flat(csv)}`);
+  } catch (e) {
+    console.log(`::warning title=raw csv ${d}::${e instanceof Error ? e.message : String(e)}`);
+  }
+  try {
+    const html = await getText('https://www.taifex.com.tw/cht/3/futContractsDate', http, {
+      method: 'POST',
+      form: { queryType: '1', doQuery: '1', queryDate: slash, commodityId: 'TXF' },
+    });
+    const i = html.indexOf('外資');
+    console.log(`::notice title=raw html ${d}::len=${html.length} 外資@${i} ${flat(i >= 0 ? html.slice(Math.max(0, i - 200), i + 600) : html.slice(0, 400))}`);
+  } catch (e) {
+    console.log(`::warning title=raw html ${d}::${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+
 async function probe(dates: string[], intervalMs: number) {
+  if (process.argv.includes('--raw')) {
+    for (const d of dates) await probeTaifexRaw(d);
+    return;
+  }
   for (const d of dates) {
     try {
       const r = await fetchNet(d, intervalMs);
