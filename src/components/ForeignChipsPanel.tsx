@@ -24,6 +24,7 @@ import {
   FOREIGN_EVENT_LABEL,
   FOREIGN_EVENT_TYPES,
   FOREIGN_MARKER_TEXT,
+  PACE_RATIO,
   PCTL_WINDOW,
   RESET_PCTL,
   type ForeignChipsFile,
@@ -40,8 +41,8 @@ const RANGES: { k: RangeKey; label: string }[] = [
   { k: '10Y', label: '10年' },
   { k: 'ALL', label: '全部' },
 ];
-/** 事件文字最少相隔幾根 K 棒，避免疊字 */
-const MARKER_GAP = 6;
+/** 事件文字最少相隔幾根 K 棒（依視圖長度），避免疊字 */
+const MARKER_GAP: Record<RangeKey, number> = { '3M': 6, '6M': 10, '1Y': 16, '5Y': 40, '10Y': 60, 'ALL': 60 };
 /** 四個窗格高度比例：加權／買賣超／外資期 OI／散戶小台 OI */
 const FC_PANE_STRETCH = [0.34, 0.22, 0.22, 0.22] as const;
 
@@ -114,6 +115,7 @@ function ChipsChart({ data, range, themeKey, resetKey }: { data: ForeignChipsFil
       buy_extreme: up,
       retail_long: warn,
       sell_no_fall: accent,
+      sell_exhaust: up,
     };
     // 同日事件合併成一個點（文字以「／」相連）；相鄰 ≤ MARKER_GAP 根 K 棒的事件只有第一個帶文字
     const byDate = new Map<string, ForeignEventType[]>();
@@ -123,7 +125,7 @@ function ChipsChart({ data, range, themeKey, resetKey }: { data: ForeignChipsFil
     for (const [date, types] of byDate) {
       const idx = indexByDate.get(date) ?? 0;
       const above = types.some((t) => t === 'oi_long' || t === 'buy_extreme' || t === 'retail_long');
-      const withText = idx - lastTextIdx > MARKER_GAP;
+      const withText = idx - lastTextIdx > MARKER_GAP[range];
       if (withText) lastTextIdx = idx;
       markers.push({
         time: date as Time,
@@ -192,7 +194,7 @@ function ChipsChart({ data, range, themeKey, resetKey }: { data: ForeignChipsFil
     return () => {
       for (const s of all.reverse()) chart.removeSeries(s);
     };
-  }, [data, themeKey, indexByDate]);
+  }, [data, themeKey, indexByDate, range]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -284,7 +286,7 @@ export function ForeignChipsPanel({ data, themeKey }: { data: ForeignChipsFile |
 
       <p className="small muted ms-rule">
         買賣超是流量、淨未平倉是部位，兩者與當日漲跌幾乎同步，單看柱子不會比看 K 棒多知道什麼；要看的是<b>累計 vs 指數的背離</b>與<b>部位極端</b>。
-        百分位＝該值在近 {PCTL_WINDOW} 個交易日中的位置；事件只在首次 ≤ 第 {EXTREME_LOW * 100}／≥ 第 {EXTREME_HIGH * 100} 百分位時標一次，回到第 {RESET_PCTL * 100} 百分位另一側才算新的一波。賣超不跌：20 日累計 ≤ 第 {DIVERGE_PCTL * 100} 百分位且加權 20 日不跌。
+        百分位＝該值在近 {PCTL_WINDOW} 個交易日中的位置；事件只在首次 ≤ 第 {EXTREME_LOW * 100}／≥ 第 {EXTREME_HIGH * 100} 百分位時標一次，回到第 {RESET_PCTL * 100} 百分位另一側才算新的一波。賣超不跌：20 日累計 ≤ 第 {DIVERGE_PCTL * 100} 百分位且加權 20 日不跌。賣壓衰竭：20 日累計在 0 以下、「5 日累計 × {PACE_RATIO}」由下往上穿過 20 日累計（最近一週的賣超步調慢過整月平均），再掉回去才可再標。
         同一波內外資期淨 OI 比前次標記再多 {DEEPER_STEP * 100}% 補一個小標記「OI空↓／OI多↑」，只畫在圖上不進回測。外資期空單多為現貨避險，空單極端不等於看空；散戶小台為法人反推值。
       </p>
 
@@ -344,7 +346,7 @@ export function ForeignChipsPanel({ data, themeKey }: { data: ForeignChipsFile |
                 <tr key={`${e.date}-${e.type}`}>
                   <td>{e.date}</td>
                   <td>{FOREIGN_EVENT_LABEL[e.type]}</td>
-                  <td className="r">{e.type === 'sell_extreme' || e.type === 'buy_extreme' || e.type === 'sell_no_fall' ? `${f2(e.value, true)} 億` : `${lots(e.value)} 口`}</td>
+                  <td className="r">{e.type === 'sell_extreme' || e.type === 'buy_extreme' || e.type === 'sell_no_fall' || e.type === 'sell_exhaust' ? `${f2(e.value, true)} 億` : `${lots(e.value)} 口`}</td>
                   <td className="r">{e.taiex.toLocaleString('en-US', { maximumFractionDigits: 0 })}</td>
                   <td className="r">{pctCell(e.ret20)}</td>
                   <td className="r">{pctCell(e.ret60)}</td>
@@ -356,7 +358,7 @@ export function ForeignChipsPanel({ data, themeKey }: { data: ForeignChipsFile |
         </div>
       )}
       <p className="small muted ms-rule">
-        用法：三格同向不等於三個證據（外資期空單增加常伴隨賣超現貨）。有用的是「連續賣超但指數不跌」「散戶偏多極端時外資反向」這類關係斷裂；資料累積滿一年後再回測決定是否計分，目前不計分。
+        用法：買賣超看「最近一週的步調 vs 這個月」而不是正負——5 日 × {PACE_RATIO} 比 20 日還低＝賣壓集中在最近幾天、還在加速；5 日拐頭往 0 收到步調慢過整月＝衰竭。三格同向不等於三個證據（外資期空單增加常伴隨賣超現貨）。有用的是「連續賣超但指數不跌」「散戶偏多極端時外資反向」這類關係斷裂；資料累積滿一年後再回測決定是否計分，目前不計分。
       </p>
     </section>
   );

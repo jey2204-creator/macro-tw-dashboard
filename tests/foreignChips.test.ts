@@ -60,6 +60,7 @@ describe('外資籌碼對照：百分位與事件', () => {
     // 20 日累計賣超極端但加權不跌 → 賣超不跌＋累計賣超極端同日
     const rows2: ForeignRow[] = Array.from({ length: 130 }, (_, i) => [day(i), 100 + i * 0.1, 0, 0, (i % 3), -1000, null, 0, null]);
     rows2[125]![4] = -500;
+    rows2[125]![3] = -600; // 5 日 × 4 仍在 20 日之下，不觸發賣壓衰竭
     const pctl2 = { cum20: rollingPctl(rows2.map((r) => r[4])), foreignOi: rollingPctl(rows2.map((r) => r[5])), retailOi: rollingPctl(rows2.map((r) => r[7])) };
     const ev2 = detectForeignEvents(rows2, pctl2);
     expect(ev2.map((e) => e.type).sort()).toEqual(['sell_extreme', 'sell_no_fall']);
@@ -82,6 +83,25 @@ describe('外資籌碼對照：百分位與事件', () => {
     const events = detectForeignEvents(rows, pctl);
     expect(events.filter((e) => e.type === 'oi_short').map((e) => e.date)).toEqual([day(125)]);
     expect(detectDeeper(rows, events, pctl)).toEqual([{ date: day(127), kind: 'oi_short', value: -11000 }]);
+  });
+
+  it('賣壓衰竭：20 日累計 < 0 時「5 日 × 4」由下往上穿過 20 日才標，掉回去再穿才可再標', () => {
+    const base = (i: number, cum5: number, cum20: number): ForeignRow => [day(i), 100, 0, cum5, cum20, null, null, null, null];
+    const rows: ForeignRow[] = [
+      base(0, -300, -200), // -1200 在 -200 下
+      base(1, -40, -200), // -160 上穿 → 標
+      base(2, -30, -200), // 還在上方，不重複
+      base(3, -250, -200), // 掉回
+      base(4, 50, 100), // 20 日 > 0 的上穿不算
+      base(5, -250, -200),
+      base(6, -40, -200), // 再上穿 → 標
+    ];
+    const pctl = { cum20: rows.map(() => null), foreignOi: rows.map(() => null), retailOi: rows.map(() => null) };
+    const ev = detectForeignEvents(rows, pctl).filter((e) => e.type === 'sell_exhaust');
+    expect(ev.map((e) => [e.date, e.value])).toEqual([
+      [day(1), -40],
+      [day(6), -40],
+    ]);
   });
 
   it('analyzeForeignChips：latest 含百分位，事件統計含基準', () => {

@@ -4,6 +4,8 @@
  * 買賣超是「流量」、淨未平倉是「部位」，與當日漲跌幾乎同步；有資訊的是
  *  - 累計買賣超 vs 指數的背離（連續賣超但指數不跌、連續買超但指數不漲）
  *  - 部位落在近 250 日極端（第 5／95 百分位）
+ * 另有「賣壓衰竭」：20 日累計賣超未翻正時，5 日累計 × 4（換算成同樣 20 日的步調）由下往上穿過 20 日累計
+ * ＝最近一週的賣超步調慢過這個月的平均。直接比 5 日與 20 日的金額沒有意義（視窗不同、量級不同）。
  * 因此每一筆都換算成近 250 日百分位，事件只在「首次進入極端」時標一次，
  * 回到中位數另一側（高極端 ≤ 第 50、低極端 ≥ 第 50 百分位）才算新的一波。
  *
@@ -29,7 +31,7 @@ export type ForeignRow = [
   retailOiChg: number | null,
 ];
 
-export type ForeignEventType = 'oi_short' | 'oi_long' | 'sell_extreme' | 'buy_extreme' | 'retail_long' | 'sell_no_fall';
+export type ForeignEventType = 'oi_short' | 'oi_long' | 'sell_extreme' | 'buy_extreme' | 'retail_long' | 'sell_no_fall' | 'sell_exhaust';
 
 export const PCTL_WINDOW = 250;
 export const PCTL_MIN = 120;
@@ -39,6 +41,8 @@ export const EXTREME_HIGH = 0.95;
 export const RESET_PCTL = 0.5;
 /** 賣超不跌：20 日累計賣超落在第 10 百分位以下，且加權 20 日報酬 ≥ 0 */
 export const DIVERGE_PCTL = 0.1;
+/** 5 日累計換算成 20 日步調的倍數（20 ÷ 5） */
+export const PACE_RATIO = 4;
 /** 再創極端：同一波內外資期淨 OI 比前次標記值再多 10%，補一個小標記（不進回測） */
 export const DEEPER_STEP = 0.1;
 
@@ -56,6 +60,7 @@ export const FOREIGN_EVENT_LABEL: Record<ForeignEventType, string> = {
   buy_extreme: '20日累計買超極端',
   retail_long: '散戶小台偏多極端',
   sell_no_fall: '賣超不跌',
+  sell_exhaust: '賣壓衰竭（5日步調上穿20日）',
 };
 export const FOREIGN_MARKER_TEXT: Record<ForeignEventType, string> = {
   oi_short: 'OI空',
@@ -64,6 +69,7 @@ export const FOREIGN_MARKER_TEXT: Record<ForeignEventType, string> = {
   buy_extreme: '買超',
   retail_long: '散戶多',
   sell_no_fall: '賣不跌',
+  sell_exhaust: '衰竭',
 };
 
 export interface ForeignEvent {
@@ -104,7 +110,7 @@ export interface ForeignChipsFile {
   } | null;
 }
 
-export const FOREIGN_EVENT_TYPES: ForeignEventType[] = ['oi_short', 'oi_long', 'sell_extreme', 'buy_extreme', 'retail_long', 'sell_no_fall'];
+export const FOREIGN_EVENT_TYPES: ForeignEventType[] = ['oi_short', 'oi_long', 'sell_extreme', 'buy_extreme', 'retail_long', 'sell_no_fall', 'sell_exhaust'];
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
 
@@ -208,6 +214,7 @@ export function detectForeignEvents(rows: ForeignRow[], pctl: ForeignChipsFile['
     buy_extreme: true,
     retail_long: true,
     sell_no_fall: true,
+    sell_exhaust: true,
   };
   const emit = (i: number, type: ForeignEventType, value: number) => {
     armed[type] = false;
@@ -245,6 +252,13 @@ export function detectForeignEvents(rows: ForeignRow[], pctl: ForeignChipsFile['
       if (pc <= DIVERGE_PCTL && ret20 !== null && ret20 >= 0 && armed.sell_no_fall) emit(i, 'sell_no_fall', row[4]);
     }
     if (pr !== null && pr !== undefined && row[7] !== null && pr >= EXTREME_HIGH && armed.retail_long) emit(i, 'retail_long', row[7]);
+    // 賣壓衰竭：20 日累計 < 0，「5 日累計 × 4」（換算成 20 日步調）由下往上穿過 20 日累計
+    // ＝最近一週的賣超步調慢過這個月的平均；再掉回去才可再標
+    const prev = rows[i - 1];
+    if (row[3] !== null && row[4] !== null && prev && prev[3] !== null && prev[4] !== null) {
+      if (row[3] * PACE_RATIO <= row[4]) armed.sell_exhaust = true;
+      else if (row[4] < 0 && prev[3] * PACE_RATIO <= prev[4] && armed.sell_exhaust) emit(i, 'sell_exhaust', row[3]);
+    }
   }
   return events;
 }
