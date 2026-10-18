@@ -4,7 +4,7 @@ import type { Bar } from './types';
 /**
  * 跨市場對照：把其他市場的 K 棒放到「台股的視角」。
  *
- * - session 'tw'：與台股同時段交易（日經、KOSPI、櫃買、USD/TWD），日期直接對應。
+ * - session 'tw'：與台股同時段交易（日經、KOSPI、櫃買、USD/TWD、USD/KRW、USD/JPY），日期直接對應。
  * - session 'us'：台股收盤後才交易（美股、美債、美元、原油），是台股的「前一晚」。
  *   對齊時把日期 d 的 K 棒往後移到第一個 ≥ d+1 的台股交易日，同一直線上才是「台股開盤時看到的那根」。
  */
@@ -24,6 +24,8 @@ export const COMPARE_SERIES: CompareSpec[] = [
   { id: 'kospi', session: 'tw' },
   { id: 'nikkei', session: 'tw' },
   { id: 'usdtwd', session: 'tw' },
+  { id: 'usdkrw', session: 'tw' },
+  { id: 'usdjpy', session: 'tw' },
   { id: 'dxy', session: 'us' },
   { id: 'us10y', session: 'us' },
   { id: 'tlt', session: 'us' },
@@ -43,6 +45,8 @@ export const MAX_COMPARE = 5;
 export const COMPARE_PRESETS: { key: string; label: string; ids: string[] }[] = [
   { key: 'equity', label: '股市', ids: ['tpex', 'sox', 'nasdaq', 'kospi', 'nikkei'] },
   { key: 'rates', label: '匯率利率', ids: ['usdtwd', 'dxy', 'us10y', 'tlt', 'us2y'] },
+  // 外資撤出三角確認：亞股＋當地貨幣＋DXY（DXY 同步漲＝全球美元回流，不是針對亞洲）
+  { key: 'asia', label: '亞洲資金', ids: ['kospi', 'usdtwd', 'usdkrw', 'usdjpy', 'dxy'] },
   { key: 'hedge', label: '避險', ids: ['gold', 'wti', 'brent', 'vix'] },
 ];
 

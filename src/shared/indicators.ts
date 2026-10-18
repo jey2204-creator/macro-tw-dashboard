@@ -70,7 +70,7 @@ export interface IndicatorDef {
   category: Category;
   frequency: Frequency;
   /** 顯示單位 */
-  unit: '%' | 'pt' | 'USD' | 'TWD' | 'k' | '口' | '億' | '家';
+  unit: '%' | 'pt' | 'USD' | 'TWD' | 'KRW' | 'JPY' | 'k' | '口' | '億' | '家';
   decimals: number;
   /** 依優先順序排列；第一個失敗會嘗試下一個 */
   sources: SourceSpec[];
@@ -174,6 +174,23 @@ export const INDICATORS: IndicatorDef[] = [
     transform: 'none', market: true,
     rule: { kind: 'risingIsBearish', lookback: 20, mode: 'pct', bearAt: 1.5, bullAt: -1.5 },
     weight: 0.5, maxAgeDays: 10, note: '數值上升＝台幣貶值，常反映外資匯出',
+  },
+  // 亞洲匯率（跨市場對照面板用；只抓取、不列入指標表與計分）
+  // 判斷外資撤出要三角確認：當地股跌＋當地貨幣貶＋DXY 沒同步漲；只有貨幣貶、DXY 也漲＝全球美元回流，不是針對該國
+  {
+    id: 'usdkrw', name: '美元／韓元', short: 'USD/KRW', category: 'fx', frequency: 'daily',
+    subtitle: '美元兌韓元｜升＝韓元貶',
+    unit: 'KRW', decimals: 2, sources: [{ provider: 'yahoo', symbol: 'KRW=X' }], transform: 'none',
+    market: true, rule: { kind: 'info' }, weight: 0, maxAgeDays: 10, hidden: true,
+    note: '數值上升＝韓元貶值；韓元與台幣同為風險貨幣，外資賣韓股換回美元時韓元走貶。跨市場對照面板用，不計分',
+  },
+  // 日圓是避險貨幣：恐慌時常「升值」（2024-08 套利交易平倉日股大跌、日圓大升），主要受美日利差驅動，不能用來判斷外資撤出日股
+  {
+    id: 'usdjpy', name: '美元／日圓', short: 'USD/JPY', category: 'fx', frequency: 'daily',
+    subtitle: '美元兌日圓｜避險貨幣，看利差',
+    unit: 'JPY', decimals: 3, sources: [{ provider: 'yahoo', symbol: 'JPY=X' }], transform: 'none',
+    market: true, rule: { kind: 'info' }, weight: 0, maxAgeDays: 10, hidden: true,
+    note: '數值上升＝日圓貶值。日圓是避險貨幣，市場恐慌時常升值，主要受美日利差驅動，不適合判斷外資是否撤出日股。跨市場對照面板用，不計分',
   },
   // ── 能源 ──────────────────────────────────
   {

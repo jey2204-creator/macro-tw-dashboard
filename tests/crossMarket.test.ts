@@ -115,7 +115,7 @@ describe('跨市場對照：可選序列', () => {
       expect(g.ids.length).toBeLessThanOrEqual(MAX_COMPARE);
       for (const id of g.ids) expect(ids, `${g.label}:${id}`).toContain(id);
     }
-    expect(COMPARE_PRESETS.map((g) => g.label)).toEqual(['股市', '匯率利率', '避險']);
+    expect(COMPARE_PRESETS.map((g) => g.label)).toEqual(['股市', '匯率利率', '亞洲資金', '避險']);
     expect(COMPARE_SERIES.map((s) => s.id)).toContain('gold');
     expect(COMPARE_SERIES.map((s) => s.id)).toContain('vix');
   });
@@ -127,6 +127,21 @@ describe('跨市場對照：可選序列', () => {
     expect(COMPARE_PRESETS.find((g) => g.key === 'rates')!.ids).toEqual(['usdtwd', 'dxy', 'us10y', 'tlt', 'us2y']);
     expect(INDICATOR_MAP.tlt!.hidden).toBe(true);
     expect(INDICATOR_MAP.tlt!.weight).toBe(0);
+  });
+
+  it('USD/KRW、USD/JPY 緊接在 USD/TWD 之後、與台股同時段；亞洲資金組合＝亞股＋三個亞洲貨幣＋DXY；隱藏且不計分', () => {
+    const ids = COMPARE_SERIES.map((s) => s.id);
+    const i = ids.indexOf('usdtwd');
+    expect(ids.slice(i, i + 3)).toEqual(['usdtwd', 'usdkrw', 'usdjpy']);
+    for (const id of ['usdkrw', 'usdjpy']) {
+      expect(COMPARE_SERIES.find((s) => s.id === id)!.session).toBe('tw');
+      expect(INDICATOR_MAP[id]!.hidden).toBe(true);
+      expect(INDICATOR_MAP[id]!.weight).toBe(0);
+      expect(INDICATOR_MAP[id]!.category).toBe('fx');
+    }
+    expect(INDICATOR_MAP.usdkrw!.sources[0]!.symbol).toBe('KRW=X');
+    expect(INDICATOR_MAP.usdjpy!.sources[0]!.symbol).toBe('JPY=X');
+    expect(COMPARE_PRESETS.find((g) => g.key === 'asia')!.ids).toEqual(['kospi', 'usdtwd', 'usdkrw', 'usdjpy', 'dxy']);
   });
 
   it('已滿 5 個時再選會換掉最早選的；已選的點一下取消', () => {
