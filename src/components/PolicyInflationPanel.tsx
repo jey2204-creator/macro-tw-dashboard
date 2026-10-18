@@ -1,5 +1,6 @@
 import {
   BaselineSeries,
+  type AutoscaleInfoProvider,
   ColorType,
   CrosshairMode,
   LineSeries,
@@ -150,28 +151,38 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
     });
     const pct = { type: 'price' as const, precision: 2, minMove: 0.01 };
     const toData = (pts: readonly Point[]) => pts.map(([d, v]) => ({ time: d as Time, value: v }));
+    // 軸上不放最新值標籤（區間短時刻度密，標籤一定會壓住刻度數字）；數值看上方讀數列，水平虛線標出位置
+    // Y 軸至少涵蓋參考線，避免短區間把小幅變化放大成陡升、門檻線跑出畫面
+    const includeRange = (lo: number, hi: number): AutoscaleInfoProvider => (original) => {
+      const r = original();
+      if (!r?.priceRange) return r;
+      return { ...r, priceRange: { minValue: Math.min(r.priceRange.minValue, lo), maxValue: Math.max(r.priceRange.maxValue, hi) } };
+    };
 
     // 上窗格：Fed（階梯，深色粗線）、核心 CPI（強調色）、整體 CPI（細虛線）、核心 PCE（細線）
     const fedS = chart.addSeries(
       LineSeries,
-      { color: cssVar('--text-1'), lineWidth: 2, lineType: LineType.WithSteps, priceFormat: pct, title: 'Fed' },
+      { color: cssVar('--text-1'), lineWidth: 2, lineType: LineType.WithSteps, priceFormat: pct, lastValueVisible: false },
       0,
     );
     fedS.setData(toData(fed));
-    const coreS = chart.addSeries(LineSeries, { color: cssVar('--accent'), lineWidth: 2, priceFormat: pct, title: '核心CPI' }, 0);
+    const coreS = chart.addSeries(
+      LineSeries,
+      { color: cssVar('--accent'), lineWidth: 2, priceFormat: pct, lastValueVisible: false, autoscaleInfoProvider: includeRange(FED_TARGET, FED_TARGET) },
+      0,
+    );
     coreS.setData(toData(coreCpi));
     coreS.createPriceLine({
       price: FED_TARGET,
       color: textColor,
       lineWidth: 1,
       lineStyle: LineStyle.Dashed,
-      axisLabelVisible: true,
-      title: 'Fed 目標 2%',
+      axisLabelVisible: false,
     });
     if (extras.cpi && cpi.length > 0) {
       const s = chart.addSeries(
         LineSeries,
-        { color: cssVar('--ma60'), lineWidth: 1, lineStyle: LineStyle.Dashed, priceFormat: pct, lastValueVisible: false, priceLineVisible: false, title: 'CPI' },
+        { color: cssVar('--ma60'), lineWidth: 1, lineStyle: LineStyle.Dashed, priceFormat: pct, lastValueVisible: false, priceLineVisible: false },
         0,
       );
       s.setData(toData(cpi));
@@ -179,7 +190,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
     if (extras.core_pce && corePce.length > 0) {
       const s = chart.addSeries(
         LineSeries,
-        { color: cssVar('--ma240'), lineWidth: 1, priceFormat: pct, lastValueVisible: false, priceLineVisible: false, title: '核心PCE' },
+        { color: cssVar('--ma240'), lineWidth: 1, priceFormat: pct, lastValueVisible: false, priceLineVisible: false },
         0,
       );
       s.setData(toData(corePce));
@@ -198,24 +209,23 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
         bottomFillColor2: 'rgba(42, 120, 214, 0.25)',
         lineWidth: 2,
         priceFormat: pct,
-        title: '實質',
+        lastValueVisible: false,
+        autoscaleInfoProvider: includeRange(0, REAL_RATE_TIGHT),
       },
       1,
     );
     realS.setData(real.map((r) => ({ time: r[0] as Time, value: r[3] })));
-    for (const [v, t] of [
-      [0, '0 中性'],
-      [REAL_RATE_TIGHT, `+${REAL_RATE_TIGHT} 緊縮`],
-    ] as const) {
-      realS.createPriceLine({ price: v, color: textColor, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: t });
+    // 參考線只畫虛線，不加圖內文字與軸標籤（標籤會被圖表庫上下推開、蓋住最近的線），說明放在窗格標題
+    for (const v of [0, REAL_RATE_TIGHT]) {
+      realS.createPriceLine({ price: v, color: textColor, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false });
     }
 
     const wm = (paneIndex: number, text: string) => {
       const pane = chart.panes()[paneIndex];
       if (pane) createTextWatermark(pane, { horzAlign: 'left', vertAlign: 'top', lines: [{ text, color: textColor, fontSize: 12, fontFamily, fontStyle: '' }] });
     };
-    wm(0, `Fed 利率 vs 通膨年增（%）`);
-    wm(1, '實質政策利率＝Fed − 核心CPI（pp）');
+    wm(0, `Fed 利率 vs 通膨年增（%）｜虛線 2% 目標`);
+    wm(1, `實質＝Fed − 核心CPI（pp）｜虛線 +${REAL_RATE_TIGHT} 緊縮、0 中性`);
 
     const handler = (param: MouseEventParams<Time>) => setHoverTime(typeof param.time === 'string' ? param.time : null);
     chart.subscribeCrosshairMove(handler);
