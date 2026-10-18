@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   alignToTwCalendar,
   COMPARE_PRESETS,
+  dropWeekendBars,
   COMPARE_SERIES,
   correlationSeries,
   DEFAULT_COMPARE,
@@ -115,7 +116,7 @@ describe('跨市場對照：可選序列', () => {
       expect(g.ids.length).toBeLessThanOrEqual(MAX_COMPARE);
       for (const id of g.ids) expect(ids, `${g.label}:${id}`).toContain(id);
     }
-    expect(COMPARE_PRESETS.map((g) => g.label)).toEqual(['股市', '匯率利率', '避險']);
+    expect(COMPARE_PRESETS.map((g) => g.label)).toEqual(['股市', '匯率利率', '亞洲資金', '避險']);
     expect(COMPARE_SERIES.map((s) => s.id)).toContain('gold');
     expect(COMPARE_SERIES.map((s) => s.id)).toContain('vix');
   });
@@ -127,6 +128,32 @@ describe('跨市場對照：可選序列', () => {
     expect(COMPARE_PRESETS.find((g) => g.key === 'rates')!.ids).toEqual(['usdtwd', 'dxy', 'us10y', 'tlt', 'us2y']);
     expect(INDICATOR_MAP.tlt!.hidden).toBe(true);
     expect(INDICATOR_MAP.tlt!.weight).toBe(0);
+  });
+
+  it('USD/KRW、USD/JPY 緊接在 USD/TWD 之後、與台股同時段；亞洲資金組合＝亞股＋三個亞洲貨幣＋DXY；隱藏且不計分', () => {
+    const ids = COMPARE_SERIES.map((s) => s.id);
+    const i = ids.indexOf('usdtwd');
+    expect(ids.slice(i, i + 3)).toEqual(['usdtwd', 'usdkrw', 'usdjpy']);
+    for (const id of ['usdkrw', 'usdjpy']) {
+      expect(COMPARE_SERIES.find((s) => s.id === id)!.session).toBe('tw');
+      expect(INDICATOR_MAP[id]!.hidden).toBe(true);
+      expect(INDICATOR_MAP[id]!.weight).toBe(0);
+      expect(INDICATOR_MAP[id]!.category).toBe('fx');
+    }
+    expect(INDICATOR_MAP.usdkrw!.sources[0]!.symbol).toBe('KRW=X');
+    expect(INDICATOR_MAP.usdjpy!.sources[0]!.symbol).toBe('JPY=X');
+    expect(COMPARE_PRESETS.find((g) => g.key === 'asia')!.ids).toEqual(['kospi', 'usdtwd', 'usdkrw', 'usdjpy', 'dxy']);
+  });
+
+  it('去掉 Yahoo 亞洲匯率週末多出來的那根；沒有週末 K 棒時回傳原陣列', () => {
+    const bars: Bar[] = [
+      ['2026-10-15', 32.1, 32.4, 32.1, 32.2],
+      ['2026-10-16', 32.3, 32.5, 32.3, 32.3],
+      ['2026-10-18', 32.4, 32.4, 32.4, 32.4],
+    ];
+    expect(dropWeekendBars(bars).map((b) => b[0])).toEqual(['2026-10-15', '2026-10-16']);
+    const weekdays = bars.slice(0, 2);
+    expect(dropWeekendBars(weekdays)).toBe(weekdays);
   });
 
   it('已滿 5 個時再選會換掉最早選的；已選的點一下取消', () => {
