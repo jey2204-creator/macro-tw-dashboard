@@ -66,7 +66,7 @@ function ChipsChart({ data, range, themeKey, resetKey }: { data: ForeignChipsFil
       autoSize: true,
       crosshair: { mode: CrosshairMode.Normal },
       localization: { locale: 'zh-TW', dateFormat: 'yyyy-MM-dd' },
-      timeScale: { ...TIME_AXIS, rightOffset: 8, fixLeftEdge: true, fixRightEdge: false, minBarSpacing: 0.1 },
+      timeScale: { ...TIME_AXIS, rightOffset: 2, fixLeftEdge: true, fixRightEdge: true, minBarSpacing: 0.1 },
       ...CHART_INTERACTION,
     });
     attachTimeAxis(chart);
@@ -203,7 +203,7 @@ function ChipsChart({ data, range, themeKey, resetKey }: { data: ForeignChipsFil
     const start = rangeStart(last[0], range);
     const from = start ? Math.max(0, data.rows.findIndex((r) => r[0] >= start)) : 0;
     const apply = () => {
-      chart.timeScale().setVisibleLogicalRange({ from, to: data.rows.length + 8 });
+      chart.timeScale().setVisibleLogicalRange({ from, to: data.rows.length + 1 });
       resetPriceScales(chart);
       resetPaneStretch(chart, FC_PANE_STRETCH);
     };
