@@ -263,6 +263,11 @@ export function ForeignChipsPanel({ data, themeKey }: { data: ForeignChipsFile |
   if (!data || !data.latest) return null;
   const { latest } = data;
   const years = data.start && data.end ? `${data.start}～${data.end}` : '';
+  // 各欄最早有資料的日期（歷史回補進度）
+  const firstOf = (k: 2 | 5) => data.rows.find((r) => r[k] !== null)?.[0] ?? null;
+  const netFrom = firstOf(2);
+  const oiFrom = firstOf(5);
+  const shortHistory = !netFrom || netFrom > '2015-01-01' || !oiFrom || oiFrom > '2015-01-01';
   const extreme = [
     latest.foreignOiPctl !== null && latest.foreignOiPctl <= EXTREME_LOW && '外資期空單極端',
     latest.foreignOiPctl !== null && latest.foreignOiPctl >= EXTREME_HIGH && '外資期多單極端',
@@ -304,7 +309,10 @@ export function ForeignChipsPanel({ data, themeKey }: { data: ForeignChipsFile |
 
       <div className="table-wrap">
         <table className="bt-table num">
-          <caption className="small muted">事件發生後加權指數表現（{years}）— 買賣超資料僅自 2025-10 起、期貨自 2024-10 起，樣本仍少，只看方向不看數字</caption>
+          <caption className="small muted">
+            事件發生後加權指數表現（{years}；買賣超自 {netFrom ?? '—'}、期貨自 {oiFrom ?? '—'}）
+            {shortHistory && '— 歷史回補中，樣本仍少，只看方向不看數字'}
+          </caption>
           <thead>
             <tr>
               <th>事件</th>

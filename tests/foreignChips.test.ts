@@ -3,6 +3,7 @@ import {
   analyzeForeignChips,
   combineForeignRows,
   detectDeeper,
+  mergeChipsHistory,
   detectForeignEvents,
   rollingPctl,
   type ForeignRow,
@@ -34,6 +35,29 @@ describe('外資籌碼對照：合併', () => {
     expect(rows[29]![4]).toBe(20);
     // 散戶欄缺資料為 null
     expect(rows[29]![7]).toBeNull();
+  });
+});
+
+describe('外資籌碼對照：長期歷史合併', () => {
+  it('歷史在前、每日排程覆蓋同一天；null 不產生 K 棒', () => {
+    const m = mergeChipsHistory(
+      [
+        ['2010-01-04', 10, -1000, 500],
+        ['2010-01-05', null, -1100, null],
+        ['2026-10-15', 1, 1, 1],
+      ],
+      { net: [flat('2026-10-15', -461), flat('2026-10-16', -500)], foreignOi: [flat('2026-10-16', -93675)] },
+    );
+    expect(m.net.map((b) => [b[0], b[4]])).toEqual([
+      ['2010-01-04', 10],
+      ['2026-10-15', -461],
+      ['2026-10-16', -500],
+    ]);
+    expect(m.foreignOi.map((b) => b[0])).toEqual(['2010-01-04', '2010-01-05', '2026-10-15', '2026-10-16']);
+    expect(m.retailOi.map((b) => [b[0], b[4]])).toEqual([
+      ['2010-01-04', 500],
+      ['2026-10-15', 1],
+    ]);
   });
 });
 

@@ -1,6 +1,12 @@
 import { readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { analyzeForeignChips, combineForeignRows, type ForeignChipsFile } from '../../src/shared/foreignChips';
+import {
+  analyzeForeignChips,
+  combineForeignRows,
+  mergeChipsHistory,
+  type ChipsHistoryFile,
+  type ForeignChipsFile,
+} from '../../src/shared/foreignChips';
 import type { Bar, SeriesFile } from '../../src/shared/types';
 
 async function readJson<T>(file: string): Promise<T | null> {
@@ -12,18 +18,26 @@ async function readJson<T>(file: string): Promise<T | null> {
 }
 
 /**
- * 讀取每日排程資料（outDir/series 的 net_foreign、fut_foreign_oi、retail_oi、taiex），
- * 寫出 outDir/foreign-chips.json（外資籌碼對照面板）。
+ * 讀取 repo 內的長期歷史（data/chips-history.json，由 chipsBackfill.ts 回補）與
+ * 每日排程資料（outDir/series 的 net_foreign、fut_foreign_oi、retail_oi、taiex），
+ * 合併後寫出 outDir/foreign-chips.json（外資籌碼對照面板）。同一天以每日排程為準。
  */
-export async function writeForeignChips(outDir: string, now = new Date()): Promise<ForeignChipsFile> {
+export async function writeForeignChips(
+  outDir: string,
+  historyFile = path.resolve('data/chips-history.json'),
+  now = new Date(),
+): Promise<ForeignChipsFile> {
   const series = async (id: string): Promise<Bar[] | undefined> =>
     (await readJson<SeriesFile>(path.join(outDir, 'series', `${id}.json`)))?.data;
   const taiex = await series('taiex');
   if (!taiex?.length) throw new Error('缺少加權指數資料');
-  const rows = combineForeignRows(
-    { net: await series('net_foreign'), foreignOi: await series('fut_foreign_oi'), retailOi: await series('retail_oi') },
-    taiex,
-  );
+  const hist = await readJson<ChipsHistoryFile>(historyFile);
+  const merged = mergeChipsHistory(hist?.schemaVersion === 1 ? hist.rows : [], {
+    net: await series('net_foreign'),
+    foreignOi: await series('fut_foreign_oi'),
+    retailOi: await series('retail_oi'),
+  });
+  const rows = combineForeignRows(merged, taiex);
   const out = analyzeForeignChips(rows, now);
   const file = path.join(outDir, 'foreign-chips.json');
   await writeFile(`${file}.tmp`, JSON.stringify(out));
