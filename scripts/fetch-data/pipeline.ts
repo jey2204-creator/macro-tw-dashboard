@@ -7,6 +7,7 @@ import { isValidBar, mergeBars } from '../../src/shared/timeseries';
 import type { Bar, SeriesFile, SourceRef, SummaryEntry, SummaryFile } from '../../src/shared/types';
 import type { FetchLike, HttpOptions } from './http';
 import { fetchFred } from './sources/fred';
+import { fetchNaverKrForeign } from './sources/naverKr';
 import { fetchTaifex } from './sources/taifex';
 import { fetchTpex, fetchTwse } from './sources/twExchanges';
 import { fetchTwseChips } from './sources/twseChips';
@@ -89,6 +90,8 @@ async function fetchFromSource(
       return fetchTaifex(spec.symbol, cacheLast, today, http, fast);
     case 'twse_chips':
       return fetchTwseChips(spec.symbol, cacheLast ? cached!.data : null, today, http, fast);
+    case 'naver_kr':
+      return fetchNaverKrForeign(cacheLast ? cached!.data : null, today, http, fast);
   }
 }
 

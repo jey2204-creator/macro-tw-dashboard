@@ -13,6 +13,13 @@ export type Session = 'tw' | 'us';
 export interface CompareSpec {
   id: string;
   session: Session;
+  /** 按鈕與窗格名稱（省略時用指標短名） */
+  label?: string;
+  /**
+   * 流量型（外資買賣超）：換算成億美元，窗格畫每日柱＋20 日累計線；不算 ρ、不畫均線。
+   * fx＝當地貨幣兌美元的序列；from＝資料來源（指標序列檔，或 foreign-chips.json 的 2010 起歷史）
+   */
+  flow?: { fx: string; from: 'series' | 'foreignChips' };
 }
 
 /** 可選的對照序列（依顯示順序；id 對應指標註冊表） */
@@ -23,6 +30,8 @@ export const COMPARE_SERIES: CompareSpec[] = [
   { id: 'spx', session: 'us' },
   { id: 'kospi', session: 'tw' },
   { id: 'nikkei', session: 'tw' },
+  { id: 'net_foreign', session: 'tw', label: '台外資', flow: { fx: 'usdtwd', from: 'foreignChips' } },
+  { id: 'kr_foreign', session: 'tw', label: '韓外資', flow: { fx: 'usdkrw', from: 'series' } },
   { id: 'usdtwd', session: 'tw' },
   { id: 'usdkrw', session: 'tw' },
   { id: 'usdjpy', session: 'tw' },
@@ -38,15 +47,15 @@ export const COMPARE_SERIES: CompareSpec[] = [
 
 /** 預設對照：三個不同資訊來源（前一晚美國半導體、同時段亞股、資金流向），而不是三個最像的 */
 export const DEFAULT_COMPARE = ['sox', 'kospi', 'usdtwd'];
-/** 手機高度考量：最多同時顯示的對照窗格數；已滿時再選會換掉最早選的那個 */
-export const MAX_COMPARE = 5;
+/** 手機高度考量：最多同時顯示的對照窗格數（每格約 120px）；已滿時再選會換掉最早選的那個 */
+export const MAX_COMPARE = 6;
 
 /** 一鍵切換的組合（每組 ≤ MAX_COMPARE） */
 export const COMPARE_PRESETS: { key: string; label: string; ids: string[] }[] = [
   { key: 'equity', label: '股市', ids: ['tpex', 'sox', 'nasdaq', 'kospi', 'nikkei'] },
   { key: 'rates', label: '匯率利率', ids: ['usdtwd', 'dxy', 'us10y', 'tlt', 'us2y'] },
-  // 外資撤出三角確認：亞股＋當地貨幣＋DXY（DXY 同步漲＝全球美元回流，不是針對亞洲）
-  { key: 'asia', label: '亞洲資金', ids: ['kospi', 'usdtwd', 'usdkrw', 'usdjpy', 'dxy'] },
+  // 外資有沒有撤出：直接證據（台、韓外資買賣超）＋結果（當地貨幣）＋DXY（同步漲＝全球美元回流，不是針對亞洲）
+  { key: 'asia', label: '亞洲資金', ids: ['kospi', 'net_foreign', 'kr_foreign', 'usdtwd', 'usdkrw', 'dxy'] },
   { key: 'hedge', label: '避險', ids: ['gold', 'wti', 'brent', 'vix'] },
 ];
 
@@ -58,6 +67,51 @@ export function toggleCompare(selected: readonly string[], id: string): string[]
 }
 
 export const CORR_WINDOWS = [20, 60] as const;
+
+/** 流量型的累計視窗（交易日） */
+export const FLOW_CUM_DAYS = 20;
+
+export const compareLabel = (spec: CompareSpec, short: string | undefined): string => spec.label ?? short ?? spec.id;
+
+/** 已選序列需要載入的序列檔：一般序列本身；流量型另需匯率，來源為 foreign-chips.json 的不載入本身 */
+export function compareFetchIds(selected: readonly string[]): string[] {
+  const out = new Set<string>();
+  for (const s of COMPARE_SERIES) {
+    if (!selected.includes(s.id)) continue;
+    if (!s.flow || s.flow.from === 'series') out.add(s.id);
+    if (s.flow) out.add(s.flow.fx);
+  }
+  return [...out];
+}
+
+/**
+ * 當地貨幣流量 → 億美元：每天除以當日（沒有則取之前最近一天）的「每 1 美元兌當地貨幣」收盤。
+ * 億韓元 ÷ (韓元／美元) ＝ 億美元；匯率起點之前的日子略過。
+ */
+export function toUsdFlow(flows: readonly Bar[], fx: readonly Bar[]): Bar[] {
+  const out: Bar[] = [];
+  let j = -1;
+  for (const b of flows) {
+    while (j + 1 < fx.length && fx[j + 1]![0] <= b[0]) j++;
+    const rate = j >= 0 ? fx[j]![4] : NaN;
+    if (!(rate > 0)) continue;
+    const v = b[4] / rate;
+    out.push([b[0], v, v, v, v]);
+  }
+  return out;
+}
+
+/** 最近 n 筆加總（不足 n 筆為 null） */
+export function rollingSum(bars: readonly Bar[], n: number): (number | null)[] {
+  const out: (number | null)[] = [];
+  let sum = 0;
+  for (let i = 0; i < bars.length; i++) {
+    sum += bars[i]![4];
+    if (i >= n) sum -= bars[i - n]![4];
+    out.push(i >= n - 1 ? sum : null);
+  }
+  return out;
+}
 
 /** 下一個平日（跳過週六、日）。台灣假日未知：資料到齊後 alignToTwCalendar 會自動併入實際的下一個交易日 */
 export function nextWeekday(date: string): string {

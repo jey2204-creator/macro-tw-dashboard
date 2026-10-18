@@ -11,6 +11,7 @@ export type SourceSpec =
   | { provider: 'tpex'; symbol: 'TPEX_INDEX' }
   | { provider: 'twse'; symbol: 'TAIEX' }
   | { provider: 'taifex'; symbol: 'TXF_FOREIGN_OI' | 'MXF_RETAIL_OI' | 'TXO_FOREIGN_NET' | 'TX_TOP10_SPECIFIC' }
+  | { provider: 'naver_kr'; symbol: 'KOSPI_FOREIGN' }
   | {
       provider: 'twse_chips';
       symbol:
@@ -382,6 +383,14 @@ export const INDICATORS: IndicatorDef[] = [
     market: true, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true,
     note: '三星、SK 海力士占比高，產業結構與台股最接近且同時段交易；跨市場對照面板用，不計分',
   },
+  // 外資撤出亞洲的直接證據（匯率只是結果）；KRX 官方平台需登入，改用 Naver（資料源自韓國交易所）
+  {
+    id: 'kr_foreign', name: '韓國外資買賣超（KOSPI）', short: '韓外資', category: 'asia_equity', frequency: 'daily',
+    subtitle: '外國人 KOSPI 淨買賣｜億韓元',
+    unit: '億', decimals: 0, sources: [{ provider: 'naver_kr', symbol: 'KOSPI_FOREIGN' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true, flow: true, chart: 'histogram',
+    note: '外國人在韓國 KOSPI 的每日淨買賣（億韓元，Naver Pay 證券；2010 年起）。跨市場對照面板換算成億美元與台灣外資並列，不計分',
+  },
   // ── 台股 ──────────────────────────────────
   {
     id: 'taiex', name: '台灣加權指數', short: '加權指數', category: 'tw_equity', frequency: 'daily',
@@ -547,6 +556,8 @@ export function sourceUrl(spec: SourceSpec): string {
       return 'https://www.taifex.com.tw/cht/3/futContractsDate';
     case 'twse_chips':
       return 'https://www.twse.com.tw/zh/';
+    case 'naver_kr':
+      return 'https://m.stock.naver.com/domestic/index/KOSPI/total';
   }
 }
 
@@ -557,4 +568,5 @@ export const PROVIDER_LABEL: Record<SourceSpec['provider'], string> = {
   twse: '臺灣證交所 TWSE',
   taifex: '臺灣期交所 TAIFEX',
   twse_chips: '臺灣證交所 TWSE',
+  naver_kr: 'Naver Pay 證券（韓國交易所資料）',
 };
