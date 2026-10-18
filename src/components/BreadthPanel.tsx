@@ -11,6 +11,7 @@ import {
   type SeriesMarker,
   type Time,
 } from 'lightweight-charts';
+import { PanelNote } from './PanelNote';
 import { CHART_INTERACTION, resetPaneStretch, resetPriceScales, attachTimeAxis, TIME_AXIS } from '../lib/chartInteraction';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { cssVar, f2, pctCell } from '../lib/stressFormat';
@@ -169,7 +170,7 @@ export function BreadthPanel({ data, themeKey }: { data: BreadthStressFile | nul
   const stateText = latest.panic ? '恐慌日' : latest.inEpisode ? '恐慌後觀察期' : '平靜';
   const shortHistory = !data.start || data.start > '2011-01-01';
   return (
-    <section className="regime ms" aria-label="漲跌停家數監測">
+    <section id="sec-br" className="regime ms" aria-label="漲跌停家數監測">
       <div className="regime-head">
         <div className="regime-title">
           <span className="label">漲跌停家數監測（上市股票，參考）</span>
@@ -182,9 +183,11 @@ export function BreadthPanel({ data, themeKey }: { data: BreadthStressFile | nul
         <span className="small muted num">資料 {latest.date}</span>
       </div>
 
-      <p className="small muted ms-rule">
+      <PanelNote>
+        <p className="small muted ms-rule">
         恐慌：跌停占比（跌停÷上漲＋下跌家數）達近 250 日第 98 百分位且 ≥ {PANIC_MIN_PCT}%；投降：連續 2 日恐慌或恐慌日融資維持率 &lt; 140%；背離：加權跌破本波低點但跌停不到本波高峰一半；止跌：漲停 &gt; 跌停連續 2 日且加權 3 日不破低。最後一個恐慌日後 {EPISODE_GAP} 個交易日內算同一波，每種事件每波只標一次。2015-06-01 前漲跌幅為 7%，因此用百分位而非固定家數。
       </p>
+      </PanelNote>
 
       <div className="seg" role="group" aria-label="時間區間">
         {RANGES.map((r) => (
@@ -258,9 +261,11 @@ export function BreadthPanel({ data, themeKey }: { data: BreadthStressFile | nul
           </table>
         </div>
       )}
-      <p className="small muted ms-rule">
+      <PanelNote label="ⓘ 用法">
+        <p className="small muted ms-rule">
         用法：恐慌本身不是進場訊號（恐慌常持續 2–5 天）；背離、止跌再搭配上方「融資斷頭監測」的清洗完成與總經判斷，才考慮分批。僅供參考，不計分。
       </p>
+      </PanelNote>
     </section>
   );
 }

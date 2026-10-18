@@ -91,7 +91,7 @@ export function ChartPanel({ def, ev, entry, version, prefs, onPrefs, onClose, t
         <Seg label="時間區間" items={RANGES} value={prefs.range} onChange={(range) => onPrefs({ ...prefs, range })} />
       </div>
       {def.market && (
-        <div className="cp-mas" role="group" aria-label="均線">
+        <div className="cp-mas ma-row" role="group" aria-label="均線">
           {MA_PERIODS.map((p) => (
             <button key={p} type="button" className="ma-chip" aria-pressed={prefs.mas.includes(p)} onClick={() => toggleMa(p)}>
               <i className="swatch" style={{ background: `var(${MA_COLOR_VAR[p]})` }} />

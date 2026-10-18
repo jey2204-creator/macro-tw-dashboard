@@ -12,6 +12,7 @@ import {
   type MouseEventParams,
   type Time,
 } from 'lightweight-charts';
+import { PanelNote } from './PanelNote';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSeriesMap } from '../hooks/useData';
 import { CHART_INTERACTION, resetPaneStretch, resetPriceScales, attachTimeAxis, TIME_AXIS } from '../lib/chartInteraction';
@@ -275,7 +276,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
   const failed = IDS.flatMap((id) => (files[id]?.status === 'error' ? [`${id}：${(files[id] as { error: string }).error}`] : []));
 
   return (
-    <section ref={sectionRef} className="regime ms pi" aria-label="政策利率與通膨">
+    <section ref={sectionRef} id="sec-pi" className="regime ms pi" aria-label="政策利率與通膨">
       <div className="regime-head">
         <div className="regime-title">
           <span className="label">政策利率 vs 通膨（參考）</span>
@@ -299,12 +300,14 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
         </p>
       )}
 
-      <p className="small muted ms-rule">
+      <PanelNote>
+        <p className="small muted ms-rule">
         看 Fed 跟通膨的距離，不看方向：實質政策利率（Fed − 核心CPI）小於 0 是寬鬆，Fed 歷來不會在這裡停止升息；大於 +1pp 才算緊縮，才有降息空間。
         2000、2006、2019、2023 幾次升息頂點都出現在實質利率翻正之後，但翻正不等於馬上降息（2023 翻正後又撐了一年）。
         核心 CPI 是落後指標；整體 CPI 用來解釋油價飆時 Fed 為什麼不動，核心 PCE 是 Fed 正式目標但晚兩週。
         這張圖與「Fed 120 天」「核心CPI ±0.2pp」規則重疊，只用來解釋 FOMC 為什麼那樣做，不計分。2008 年前 Fed 為單一目標利率。
       </p>
+      </PanelNote>
 
       <div className="cp-mas" role="group" aria-label="通膨序列">
         <span className="ma-chip" aria-pressed="true" aria-disabled="true" title="固定顯示">

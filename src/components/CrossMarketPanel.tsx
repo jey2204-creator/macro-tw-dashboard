@@ -14,6 +14,7 @@ import {
   type SeriesMarker,
   type Time,
 } from 'lightweight-charts';
+import { PanelNote } from './PanelNote';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useForeignChips, useSeriesMap } from '../hooks/useData';
 import { MA_COLOR_VAR } from '../lib/chartData';
@@ -457,7 +458,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
   const hostStyle = { ['--cm-panes' as string]: String(panes.length) } as CSSProperties;
 
   return (
-    <section ref={sectionRef} className="regime ms cm" aria-label="跨市場對照">
+    <section ref={sectionRef} id="sec-cm" className="regime ms cm" aria-label="跨市場對照">
       <div className="regime-head">
         <div className="regime-title">
           <span className="label">跨市場對照（參考）</span>
@@ -468,7 +469,8 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         <p className="score num cm-rho">ρ60：{latestRho.map((r) => `${r.label} ${fmtRho(r.rho60)}`).join('｜')}</p>
       )}
 
-      <p className="small muted ms-rule">
+      <PanelNote>
+        <p className="small muted ms-rule">
         美股、美債、美元、原油在台股開盤前收盤，是台股的「前一晚」：對齊後，同一直線上的美系 K 棒＝台股開盤時看到的那根（連假期間多根合併成一根）。
         日經、KOSPI、櫃買、亞洲匯率（USD/TWD、KRW、JPY）與台股同時段，不移。ρ20／ρ60＝日報酬 20／60 日相關係數，看背離與關係斷裂，不是預測；三張圖同向不等於三個證據。
         黃金、VIX 用來分辨今天是哪種行情（黃金↑油↑殖利率↓＝地緣避險；黃金↑美元↑殖利率↑＝通膨），不是預測戰爭。
@@ -477,14 +479,15 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         加權 K 棒下方的圓點是 CPI（藍）、就業報告（橘）、FOMC（黑）公布後台股第一個交易日：美東 08:30／14:00 公布時台股已收盤，反應落在隔天。
         動市場的是「實績 vs 預期」不是年增率本身，所以用標記不畫月線；2026-10 起有市場預期，點到該日圖例會列出驚喜值。標記只在 1 年以內的區間顯示（半年以內才附文字）。
       </p>
-      {stats && Number.isFinite(stats.normal.meanAbs) && (
-        <p className="small muted num cm-stats">
-          {STATS_SINCE.slice(0, 4)} 年起加權反應日 |漲跌| 均值：平常日 {stats.normal.meanAbs.toFixed(2)}%（≥1.5% 佔 {stats.normal.bigPct.toFixed(0)}%）｜
-          {(['cpi', 'jobs', 'fomc'] as const)
-            .map((k) => `${EVENT_KIND_TEXT[k]} ${stats.kinds[k].meanAbs.toFixed(2)}%（${stats.kinds[k].bigPct.toFixed(0)}%，n=${stats.kinds[k].n}）`)
-            .join('｜')}
-        </p>
-      )}
+        {stats && Number.isFinite(stats.normal.meanAbs) && (
+          <p className="small muted num cm-stats">
+            {STATS_SINCE.slice(0, 4)} 年起加權反應日 |漲跌| 均值：平常日 {stats.normal.meanAbs.toFixed(2)}%（≥1.5% 佔 {stats.normal.bigPct.toFixed(0)}%）｜
+            {(['cpi', 'jobs', 'fomc'] as const)
+              .map((k) => `${EVENT_KIND_TEXT[k]} ${stats.kinds[k].meanAbs.toFixed(2)}%（${stats.kinds[k].bigPct.toFixed(0)}%，n=${stats.kinds[k].n}）`)
+              .join('｜')}
+          </p>
+        )}
+      </PanelNote>
 
       <div className="cp-mas" role="group" aria-label="對照組合">
         <div className="seg" role="group" aria-label="一鍵切換組合">
@@ -521,7 +524,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         {atMax && <span className="small muted">已滿 {MAX_COMPARE} 個，再選會換掉最早選的（{oldest}）</span>}
       </div>
 
-      <div className="cp-mas" role="group" aria-label="均線">
+      <div className="cp-mas ma-row" role="group" aria-label="均線">
         {MA_PERIODS.map((p) => (
           <button key={p} type="button" className="ma-chip" aria-pressed={mas.includes(p)} onClick={() => toggleMa(p)}>
             <i className="swatch" style={{ background: `var(${MA_COLOR_VAR[p]})` }} />

@@ -13,6 +13,7 @@ import {
   type SeriesMarker,
   type Time,
 } from 'lightweight-charts';
+import { PanelNote } from './PanelNote';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CHART_INTERACTION, attachTimeAxis, resetPaneStretch, resetPriceScales, TIME_AXIS } from '../lib/chartInteraction';
 import { cssVar, f2, pctCell } from '../lib/stressFormat';
@@ -303,7 +304,7 @@ export function ForeignChipsPanel({ data, themeKey }: { data: ForeignChipsFile |
     latest.retailOiPctl !== null && latest.retailOiPctl >= EXTREME_HIGH && '散戶小台偏多極端',
   ].filter((x): x is string => typeof x === 'string');
   return (
-    <section className="regime ms fc" aria-label="外資籌碼對照">
+    <section id="sec-fc" className="regime ms fc" aria-label="外資籌碼對照">
       <div className="regime-head">
         <div className="regime-title">
           <span className="label">外資籌碼對照（上市，參考）</span>
@@ -316,11 +317,13 @@ export function ForeignChipsPanel({ data, themeKey }: { data: ForeignChipsFile |
         <span className="small muted num">資料 {latest.date}</span>
       </div>
 
-      <p className="small muted ms-rule">
+      <PanelNote>
+        <p className="small muted ms-rule">
         買賣超是流量、淨未平倉是部位，兩者與當日漲跌幾乎同步，單看柱子不會比看 K 棒多知道什麼；要看的是<b>累計 vs 指數的背離</b>與<b>部位極端</b>。
         百分位＝該值在近 {PCTL_WINDOW} 個交易日中的位置；事件只在首次 ≤ 第 {EXTREME_LOW * 100}／≥ 第 {EXTREME_HIGH * 100} 百分位時標一次，回到第 {RESET_PCTL * 100} 百分位另一側才算新的一波。賣超不跌：20 日累計 ≤ 第 {DIVERGE_PCTL * 100} 百分位且加權 20 日不跌。賣壓衰竭：20 日累計在 0 以下、「5 日累計 × {PACE_RATIO}」由下往上穿過 20 日累計（最近一週的賣超步調慢過整月平均），再掉回去才可再標。
         同一波內外資期淨 OI 比前次標記再多 {DEEPER_STEP * 100}% 補一個小標記「OI空↓／OI多↑」，只畫在圖上不進回測。外資期空單多為現貨避險，空單極端不等於看空；散戶小台為法人反推值。
       </p>
+      </PanelNote>
 
       <div className="seg" role="group" aria-label="時間區間">
         {RANGES.map((r) => (
@@ -392,9 +395,11 @@ export function ForeignChipsPanel({ data, themeKey }: { data: ForeignChipsFile |
           </table>
         </div>
       )}
-      <p className="small muted ms-rule">
+      <PanelNote label="ⓘ 用法">
+        <p className="small muted ms-rule">
         用法：買賣超看「最近一週的步調 vs 這個月」而不是正負——5 日 × {PACE_RATIO} 比 20 日還低＝賣壓集中在最近幾天、還在加速；5 日拐頭往 0 收到步調慢過整月＝衰竭。三格同向不等於三個證據（外資期空單增加常伴隨賣超現貨）。有用的是「連續賣超但指數不跌」「散戶偏多極端時外資反向」這類關係斷裂；資料累積滿一年後再回測決定是否計分，目前不計分。
       </p>
+      </PanelNote>
     </section>
   );
 }

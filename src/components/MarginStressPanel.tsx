@@ -11,6 +11,7 @@ import {
   type SeriesMarker,
   type Time,
 } from 'lightweight-charts';
+import { PanelNote } from './PanelNote';
 import { CHART_INTERACTION, resetPaneStretch, resetPriceScales, attachTimeAxis, TIME_AXIS } from '../lib/chartInteraction';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -182,7 +183,7 @@ export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile |
   const years = data.start && data.end ? `${data.start}～${data.end}` : '';
   const shortHistory = !data.start || data.start > '2011-01-01';
   return (
-    <section className="regime ms" aria-label="融資斷頭監測">
+    <section id="sec-ms" className="regime ms" aria-label="融資斷頭監測">
       <div className="regime-head">
         <div className="regime-title">
           <span className="label">融資斷頭監測（上市，參考）</span>
@@ -195,10 +196,12 @@ export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile |
         <span className="small muted num">資料 {latest.date}</span>
       </div>
 
-      <p className="small muted ms-rule">
+      <PanelNote>
+        <p className="small muted ms-rule">
         警戒：維持率 &lt; {WARN_RATIO}% 或近 5 日降 &gt; {WARN_DROP_5D}pp；斷頭區：&lt; {ZONE_RATIO}%；斷頭潮：斷頭區內融資單日減幅為近 250
         日最大 5%（且 ≥ 0.5%）；清洗完成：近 20 日曾 &lt; 140%，維持率自低點回升 ≥ {CLEAR_REBOUND}pp、近 3 日無斷頭潮、加權 3 日不破低。每一波只標一次，回到 160% 以上才算新的一波。
       </p>
+      </PanelNote>
 
       <div className="seg" role="group" aria-label="時間區間">
         {RANGES.map((r) => (
@@ -300,9 +303,11 @@ export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile |
           </table>
         </div>
       )}
-      <p className="small muted ms-rule">
+      <PanelNote label="ⓘ 用法">
+        <p className="small muted ms-rule">
         用法：維持率低代表槓桿賣壓接近出清，不代表基本面見底；請搭配上方總經判斷。事件次數少、60 日觀察期重疊，僅供提高警覺與分批參考，不計分。
       </p>
+      </PanelNote>
     </section>
   );
 }
