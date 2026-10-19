@@ -130,6 +130,8 @@ export interface IndicatorDef {
   rowReason?: boolean;
   /** 參考型指標的規則說明（已回測者寫結論；預設「待回測驗證」） */
   infoRule?: string;
+  /** 圖表上方另開一格對照（月底收盤，同一時間軸），例如景氣燈號對照加權指數 */
+  companion?: { id: string; label: string };
 }
 
 /** 依多空語意決定顏色 class：一般指標上升＝up；bearish 指標上升＝down（隨紅漲綠跌設定切換） */
@@ -582,6 +584,7 @@ export const INDICATORS: IndicatorDef[] = [
       { value: 16, label: '藍燈' },
     ],
     zoneStreak: true, rowReason: true, infoRule: TW_INFO_RULE,
+    companion: { id: 'taiex', label: '加權指數' },
     note: '國發會 9 項指標各給 1–5 分加總：9–16 藍燈、17–22 黃藍、23–31 綠燈、32–37 黃紅、38–45 紅燈；9 項含股價指數與 M1B。回測（以公布日對齊）：紅燈之後 60 日加權平均仍 +5.0%、一年後 −1.8%（2010–2026，基準 +12.5%）；但同樣是「加權過去一年已漲 ≥20%」時，燈號熱不熱一年後幾乎一樣（+0.6% vs +1.2%，1998–2026）——一年後轉弱主要來自股價本身已大漲。僅供參考不計分',
   },
   {
