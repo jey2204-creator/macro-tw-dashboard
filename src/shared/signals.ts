@@ -1,5 +1,5 @@
 import { addDays, daysBetween } from './dates';
-import type { IndicatorDef, SignalRule } from './indicators';
+import { zoneAt, type IndicatorDef, type SignalRule } from './indicators';
 import { changeOver, changeOverDays, sma, valueAtOrBefore, type Point } from './timeseries';
 import type { Signal } from './types';
 
@@ -169,7 +169,7 @@ const isPctUnit = (u: IndicatorDef['unit']) => u === '%' || u === 'pp';
 
 /** 目前區間與連續期數：「紅燈（連 9 個月）」；只有 1 期時不加括號 */
 export function zoneText(def: Pick<IndicatorDef, 'zones' | 'zoneStreak' | 'frequency'>, pts: readonly Point[]): string | undefined {
-  const zoneOf = (v: number) => def.zones?.find((z) => v < z.max)?.label;
+  const zoneOf = (v: number) => zoneAt(def.zones, v)?.label;
   const last = pts.at(-1);
   if (!last || !def.zones) return undefined;
   const zone = zoneOf(last[1]);

@@ -17,7 +17,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { MA_PERIODS, rangeStart, sma, type MaPeriod, type RangeKey } from '../shared/timeseries';
 import type { Bar } from '../shared/types';
 import { MA_COLOR_VAR, type ChartKind } from '../lib/chartData';
-import { toneClass } from '../shared/indicators';
+import { bandsFromZones, hexAlpha, ZoneBands } from '../lib/zoneBands';
+import { toneClass, zoneAt, type Zone } from '../shared/indicators';
 
 
 interface Props {
@@ -34,7 +35,12 @@ interface Props {
   refLines?: { value: number; label: string }[];
   /** 數值越大越偏空（跌停家數等）：柱狀圖與圖例改用空方色 */
   bearish?: boolean;
+  /** 有顏色的分區（景氣燈號）：背景色帶、線段依區間上色、參考線標籤上色、讀值顯示區間名稱 */
+  zones?: Zone[];
 }
+
+/** 放大到這個月數以內（約 3 年）才在每個點畫圓點，避免長期圖點擠成一團 */
+const POINT_MARKER_MAX_BARS = 36;
 
 function cssVar(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#888';
@@ -46,7 +52,7 @@ interface Hover {
   ma: Partial<Record<MaPeriod, number | null>>;
 }
 
-export function PriceChart({ bars, kind, mas, range, decimals, showPct, themeKey, refLines, bearish }: Props) {
+export function PriceChart({ bars, kind, mas, range, decimals, showPct, themeKey, refLines, bearish, zones }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<SeriesType>[]>([]);
@@ -138,23 +144,57 @@ export function PriceChart({ bars, kind, mas, range, decimals, showPct, themeKey
       const s = chart.addSeries(HistogramSeries, { priceFormat });
       s.setData(bars.map((b) => ({ time: b[0] as Time, value: b[4], color: (b[4] >= 0) !== !!bearish ? up : down })));
       seriesRef.current.push(s);
+    } else if (zones) {
+      // 景氣燈號：每個月的線段依燈號上色；序列主色＝最新一期的燈號色（右側最新值標籤）
+      const base = cssVar('--text-1');
+      const colorOf = (v: number) => {
+        const z = zoneAt(zones, v);
+        return z?.color ? cssVar(z.color) : base;
+      };
+      const last = bars.at(-1);
+      const s = chart.addSeries(LineSeries, {
+        color: last ? colorOf(last[4]) : base,
+        lineWidth: 2,
+        pointMarkersRadius: 3,
+        priceFormat,
+      });
+      s.setData(bars.map((b) => ({ time: b[0] as Time, value: b[4], color: colorOf(b[4]) })));
+      const alpha = Number.parseFloat(cssVar('--lamp-band-alpha')) || 0.1;
+      s.attachPrimitive(new ZoneBands(bandsFromZones(zones, (v) => hexAlpha(cssVar(v), alpha))));
+      seriesRef.current.push(s);
     } else {
       const s = chart.addSeries(LineSeries, { color: cssVar('--text-1'), lineWidth: 2, priceFormat });
       s.setData(bars.map((b) => ({ time: b[0] as Time, value: b[4] })));
       seriesRef.current.push(s);
     }
 
-    // 參考線（例如融資維持率 130／140／170%），以文字標籤標示，不單靠顏色
+    // 參考線（例如融資維持率 130／140／170%），以文字標籤標示，不單靠顏色；
+    // 有色帶時（景氣燈號）不畫虛線，只留右側標籤，標籤底色＝該燈號色
     const main = seriesRef.current[0];
     for (const r of refLines ?? []) {
+      const z = zones ? zoneAt(zones, r.value) : undefined;
       main?.createPriceLine({
         price: r.value,
-        color: cssVar('--text-3'),
+        color: z?.color ? cssVar(z.color) : cssVar('--text-3'),
         lineWidth: 1,
         lineStyle: LineStyle.Dashed,
+        lineVisible: !z?.color,
         axisLabelVisible: true,
         title: r.label,
       });
+    }
+
+    // 放大到約 3 年內，每個月畫一個燈號色圓點
+    let unsubscribe: (() => void) | undefined;
+    if (zones && main && kind === 'line') {
+      const ts = chart.timeScale();
+      const update = () => {
+        const lr = ts.getVisibleLogicalRange();
+        main.applyOptions({ pointMarkersVisible: lr !== null && lr.to - lr.from <= POINT_MARKER_MAX_BARS });
+      };
+      update();
+      ts.subscribeVisibleLogicalRangeChange(update);
+      unsubscribe = () => ts.unsubscribeVisibleLogicalRangeChange(update);
     }
 
     for (const p of mas) {
@@ -172,7 +212,8 @@ export function PriceChart({ bars, kind, mas, range, decimals, showPct, themeKey
       );
       seriesRef.current.push(s);
     }
-  }, [bars, kind, mas, maData, decimals, themeKey, refLines, bearish]);
+    return unsubscribe;
+  }, [bars, kind, mas, maData, decimals, themeKey, refLines, bearish, zones]);
 
   // 時間區間
   useEffect(() => {
@@ -217,6 +258,7 @@ export function PriceChart({ bars, kind, mas, range, decimals, showPct, themeKey
             ) : (
               <b>{fmt(shown.bar[4])}</b>
             )}{' '}
+            {zones && <ZoneTag zones={zones} value={shown.bar[4]} />}
             {chg !== null && (
               <span className={toneClass({ bearish }, chg > 0 ? 'up' : chg < 0 ? 'down' : '')}>
                 {chg > 0 ? '+' : ''}
@@ -239,5 +281,17 @@ export function PriceChart({ bars, kind, mas, range, decimals, showPct, themeKey
       )}
       <div ref={hostRef} className="chart-host" />
     </div>
+  );
+}
+
+/** 讀值列的區間名稱：色點＋文字（文字用一般字色，不單靠顏色） */
+function ZoneTag({ zones, value }: { zones: Zone[]; value: number }) {
+  const z = zoneAt(zones, value);
+  if (!z) return null;
+  return (
+    <span className="zone-tag">
+      {z.color && <i className="lamp" style={{ background: `var(${z.color})` }} aria-hidden="true" />}
+      {z.label}{' '}
+    </span>
   );
 }

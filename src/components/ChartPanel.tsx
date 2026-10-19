@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useSeries } from '../hooks/useData';
 import { formatTaipeiDateTime } from '../shared/dates';
-import { PROVIDER_LABEL, type IndicatorDef } from '../shared/indicators';
+import { coloredZones, PROVIDER_LABEL, type IndicatorDef } from '../shared/indicators';
 import type { IndicatorEval } from '../shared/regime';
 import { MA_PERIODS, type MaPeriod, type Period, type RangeKey } from '../shared/timeseries';
 import type { BacktestStats, Bar, SummaryEntry } from '../shared/types';
@@ -106,7 +106,18 @@ export function ChartPanel({ def, ev, entry, version, prefs, onPrefs, onClose, t
         {series?.status === 'error' && <div className="cp-msg warn">無法載入歷史資料：{series.error}</div>}
         {data && bars.length === 0 && <div className="cp-msg warn">此指標目前沒有資料</div>}
         {data && bars.length > 0 && (
-          <PriceChart bars={bars} kind={kind} mas={mas} range={prefs.range} decimals={def.decimals} showPct={!['%', 'pp', 'k', '分'].includes(def.unit)} themeKey={themeKey} refLines={def.refLines} bearish={def.bearish} />
+          <PriceChart
+            bars={bars}
+            kind={kind}
+            mas={mas}
+            range={prefs.range}
+            decimals={def.decimals}
+            showPct={!['%', 'pp', 'k', '分'].includes(def.unit)}
+            themeKey={themeKey}
+            refLines={def.refLines}
+            bearish={def.bearish}
+            zones={coloredZones(def)}
+          />
         )}
       </div>
 

@@ -63,6 +63,25 @@ export type SignalRule =
   /** 僅供參考：不判多空，只顯示近期累計（台股籌碼，待回測驗證） */
   | { kind: 'info' };
 
+/** 數值分區（例如景氣燈號 9–16 藍燈） */
+export interface Zone {
+  /** 上限（不含）：取第一個 value < max 的區間 */
+  max: number;
+  label: string;
+  /** 區間顏色（CSS 變數名，例如 '--lamp-red'）；只有景氣燈號這類有官方顏色的分區才設定 */
+  color?: string;
+}
+
+/** 數值所在的區間 */
+export function zoneAt(zones: readonly Zone[] | undefined, v: number): Zone | undefined {
+  return zones?.find((z) => v < z.max);
+}
+
+/** 有顏色的分區（景氣燈號）；沒有顏色就回傳 undefined，圖表維持原樣 */
+export function coloredZones(def: Pick<IndicatorDef, 'zones'>): Zone[] | undefined {
+  return def.zones?.some((z) => z.color) ? def.zones : undefined;
+}
+
 export interface IndicatorDef {
   id: string;
   name: string;
@@ -101,8 +120,8 @@ export interface IndicatorDef {
   chart?: 'line' | 'histogram';
   /** 圖表參考線（例如融資維持率 130%／140%／170%） */
   refLines?: { value: number; label: string }[];
-  /** 依數值分區的說明（由低到高，取第一個 value < max 的區間） */
-  zones?: { max: number; label: string }[];
+  /** 依數值分區的說明（由低到高，取第一個 value < max 的區間）；有 color 的區間在圖上畫色帶、線段與圖例依區間上色 */
+  zones?: Zone[];
   /** 數值越大越偏空（跌停、下跌家數）：漲跌顏色反轉，用空方色 */
   bearish?: boolean;
   /** 依據文字加上「目前區間連續幾期」（景氣燈號「紅燈（連 9 個月）」；需搭配 zones） */
@@ -546,18 +565,21 @@ export const INDICATORS: IndicatorDef[] = [
     subtitle: '國發會9項加總｜含股價，月底公布',
     unit: '分', decimals: 0, sources: [{ provider: 'tw_gov', symbol: 'NDC_SIGNAL' }], transform: 'none',
     market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 105, chart: 'line',
+    // 分數是整數：區間界線放在 .5（16.5、22.5…），圖上的色帶邊界不會壓在某個月的點上
     zones: [
-      { max: 17, label: '藍燈' },
-      { max: 23, label: '黃藍燈' },
-      { max: 32, label: '綠燈' },
-      { max: 38, label: '黃紅燈' },
-      { max: Infinity, label: '紅燈' },
+      { max: 16.5, label: '藍燈', color: '--lamp-blue' },
+      { max: 22.5, label: '黃藍燈', color: '--lamp-yellowblue' },
+      { max: 31.5, label: '綠燈', color: '--lamp-green' },
+      { max: 37.5, label: '黃紅燈', color: '--lamp-yellowred' },
+      { max: Infinity, label: '紅燈', color: '--lamp-red' },
     ],
+    // 各燈號的分數門檻（右側標籤）：38 以上紅燈、32–37 黃紅、23–31 綠燈、17–22 黃藍、16 以下藍燈
     refLines: [
-      { value: 38, label: '紅燈 38' },
-      { value: 32, label: '黃紅 32' },
-      { value: 23, label: '綠燈 23' },
-      { value: 17, label: '黃藍 17' },
+      { value: 38, label: '紅燈' },
+      { value: 32, label: '黃紅燈' },
+      { value: 23, label: '綠燈' },
+      { value: 17, label: '黃藍燈' },
+      { value: 16, label: '藍燈' },
     ],
     zoneStreak: true, rowReason: true, infoRule: TW_INFO_RULE,
     note: '國發會 9 項指標各給 1–5 分加總：9–16 藍燈、17–22 黃藍、23–31 綠燈、32–37 黃紅、38–45 紅燈；9 項含股價指數與 M1B。回測（以公布日對齊）：紅燈之後 60 日加權平均仍 +5.0%、一年後 −1.8%（2010–2026，基準 +12.5%）；但同樣是「加權過去一年已漲 ≥20%」時，燈號熱不熱一年後幾乎一樣（+0.6% vs +1.2%，1998–2026）——一年後轉弱主要來自股價本身已大漲。僅供參考不計分',

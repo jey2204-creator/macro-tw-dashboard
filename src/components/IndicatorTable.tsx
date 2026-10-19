@@ -2,7 +2,7 @@ import { dataDateLabel, formatChange, formatSigned, formatValue } from '../lib/f
 import { releaseLines } from '../lib/release';
 import type { IndicatorReleases } from '../shared/calendar';
 import { statusTags, type RowModel } from '../lib/rows';
-import { CATEGORY_LABEL, CATEGORY_ORDER, INDICATOR_MAP, toneClass } from '../shared/indicators';
+import { CATEGORY_LABEL, CATEGORY_ORDER, coloredZones, INDICATOR_MAP, toneClass, zoneAt } from '../shared/indicators';
 import { SIGNAL_LABEL } from '../shared/regime';
 import { sumLast } from '../shared/signals';
 import { SignalBadge } from './SignalBadge';
@@ -101,6 +101,7 @@ function Row({
         ? formatSigned(def, last?.[1] ?? null)
         : formatValue(def, last?.[1]);
   const tags = statusTags(row);
+  const lampColor = last ? zoneAt(coloredZones(def), last[1])?.color : undefined;
   // 有官方日程時，「下次」改由 NextRelease 顯示（含門檻），避免重複
   const relLines = releaseLines(releases).filter((l) => !(outlook && l.head.startsWith('下次')));
   const scheduled = !outlook && !relLines.some((l) => l.head.startsWith('下次')) ? nextReleaseFor(def.id, now) : null;
@@ -153,8 +154,13 @@ function Row({
             {row.ev.excludedReason && <span className="warn">（不計分：{row.ev.excludedReason}）</span>}
           </span>
         )}
-        {/* 參考型（台灣景氣）：區間與連續月數，例如「紅燈（連 9 個月），近3月變化 +2分」 */}
-        {def.rule.kind === 'info' && def.rowReason && <span className="c-reason">{row.ev.signal.reason}</span>}
+        {/* 參考型（台灣景氣）：區間與連續月數，例如「紅燈（連 9 個月），近3月變化 +2分」；景氣燈號前面加燈號色點 */}
+        {def.rule.kind === 'info' && def.rowReason && (
+          <span className="c-reason">
+            {lampColor && <i className="lamp" style={{ background: `var(${lampColor})` }} aria-hidden="true" />}
+            {row.ev.signal.reason}
+          </span>
+        )}
         {/* 公布日／實績／市場預期（僅供參考，不計分） */}
         {relLines.map((l) => (
           <span key={l.head} className="c-release">
