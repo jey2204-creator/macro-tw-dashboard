@@ -1,0 +1,62 @@
+name: 美股預估 EPS 資料源探測（暫時）
+
+# 暫時性探測：在 GitHub 主機下載 S&P Dow Jones Indices 的 S&P 500 盈餘與預估報表（xlsx），
+# 原始檔推到 uv-probe-out 分支讓工作環境解析版面（工作環境 shell 連不到 spglobal.com）。
+# 觸發：非 main 分支 commit 訊息含 [probe]。確認可行並寫好解析後即移除此 workflow。
+on:
+  push:
+    branches-ignore: [main, preview-data, uv-probe-out]
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    if: contains(github.event.head_commit.message, '[probe]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 下載（Node fetch，誠實 UA，與正式管線相同）
+        run: |
+          mkdir -p /tmp/probe
+          cat > /tmp/probe/fetch.mjs <<'JS'
+          import { writeFileSync } from 'node:fs';
+          const UA = 'macro-tw-dashboard/0.1 (+https://github.com/jey2204-creator/macro-tw-dashboard)';
+          const urls = {
+            'sp-500-eps-est.xlsx': 'https://www.spglobal.com/spdji/en/documents/additional-material/sp-500-eps-est.xlsx',
+            'sp-500-eps-est-browser-ua.xlsx': 'https://www.spglobal.com/spdji/en/documents/additional-material/sp-500-eps-est.xlsx',
+          };
+          const log = [];
+          for (const [name, url] of Object.entries(urls)) {
+            const ua = name.includes('browser') ? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36' : UA;
+            try {
+              const res = await fetch(url, { headers: { 'User-Agent': ua, Accept: '*/*' }, redirect: 'follow' });
+              const buf = Buffer.from(await res.arrayBuffer());
+              log.push(`${name}: HTTP ${res.status} ${res.headers.get('content-type')} ${buf.length} bytes last-modified=${res.headers.get('last-modified')} zip=${buf.slice(0, 2).toString() === 'PK'}`);
+              writeFileSync(`/tmp/probe/${name}`, buf);
+            } catch (e) {
+              log.push(`${name}: ERROR ${e.message}`);
+            }
+          }
+          writeFileSync('/tmp/probe/log.txt', log.join('\n') + '\n');
+          console.log(log.join('\n'));
+          JS
+          node /tmp/probe/fetch.mjs
+          for l in $(seq 1 3); do :; done
+          while IFS= read -r line; do echo "::notice title=探測::$line"; done < /tmp/probe/log.txt
+      - name: 推送到 uv-probe-out 分支
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          cd /tmp/probe
+          rm -f fetch.mjs
+          git init -q -b uv-probe-out
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "探測輸出 $(date -u +%FT%TZ)"
+          git push -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}" uv-probe-out
