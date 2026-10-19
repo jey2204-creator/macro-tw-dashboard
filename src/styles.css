@@ -59,7 +59,7 @@
     --lamp-green: #2c7026;
     --lamp-yellowred: #c18510;
     --lamp-red: #cb263e;
-    --lamp-band-alpha: 0.2;
+    --lamp-band-alpha: 0.15;
     color-scheme: dark;
   }
 }
@@ -89,7 +89,7 @@
   --lamp-green: #2c7026;
   --lamp-yellowred: #c18510;
   --lamp-red: #cb263e;
-  --lamp-band-alpha: 0.2;
+  --lamp-band-alpha: 0.15;
   color-scheme: dark;
 }
 /* 漲跌色慣例：台灣紅漲綠跌（預設）／美式綠漲紅跌 */
