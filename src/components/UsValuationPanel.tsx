@@ -12,12 +12,13 @@ import {
   type Time,
 } from 'lightweight-charts';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSeriesMap } from '../hooks/useData';
+import { useFactsetEps, useSeriesMap } from '../hooks/useData';
 import { CHART_INTERACTION, attachTimeAxis, resetPaneStretch, resetPriceScales, TIME_AXIS } from '../lib/chartInteraction';
 import { RiverBands, type RiverBand } from '../lib/riverBands';
 import { loadPref, savePref } from '../lib/storage';
 import { cssVar } from '../lib/stressFormat';
 import { hexAlpha } from '../lib/zoneBands';
+import { EPS_REVISION_ALERT_PP, epsRevisions, nextYearKey } from '../shared/factsetEps';
 import { INDICATOR_MAP, zoneAt } from '../shared/indicators';
 import { rangeStart, type Point, type RangeKey } from '../shared/timeseries';
 import {
@@ -95,6 +96,7 @@ export function UsValuationPanel({ version, themeKey }: Props) {
   const [chartGen, setChartGen] = useState(0);
 
   const files = useSeriesMap(near ? IDS : [], version);
+  const factset = useFactsetEps(near ? version : null);
   const data = useMemo(() => {
     const ready = (id: string): Point[] => (files[id]?.status === 'ready' ? closesOf(files[id]!.data.data) : []);
     const peMonthly = ready('spx_pe');
@@ -116,6 +118,23 @@ export function UsValuationPanel({ version, themeKey }: Props) {
   };
 
   const loaded = rows.length > 0;
+
+  // FactSet 週報：最新一篇、4 週內的年度 EPS 預估修正、隱含的未來 12 月 EPS
+  const fs = useMemo(() => {
+    const post = factset?.posts.at(-1) ?? null;
+    if (!post || !summary) return null;
+    const revisions = epsRevisions(factset!.posts, 4);
+    const nextYear = nextYearKey(post);
+    return {
+      post,
+      points: factset!.posts.map((p) => [p.date, p.fwdPe] as Point),
+      revisions,
+      alerts: revisions.filter((r) => r.change <= -EPS_REVISION_ALERT_PP),
+      nextYear,
+      /** 指數 ÷ 預估本益比＝市場用的未來 12 月 EPS；與近 12 月 EPS 的差＝押注的成長 */
+      impliedEps: summary.price / post.fwdPe,
+    };
+  }, [factset, summary]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -187,6 +206,30 @@ export function UsValuationPanel({ version, themeKey }: Props) {
     if (summary.peStats) {
       peS.createPriceLine({ price: summary.peStats.median, color: textColor, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false });
     }
+    // 預估本益比（FactSet 每週一點）：點狀，從 2026-10 起累積。
+    // 日期一律貼到 ≤ 發布日的交易日：所有序列的時間點必須完全相同，色帶（RiverBands）才能用「邏輯索引＝列索引」畫
+    const fwdPts = new Map<string, number>();
+    for (const [d, v] of fs?.points ?? []) {
+      const r = rowAtOrBefore(rows, d);
+      if (r) fwdPts.set(r.date, v);
+    }
+    if (fwdPts.size > 0) {
+      const fwdS = chart.addSeries(
+        LineSeries,
+        {
+          color: cssVar('--accent'),
+          lineWidth: 1,
+          lineStyle: LineStyle.Dotted,
+          pointMarkersVisible: true,
+          pointMarkersRadius: 3,
+          priceFormat: x1Fmt,
+          lastValueVisible: false,
+          priceLineVisible: false,
+        },
+        1,
+      );
+      fwdS.setData([...fwdPts.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([d, v]) => ({ time: d as Time, value: v })));
+    }
 
     // 下窗格：股債利差，0 以上股票較划算、以下債券較划算
     const spreadS = chart.addSeries(
@@ -232,7 +275,7 @@ export function UsValuationPanel({ version, themeKey }: Props) {
       chart.remove();
       chartRef.current = null;
     };
-  }, [loaded, rows, summary, themeKey]);
+  }, [loaded, rows, summary, fs, themeKey]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -308,6 +351,30 @@ export function UsValuationPanel({ version, themeKey }: Props) {
               </>
             )}
           </p>
+          {fs && (
+            <p className="score num uv-state uv-fwd">
+              預估本益比 <b>{f1(fs.post.fwdPe)}倍</b>（FactSet {fs.post.date.slice(5).replace('-', '/')}
+              {fs.post.avg5 !== null && <>；5年均 {f1(fs.post.avg5)}</>}
+              {fs.post.avg10 !== null && <>、10年均 {f1(fs.post.avg10)}</>}）→ 隱含未來 12 月 EPS ${f1(fs.impliedEps)}，比近 12 月高 {fpct((fs.impliedEps / summary.eps - 1) * 100, 0)}
+              {Object.keys(fs.post.cy).length > 0 && (
+                <>
+                  ｜EPS 預估年增：{Object.entries(fs.post.cy).map(([y, g]) => `${y} ${fpct(g)}`).join('、')}
+                </>
+              )}
+              {fs.post.blended && <>｜{fs.post.blended.quarter} 混合成長 {fpct(fs.post.blended.growth)}</>}
+              {fs.alerts.length > 0 ? (
+                <b className="warn">
+                  {' '}⚠️ {fs.alerts.map((a) => `${a.year} 預估 4 週下修 ${a.change.toFixed(1)}pp（${a.beforeDate.slice(5).replace('-', '/')} ${fpct(a.before)}）`).join('；')}
+                </b>
+              ) : (
+                fs.revisions.length > 0 && (
+                  <span className="muted">
+                    ｜4 週修正：{fs.revisions.map((r) => `${r.year} ${r.change > 0 ? '+' : ''}${r.change.toFixed(1)}pp`).join('、')}
+                  </span>
+                )
+              )}
+            </p>
+          )}
         </>
       )}
 
@@ -317,7 +384,9 @@ export function UsValuationPanel({ version, themeKey }: Props) {
           河道隨 EPS 上升而上移，所以指數橫盤也能從貴變合理。本益比高不等於會跌（2013–2021 都在 20 倍以上續漲，對未來一年報酬幾乎沒有預測力），
           它決定的是部位大小（跌 25% 撐不撐得住），不是進出場時機。
           股債利差＝盈餘殖利率（EPS÷指數）− 美債10Y：負值＝無風險的債券報酬已高於股票的盈餘報酬，股票沒有估值緩衝。
-          百分位與中位數以 {BASE_YEAR} 年起為基期（1871 年起均值 16 倍）；預估本益比（forward P/E）沒有免費資料源，看 FactSet Earnings Insight（每週五）。
+          百分位與中位數以 {BASE_YEAR} 年起為基期（1871 年起均值 16 倍）。
+          預估本益比＝指數 ÷ 未來 12 個月分析師 bottom-up EPS（FactSet Earnings Insight 週報，每週五）：近 12 月本益比與預估本益比的差距，就是市場押注的盈餘成長；
+          年度 EPS 預估 4 週內下修超過 {EPS_REVISION_ALERT_PP}pp 會標 ⚠️（估值要靠盈餘兌現消化，預估一下修，預估本益比就變貴）。歷史只能從 2026-10 起每週累積，中窗格藍點是累積中的預估本益比。
           EPS 每月更新一筆，所以河道與本益比呈階梯狀；2009 年本益比飆到 120 倍是 EPS 崩跌（分母變小），不是股價貴。
           資料：multpl.com（Shiller 月資料，最新一筆以最新收盤估計）、Yahoo ^GSPC、FRED DGS10。參考、不計分。
         </p>

@@ -81,7 +81,10 @@ const FILES: Record<string, SeriesFile> = {
   us10y: series('us10y', [flat('2010-10-14', 5.3), flat('2010-10-15', 5.33)]),
 };
 
+/** FactSet 週報（第三個測試才提供；其餘回 404 → 面板沒有預估本益比列） */
+let FACTSET: object | null = null;
 beforeEach(() => {
+  FACTSET = null;
   chartLog.series = [];
   chartLog.watermarks = [];
   chartLog.priceLines = [];
@@ -89,6 +92,9 @@ beforeEach(() => {
   chartLog.scaleModes = [];
   window.localStorage.clear();
   vi.stubGlobal('fetch', (url: string) => {
+    if (/factset-eps\.json/.test(url)) {
+      return Promise.resolve(FACTSET ? new Response(JSON.stringify(FACTSET), { status: 200 }) : new Response('not found', { status: 404 }));
+    }
     const id = /series\/([a-z0-9_]+)\.json/.exec(url)?.[1] ?? '';
     const f = FILES[id];
     return Promise.resolve(f ? new Response(JSON.stringify(f), { status: 200 }) : new Response('not found', { status: 404 }));
@@ -143,5 +149,30 @@ describe('美股估值面板', () => {
     expect(legend).toMatch(/2010-10-16 S&P 2,050 ｜ 本益比 26\.1倍 偏高 ｜ EPS 78\.5 ｜ 利差 -1\.50pp/);
     expect(legend).toMatch(/河道 15倍 1,177｜19倍 1,491｜23倍 1,805｜27倍 2,119｜31倍 2,433/);
     expect(screen.getAllByRole('listitem').map((e) => e.textContent)).toEqual(['15–19倍 偏低', '19–23倍 合理', '23–27倍 偏高', '27–31倍 昂貴']);
+  });
+
+  it('有 FactSet 週報時：第三行讀數（預估本益比、隱含 EPS、年度預估、4 週下修警示）、中窗格多一條點狀序列', async () => {
+    const post = (date: string, fwdPe: number, cy: Record<string, number>) => ({
+      date, url: `https://x/${date}`, title: 'S&P 500 Earnings Season Update', fwdPe, avg5: 19.8, avg10: 19.1, cy, quarterEst: {}, blended: { quarter: 'Q3 2010', growth: 29.0 },
+    });
+    FACTSET = {
+      schemaVersion: 1,
+      generatedAt: '2010-10-16T00:00:00Z',
+      posts: [post('2010-09-10', 20.5, { '2010': 33.2, '2011': 16.4 }), post('2010-10-15', 19.0, { '2010': 32.8, '2011': 15.1 })],
+    };
+    render(<UsValuationPanel version="v1" themeKey="auto-false-tw" />);
+    await waitFor(() => expect(document.querySelector('.uv-fwd')).toBeTruthy());
+    const l3 = document.querySelector('.uv-fwd')!.textContent ?? '';
+    // 指數 2050 ÷ 19.0 ＝ 隱含 EPS 107.9，比近 12 月 EPS 78.5 高 37%
+    expect(l3).toMatch(/預估本益比 19\.0倍（FactSet 10\/15；5年均 19\.8、10年均 19\.1）→ 隱含未來 12 月 EPS \$107\.9，比近 12 月高 \+37%/);
+    expect(l3).toMatch(/EPS 預估年增：2010 \+32\.8%、2011 \+15\.1%｜Q3 2010 混合成長 \+29\.0%/);
+    // 2011 預估 4 週內 16.4 → 15.1（−1.3pp）超過 1pp 門檻 → 警示；2010 只降 0.4pp 不列
+    expect(l3).toMatch(/⚠️ 2011 預估 4 週下修 -1\.3pp（09\/10 \+16\.4%）/);
+    expect(l3).not.toMatch(/2010 預估 4 週下修/);
+    await waitFor(() => expect(chartLog.series.length).toBe(9));
+    // 預估本益比點狀序列在中窗格（本益比之後、利差之前）
+    expect(chartLog.series.map((s) => `${s.pane}:${s.type}`)).toEqual([
+      '0:Line', '0:Line', '0:Line', '0:Line', '0:Line', '0:Line', '1:Line', '1:Line', '2:Baseline',
+    ]);
   });
 });

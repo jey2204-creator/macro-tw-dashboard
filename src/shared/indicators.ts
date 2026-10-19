@@ -16,6 +16,8 @@ export type SourceSpec =
   | { provider: 'tw_gov'; symbol: 'NDC_SIGNAL' | 'NDC_PMI' | 'MOF_EXPORTS' | 'MOEA_ORDERS' | 'CBC_M1B_M2' }
   /** multpl.com 的 Shiller S&P 500 月資料（本益比、月均價、CAPE；scripts/fetch-data/sources/multpl.ts） */
   | { provider: 'multpl'; symbol: 'SP500_PE' | 'SP500_PRICE' | 'SHILLER_PE' }
+  /** FactSet Insight 週報的 S&P 500 預估本益比（scripts/fetch-data/sources/factset.ts） */
+  | { provider: 'factset'; symbol: 'SP500_FWD_PE' }
   | {
       provider: 'twse_chips';
       symbol:
@@ -429,6 +431,17 @@ export const INDICATORS: IndicatorDef[] = [
     infoRule: '僅供參考，不判多空、不計分（估值高低用來決定部位大小，不是進出場時機）',
     note: 'S&P 500 指數 ÷ 近 12 月 as-reported EPS（Shiller 月資料；最新一筆以最新收盤與最新已公布 EPS 估計）。1871 年起均值 16 倍、中位數 15 倍；2010 年起中位數約 23 倍。本益比高不等於會跌：2013–2021 都在 20 倍以上續漲，對未來一年報酬幾乎沒有預測力；它決定的是「跌 25% 時你能不能撐住」的部位大小。河道隨 EPS 上升而上移，指數橫盤也能從貴變合理。僅供參考不計分',
   },
+  // 預估本益比：FactSet 每週五 Earnings Insight 的「forward 12-month P/E ratio」（未來 12 個月 bottom-up EPS）。
+  // 沒有免費歷史序列，只能從 2026-10 起每週累積一筆；S&P 官方 xlsx 對 GitHub 主機回 403
+  {
+    id: 'spx_fwd_pe', name: 'S&P 500 預估本益比（未來 12 月 EPS，FactSet）', short: 'S&P預估本益比', category: 'us_equity', frequency: 'weekly',
+    subtitle: '美股估值｜指數÷未來12月預估EPS',
+    unit: '倍', decimals: 1, sources: [{ provider: 'factset', symbol: 'SP500_FWD_PE' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 21, chart: 'line',
+    rowReason: true,
+    infoRule: '僅供參考，不判多空、不計分（與近 12 月本益比的差距＝市場押注的盈餘成長）',
+    note: 'FactSet Earnings Insight 週報（每週五）：S&P 500 指數 ÷ 未來 12 個月分析師 bottom-up EPS 預估。近 12 月本益比 26 倍 vs 預估 19 倍的差距，就是市場押注的盈餘成長；預估 EPS 一下修，預估本益比會瞬間變貴。2026-10 起每週累積，無法回補歷史。僅供參考不計分',
+  },
   // 月平均收盤價（名目）：只拿來推算近 12 月 EPS＝價格 ÷ 本益比（multpl 的 EPS 頁是通膨調整後的實質值），不單獨顯示
   {
     id: 'spx_price_m', name: 'S&P 500 月平均收盤價（Shiller）', short: 'S&P月均價', category: 'us_equity', frequency: 'monthly',
@@ -715,6 +728,8 @@ export function sourceUrl(spec: SourceSpec): string {
       return `https://data.gov.tw/dataset/${TW_GOV_DATASET_ID[spec.symbol]}`;
     case 'multpl':
       return `https://www.multpl.com/${MULTPL_PAGE[spec.symbol]}`;
+    case 'factset':
+      return 'https://insight.factset.com/topic/earnings';
   }
 }
 
@@ -744,4 +759,5 @@ export const PROVIDER_LABEL: Record<SourceSpec['provider'], string> = {
   naver_kr: 'Naver Pay 證券（韓國交易所資料）',
   tw_gov: '政府資料開放平台（國發會／財政部／經濟部／央行）',
   multpl: 'multpl.com（Robert Shiller S&P 500 月資料）',
+  factset: 'FactSet Insight（Earnings Insight 週報）',
 };
