@@ -25,22 +25,26 @@ jobs:
         with:
           node-version: 22
       - name: 探測（Node fetch，與正式程式相同的 HTTP 堆疊）
+        timeout-minutes: 14
         run: node scripts/probe/twProbe.mjs /tmp/out
       - name: curl 對照（TLS 憑證鏈）
+        if: always()
         shell: bash
         run: |
           set +e
           ME="macro-tw-dashboard/0.1 (+https://github.com/jey2204-creator/macro-tw-dashboard)"
           for u in https://data.gov.tw/api/v2/rest/dataset/6099 https://www.cbc.gov.tw/ https://index.ndc.gov.tw/ https://ws.ndc.gov.tw/ https://www.cier.edu.tw/ https://scidm.nchc.org.tw/ https://ws.dgbas.gov.tw/ https://www.moea.gov.tw/ https://service.mof.gov.tw/ https://portal.sw.nat.gov.tw/; do
-            r=$(curl -sS -o /dev/null -w "code=%{http_code} t=%{time_total}s" -m 40 -A "$ME" "$u" 2>&1)
+            r=$(curl -sS -o /dev/null -w "code=%{http_code} t=%{time_total}s" -m 20 -A "$ME" "$u" 2>&1)
             echo "CURL $u | ec=$? $r" | tee -a /tmp/out/log.txt
           done
       - name: 推送到 tw-probe-out 分支
+        if: always()
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
-          cd /tmp/out
+          mkdir -p /tmp/out && cd /tmp/out
+          touch log.txt
           git init -q -b tw-probe-out
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
