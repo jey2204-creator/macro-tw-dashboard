@@ -126,7 +126,7 @@ export function ChartPanel({ def, ev, entry, version, prefs, onPrefs, onClose, t
             mas={mas}
             range={prefs.range}
             decimals={def.decimals}
-            showPct={!['%', 'pp', 'k', '分'].includes(def.unit)}
+            showPct={!['%', 'pp', 'k', '分', '倍'].includes(def.unit)}
             themeKey={themeKey}
             refLines={def.refLines}
             bearish={def.bearish}

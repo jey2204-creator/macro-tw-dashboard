@@ -16,6 +16,7 @@ export function formatValue(def: Pick<IndicatorDef, 'unit' | 'decimals'>, v: num
   if (def.unit === '%') return `${s}%`;
   if (def.unit === 'pp') return `${v > 0 ? '+' : ''}${s}pp`;
   if (def.unit === '分') return `${s}分`;
+  if (def.unit === '倍') return `${s}倍`;
   if (def.unit === 'k') return `${v >= 0 ? '+' : ''}${s}k`;
   if (def.unit === '億') return `${s}億`;
   if (def.unit === '口') return `${s}口`;
@@ -35,7 +36,7 @@ export function formatChange(
   if (def.unit === '%' || def.unit === 'pp') return { main: `${sign}${num(abs, def.decimals)}pp`, sub: null };
   if (def.unit === 'k') return { main: `${sign}${num(abs, 0)}k`, sub: null };
   if (def.unit === '口' || def.unit === '家' || def.unit === '分') return { main: `${sign}${num(abs, 0)}${def.unit}`, sub: null };
-  if (def.unit === '億') return { main: `${sign}${num(abs, def.decimals)}億`, sub: null };
+  if (def.unit === '億' || def.unit === '倍') return { main: `${sign}${num(abs, def.decimals)}${def.unit}`, sub: null };
   const p = pct === null ? null : `${pct > 0 ? '+' : pct < 0 ? '' : '±'}${num(pct, 2)}%`;
   return { main: p ?? `${sign}${num(abs, def.decimals)}`, sub: `${sign}${num(abs, def.decimals)}` };
 }
@@ -76,6 +77,6 @@ export function dataDateLabel(
 /** 帶正負號與單位（流量型累計值） */
 export function formatSigned(def: Pick<IndicatorDef, 'unit' | 'decimals'>, v: number | null): string {
   if (v === null || !Number.isFinite(v)) return '—';
-  const u = def.unit === '億' || def.unit === '口' || def.unit === '家' || def.unit === '分' ? def.unit : def.unit === 'pp' ? 'pp' : '';
+  const u = def.unit === '億' || def.unit === '口' || def.unit === '家' || def.unit === '分' || def.unit === '倍' ? def.unit : def.unit === 'pp' ? 'pp' : '';
   return `${v > 0 && def.unit !== '家' ? '+' : ''}${num(v, def.decimals)}${u}`;
 }

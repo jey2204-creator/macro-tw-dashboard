@@ -14,6 +14,8 @@ export type SourceSpec =
   | { provider: 'naver_kr'; symbol: 'KOSPI_FOREIGN' }
   /** 台灣官方總經（政府資料開放平台；scripts/fetch-data/sources/twGov.ts） */
   | { provider: 'tw_gov'; symbol: 'NDC_SIGNAL' | 'NDC_PMI' | 'MOF_EXPORTS' | 'MOEA_ORDERS' | 'CBC_M1B_M2' }
+  /** multpl.com 的 Shiller S&P 500 月資料（本益比、月均價、CAPE；scripts/fetch-data/sources/multpl.ts） */
+  | { provider: 'multpl'; symbol: 'SP500_PE' | 'SP500_PRICE' | 'SHILLER_PE' }
   | {
       provider: 'twse_chips';
       symbol:
@@ -92,7 +94,7 @@ export interface IndicatorDef {
   category: Category;
   frequency: Frequency;
   /** 顯示單位 */
-  unit: '%' | 'pp' | 'pt' | '分' | 'USD' | 'TWD' | 'KRW' | 'JPY' | 'k' | '口' | '億' | '家';
+  unit: '%' | 'pp' | 'pt' | '分' | '倍' | 'USD' | 'TWD' | 'KRW' | 'JPY' | 'k' | '口' | '億' | '家';
   decimals: number;
   /** 依優先順序排列；第一個失敗會嘗試下一個 */
   sources: SourceSpec[];
@@ -401,6 +403,45 @@ export const INDICATORS: IndicatorDef[] = [
     market: true, rule: { kind: 'trend' }, weight: 0.5, maxAgeDays: 5,
     note: '與台股（半導體權重高）連動最直接',
   },
+  // ── 美股估值（僅供參考，權重 0；「美股估值」面板用）──
+  // 本益比＝指數 ÷ 近 12 月 as-reported EPS（Shiller 月資料，multpl.com 整理）。估值高低決定部位大小，不是進出場時機：
+  // 2013–2021 本益比都在 20 倍以上卻續漲，forward P/E 對未來一年報酬幾乎沒有預測力（對 10 年報酬相關約 0.5）
+  {
+    id: 'spx_pe', name: 'S&P 500 本益比（近 12 月 as-reported EPS）', short: 'S&P本益比', category: 'us_equity', frequency: 'monthly',
+    subtitle: '美股估值｜指數÷近12月EPS',
+    unit: '倍', decimals: 1, sources: [{ provider: 'multpl', symbol: 'SP500_PE' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 45, chart: 'line',
+    // 區間＝「美股估值」面板河流圖的倍數線：15（百年均值 16 以下）、19（2010 起 25 分位）、23（2010 起中位數）、27（本循環天花板）
+    zones: [
+      { max: 15, label: '便宜', color: '--lamp-blue' },
+      { max: 19, label: '偏低', color: '--lamp-yellowblue' },
+      { max: 23, label: '合理', color: '--lamp-green' },
+      { max: 27, label: '偏高', color: '--lamp-yellowred' },
+      { max: Infinity, label: '昂貴', color: '--lamp-red' },
+    ],
+    refLines: [
+      { value: 27, label: '27倍' },
+      { value: 23, label: '23倍' },
+      { value: 19, label: '19倍' },
+      { value: 15, label: '15倍' },
+    ],
+    zoneStreak: true, rowReason: true,
+    infoRule: '僅供參考，不判多空、不計分（估值高低用來決定部位大小，不是進出場時機）',
+    note: 'S&P 500 指數 ÷ 近 12 月 as-reported EPS（Shiller 月資料；最新一筆以最新收盤與最新已公布 EPS 估計）。1871 年起均值 16 倍、中位數 15 倍；2010 年起中位數約 23 倍。本益比高不等於會跌：2013–2021 都在 20 倍以上續漲，對未來一年報酬幾乎沒有預測力；它決定的是「跌 25% 時你能不能撐住」的部位大小。河道隨 EPS 上升而上移，指數橫盤也能從貴變合理。僅供參考不計分',
+  },
+  // 月平均收盤價（名目）：只拿來推算近 12 月 EPS＝價格 ÷ 本益比（multpl 的 EPS 頁是通膨調整後的實質值），不單獨顯示
+  {
+    id: 'spx_price_m', name: 'S&P 500 月平均收盤價（Shiller）', short: 'S&P月均價', category: 'us_equity', frequency: 'monthly',
+    unit: 'pt', decimals: 2, sources: [{ provider: 'multpl', symbol: 'SP500_PRICE' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 45, hidden: true, note: '',
+  },
+  // 席勒本益比（CAPE）：實質價格 ÷ 近 10 年實質 EPS 平均；面板讀數用，不單獨顯示
+  {
+    id: 'spx_cape', name: '席勒本益比 CAPE（S&P 500）', short: 'CAPE', category: 'us_equity', frequency: 'monthly',
+    unit: '倍', decimals: 1, sources: [{ provider: 'multpl', symbol: 'SHILLER_PE' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 45, hidden: true,
+    note: '實質價格 ÷ 近 10 年實質 EPS 平均（Shiller）；1881 年起均值約 17 倍，2000 年高點 44 倍。美股估值面板用，不計分',
+  },
   // ── 亞股（跨市場對照面板用；只抓取、不列入指標表與計分） ──
   {
     id: 'nikkei', name: '日經 225', short: '日經225', category: 'asia_equity', frequency: 'daily',
@@ -672,8 +713,17 @@ export function sourceUrl(spec: SourceSpec): string {
       return 'https://m.stock.naver.com/domestic/index/KOSPI/total';
     case 'tw_gov':
       return `https://data.gov.tw/dataset/${TW_GOV_DATASET_ID[spec.symbol]}`;
+    case 'multpl':
+      return `https://www.multpl.com/${MULTPL_PAGE[spec.symbol]}`;
   }
 }
+
+/** multpl.com 頁面路徑（抓取時加 /table/by-month） */
+export const MULTPL_PAGE: Record<Extract<SourceSpec, { provider: 'multpl' }>['symbol'], string> = {
+  SP500_PE: 's-p-500-pe-ratio',
+  SP500_PRICE: 's-p-500-historical-prices',
+  SHILLER_PE: 'shiller-pe',
+};
 
 /** 政府資料開放平台資料集編號（抓取時用 API 查目前的下載網址） */
 export const TW_GOV_DATASET_ID: Record<Extract<SourceSpec, { provider: 'tw_gov' }>['symbol'], number> = {
@@ -693,4 +743,5 @@ export const PROVIDER_LABEL: Record<SourceSpec['provider'], string> = {
   twse_chips: '臺灣證交所 TWSE',
   naver_kr: 'Naver Pay 證券（韓國交易所資料）',
   tw_gov: '政府資料開放平台（國發會／財政部／經濟部／央行）',
+  multpl: 'multpl.com（Robert Shiller S&P 500 月資料）',
 };
