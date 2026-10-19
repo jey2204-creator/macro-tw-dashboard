@@ -1,0 +1,3 @@
+factset-rss.xml: HTTP 200 text/xml; charset=UTF-8 32785 bytes fwdPE=n/a
+factset-post.html: HTTP 200 text/html; charset=UTF-8 87181 bytes fwdPE=19.0
+factset-topic.html: HTTP 200 text/html; charset=UTF-8 100477 bytes fwdPE=n/a
