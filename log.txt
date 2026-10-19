@@ -1,0 +1,24 @@
+GET cal-A59000000N.html | ec=0 code=200 size=184556 t=2.169398s | https://www.stat.gov.tw/News_NoticeCalendar.aspx?n=3717&IsControl=0&_Hide=1&Dept=A59000000N&page=1&PageSize=200
+GET moea-list-me.html | ec=0 code=200 size=110305 t=0.976671s | https://www.moea.gov.tw/Mns/dos/bulletin/Bulletin.aspx?kind=5&html=1&menu_id=6724
+GET moea-16911-me.html | ec=0 code=200 size=126848 t=0.965247s | https://www.moea.gov.tw/Mns/dos/bulletin/Bulletin.aspx?kind=5&html=1&menu_id=6724&bull_id=16911
+GET moea-list-ch.html | ec=0 code=200 size=111382 t=0.990724s | https://www.moea.gov.tw/Mns/dos/bulletin/Bulletin.aspx?kind=5&html=1&menu_id=6724
+NODE 200 105095 1004ms https://www.moea.gov.tw/Mns/dos/bulletin/Bulletin.aspx?kind=5&html=1&menu_id=6724 false
+NODE 200 119036 1002ms https://www.moea.gov.tw/Mns/dos/bulletin/Bulletin.aspx?kind=5&html=1&menu_id=6724&bull_id=16911 true
+完成
+CURL https://data.gov.tw/api/v2/rest/dataset/6099 | ec=0 code=200 t=0.451331s
+CURL https://www.cbc.gov.tw/ | ec=0 code=302 t=1.118368s
+CURL https://index.ndc.gov.tw/ | ec=0 code=403 t=0.308063s
+CURL https://ws.ndc.gov.tw/ | ec=0 code=404 t=0.439277s
+CURL https://www.cier.edu.tw/ | ec=0 code=200 t=1.694541s
+CURL https://scidm.nchc.org.tw/ | ec=0 code=200 t=2.060152s
+CURL https://ws.dgbas.gov.tw/ | ec=60 curl: (60) SSL certificate problem: unable to get local issuer certificate
+More details here: https://curl.se/docs/sslcerts.html
+
+curl failed to verify the legitimacy of the server and therefore could not
+establish a secure connection to it. To learn more about this situation and
+how to fix it, please visit the web page mentioned above.
+code=000 t=0.754226s
+CURL https://www.moea.gov.tw/ | ec=0 code=403 t=0.069148s
+CURL https://service.mof.gov.tw/ | ec=0 code=200 t=1.112336s
+CURL https://portal.sw.nat.gov.tw/ | ec=28 curl: (28) Connection timed out after 20001 milliseconds
+code=000 t=20.001107s

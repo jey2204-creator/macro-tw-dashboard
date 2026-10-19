@@ -1,0 +1,1151 @@
+
+
+
+<!DOCTYPE html>
+
+<html lang="zh-Hant-TW" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="UTF-8" />
+<meta name="Accessible_website" content="本網站通過A+等級無障礙網頁檢測" />
+<meta name="DC.Title" content="外銷訂單統計" />
+<meta name="DC.Creator" content="經濟部統計處" />
+<meta name="DC.Subject" content="最新消息-外銷訂單統計" />
+<meta name="DC.Description" content="外銷訂單統計" />
+<meta name="DC.Contributor" content="經濟部統計處" />
+<meta name="DC.Type" content="文字" />
+<meta name="DC.Format" content="文字" />
+<meta name="DC.Source" content="經濟部統計處" />
+<meta name="DC.Language" content="中文" />
+<meta name="DC.Coverage.t.min" content="2012-12-14" />
+<meta name="DC.Coverage.t.max" content="2022-12-14" />
+<meta name="DC.Publisher" content="經濟部統計處" />
+<meta name="DC.Date" content="2012-12-14" />
+<meta name="DC.Identifier" content="A13000000G" />
+<meta name="DC.Relation" content="MNS-Bulletin-6724" />
+<meta name="DC.Rights" content="經濟部統計處" />
+<meta name="Category.Theme" content="5Z0" />
+<meta name="Category.Cake" content="" />
+<meta name="Category.Service" content="I41" />
+<meta name="Keywords" content="外銷訂單統計新聞稿,115年8月外銷訂單統計" />
+<meta property="og:image" content="https://www.moea.gov.tw/MNS/DOS/bulletin/wHandBulletin_Image.ashx?bull_id=16911&serial_no=1" />
+<meta property="og:title" content="115年8月外銷訂單統計" />
+<meta property="og:description" content="1.與上月比較：8月外銷訂單1,029.6億美元，較上月增加50.2億美元或增5.1%，經季節調整後增5.9%。 2.與上年同月比較：外銷訂單增加428.7億美元或增71.4%，按新台幣計算增81.9%。 3.累計1-8月與上年同期比較：1至8月外銷訂單7,049.9億美元，較上年同期增加2,502" />
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" /><meta name="viewport" content="width=device-width, initial-scale=1" /><link href="../../main/images/moea.ico" rel="icon" type="image/x-icon" /><link href="../../library/Bootstrap/reset.min.css" rel="stylesheet" type="text/css" /><link href="../../library/Bootstrap/dist/css/bootstrap.min.css?rn=v1.0" rel="stylesheet" type="text/css" /><link href="../../library/yamm/yamm.min.css" rel="stylesheet" type="text/css" /><link href="../../library/bxslider/jquery.bxslider.min.css" rel="stylesheet" type="text/css" /><link rel="Stylesheet" type="text/css" href="../../library/jquery.autocomplete.min.css" /><link href="../library/SubSiteRwd.css?rn=v1.0" rel="stylesheet" type="text/css" /><link href="../../library/FontSmall.css" rel="stylesheet" type="text/css" title="font_small" /><link href="../../library/FontMiddle.css" rel="stylesheet" type="text/css" title="font_middle" /><link href="../../library/FontLarge.css" rel="stylesheet" type="text/css" title="font_large" />
+    <noscript>
+        <link href="../library/SubSiteNoscript.css" rel="stylesheet" type="text/css" />
+    </noscript>
+    
+    <script src="../../library/jquery.min.js" type="text/javascript"></script>
+
+     
+    <script src="../../library/FontAwesome/js/all.min.js" type="text/javascript"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $('.navbar .dropdown').on('mouseover focusin', function () {
+                var dropdownList = $(this).find('.dropdown-menu').first(),
+                dropdownOffset = $(this).offset(),
+                offsetLeft = dropdownOffset.left,
+                dropdownWidth = dropdownList.width(),
+                docWidth = $(window).width(),
+
+                subDropdown = dropdownList,
+                subDropdownWidth = subDropdown.width(),
+
+                isDropdownVisible = (offsetLeft + dropdownWidth <= docWidth),
+                isSubDropdownVisible = (offsetLeft + dropdownWidth + subDropdownWidth <= docWidth);
+
+                if (!isDropdownVisible || !isSubDropdownVisible) {
+                    dropdownList.addClass('dropdown-menu-right');
+                } else {
+                    dropdownList.removeClass('dropdown-menu-right');
+                }
+            });
+            function toggleNavbarMethod() {
+                if (viewport().width > 991) {
+                    $('.navbar .dropdown').on('mouseover focusin', function () {
+                        $(this).find('.dropdown-menu').first().stop(true, true).show();
+                        $(this).addClass("open");
+                        var _div = $(this).find('a > div').first();
+                        _div.attr('class', 'dropdown-div-hover');
+                    }).on('mouseout', function () {
+                        $(this).find('.dropdown-menu').first().stop(true, true).hide();
+                        $(this).removeClass("open");
+                        var _div = $(this).find('a > div').first();
+                        _div.attr('class', 'dropdown-div');
+                    });
+
+                    $('.dropdown-menu').each(function () {
+                        $(this).find('li').last().on('focusout', function () {
+                            $('.navbar .dropdown').mouseout();
+                        })
+                    });
+                } else {
+                    $('.navbar .dropdown').off('mouseover').off('mouseout');
+                    // hide之後必須要把css:display的屬性移除，不然後續會看不到子選單
+                    $('.navbar .dropdown').find('.dropdown-menu').css('display', "");
+                }
+            }
+            toggleNavbarMethod();
+
+            $(window).resize(toggleNavbarMethod);
+        });
+
+        function viewport() {
+            var e = window, a = 'inner';
+            if (!('innerWidth' in window)) {
+                a = 'client';
+                e = document.documentElement || document.body;
+            }
+            return { width: e[a + 'Width'], height: e[a + 'Height'] };
+        }
+    </script>
+    <script type="text/javascript">
+        $(function () {
+            var $menu_t = 0;
+            //var $menu_t = $('#divFixTop').offset().top;
+            var $Float_layer = $('#SliderBox');
+
+            $(window).on('scroll resize', function () {
+                //捲動事件
+                var $this = $(this),
+                    $this_Top = $this.scrollTop(),
+                    _area = 600
+
+                if (_area > $menu_t) {
+                    $Float_layer.css({ 'top': $this_Top * 0.01 });
+                }
+            }).scroll();
+        });
+    </script>
+    <script type="text/javascript">
+        //配合無障礙「定位點」在 Firefox 環境，看不出位置問題
+        //將直接執行內含的超連結，而自動轉至超連結指向的頁面，使定位點失去最重要的「定位」功效
+        //因此，停用 Firefox 時，定位點之 click 動作
+        //1091105: 改為不侷限於判斷firefox
+        var m_d = false;
+        $(function () {
+            $('a[accesskey="S"]').mousedown(function (e) {
+                m_d = (e.which == 1)
+            });
+            $('a[accesskey="S"]').keydown(function (e) {
+                m_d = (e.which == 13)
+            });
+            $('a[accesskey="S"]').click(function (e) {
+                return m_d;
+            });
+        })
+
+        $(document).ready(function () {
+            $('a.font_size').on('click', function () {
+                OnClickChagneFontSize(this.id);
+                return false;
+            });
+
+            $('#gotocenter, .aPageTop').on('click', function () {
+                $("html, body").animate({ scrollTop: 0 }, "slow");
+            });
+        });
+
+        //快速鍵﹝Accesskey﹞Alt + C, 捲軸置頂 scrollTop = 0
+        $(document).keydown(function (e) {
+            if (e.altKey && e.which == 67) {
+                $("html, body").animate({ scrollTop: 0 }, "slow");
+            }
+        });
+    </script>
+    <!-- Google Tag Manager -->
+    <script>
+        (function (w, d, s, l, i) {
+            w[l] = w[l] || []; w[l].push({
+                'gtm.start':
+                new Date().getTime(), event: 'gtm.js'
+            }); var f = d.getElementsByTagName(s)[0],
+            j = d.createElement(s), dl = l != 'dataLayer' ? '&l=' + l : ''; j.async = true; j.src =
+            'https://www.googletagmanager.com/gtm.js?id=' + i + dl; f.parentNode.insertBefore(j, f);
+        })(window, document, 'script', 'dataLayer', 'GTM-5VRNSCJ');
+    </script>
+    <!-- End Google Tag Manager -->
+    <!-- Google tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-WL6VJ8NFV8"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+
+        gtag('config', 'G-WL6VJ8NFV8');
+    </script>
+    <style>
+        .sr-only {
+            border: 0;
+            clip: rect(0,0,0,0);
+            height: 1px;
+            margin: -1px;
+            overflow: hidden;
+            padding: 0;
+            position: absolute;
+            width: 1px;
+        }
+    </style>
+    
+<link href="../../App_Themes/Sub_35_Dos/SubDefaultComm.css" type="text/css" rel="stylesheet" /><title>
+	外銷訂單統計 - 最新消息 - 經濟部統計處
+</title></head>
+<body>
+    <form method="post" action="/Mns/dos/bulletin/Bulletin.aspx?kind=5&amp;html=1&amp;menu_id=6724&amp;bull_id=16911" id="form1">
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="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" />
+
+
+<script type="text/javascript">
+//<![CDATA[
+$('document').ready(function () {
+$.get('../../library/wHandHitCount.ashx?item_id=16911&kind=5');
+var intcount=parseInt($('.cdnaddhit:first').text(),10)
+intcount+=1;
+$('.cdnaddhit:first').text(intcount);
+});//]]>
+</script>
+
+<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="3732E00C" />
+<input type="hidden" name="__EVENTVALIDATION" id="__EVENTVALIDATION" value="bTsj0243OsgKJJQXrhCBaZUid7V7DBE1qh7HULYEtvkztQj0qD+9w8AdEIOc/nmMsbpGyUcPflGcsmnfkFeMKIg823Mqwqx+MwQwl9meA2P7sJV/P+Wi0/GjeXB8acliBS7D3w==" />
+        <!-- Google Tag Manager (noscript) -->
+        <noscript>
+            <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5VRNSCJ" height="0" width="0" style="display:none;visibility:hidden"></iframe>
+        </noscript>
+        <!-- End Google Tag Manager (noscript) -->
+        <div>
+            <div id="divFixTop">
+                <div id="divHeader">
+                    <div class="container" style="position: relative;">
+                        <a href='#C' id="gotocenter" title="跳到主要內容" tabindex="1" style="position: absolute; z-index: 1001; color: #000000;" class="sr-only sr-only-focusable">跳到主要內容</a>
+                        <div class="row">
+                            
+                            <div id="divPageTop">
+                                <div id="top_menu">
+                                    <span><a id="U" href="#U" accesskey="U" class="sr-only sr-only-focusable" title="上方選單">:::</a>
+                                        
+                                                <a id="repTopMenu_lnkMenu_0" href="../home/SiteMap.aspx?menu_id=6706">網站導覽</a>
+                                            
+                                                |
+                                            
+                                                <a id="repTopMenu_lnkMenu_1" href="../home/Home.aspx">回首頁</a>
+                                            
+                                                |
+                                            
+                                                <a id="repTopMenu_lnkMenu_2" href="../../dos/qa/QuestionsAnswers.aspx?qa_kind_code=2&amp;menu_id=31646&amp;kind=599&amp;sub_menu_id=35023">常見問答</a>
+                                            
+                                                |
+                                            
+                                                <a id="repTopMenu_lnkMenu_3" href="../home/Feedback_c.aspx?menu_id=6795">意見信箱</a>
+                                            
+                                                |
+                                            
+                                                <a id="repTopMenu_lnkMenu_4" href="../../dos_e/home/Home.aspx">English</a>
+                                            
+                                                |
+                                            
+                                                <a id="repTopMenu_lnkMenu_5" title="另開視窗，連結到經濟部全球資訊網" href="../../?menu_id=6708" target="_blank">經濟部全球資訊網</a>
+                                            
+                                        
+                                        字級 <a id="font_small" role="button" aria-pressed="false" href="#" title="字體小" class="font_size font_small" onclick="OnClickChagneFontSize(this.id);return false;"
+                                            onkeypress="this.onclick();">小</a><a id="font_middle" role="button" aria-pressed="false" href="#" title="字體中" class="font_size font_middle"
+                                                onclick="OnClickChagneFontSize(this.id);return false;" onkeypress="this.onclick();">中</a><a id="font_large" role="button" aria-pressed="false" href="#" title="字體大" class="font_size font_large" onclick="OnClickChagneFontSize(this.id);return false;"
+                                                    onkeypress="this.onclick();">大</a>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="BannerLogo">
+                                <h1>
+                                    <a id="lnkHome" title="經濟部統計處" class="BannerLogo22" href="../home/Home.aspx" style="width: 290px; height: 110px; display: block;">經濟部統計處</a></h1>
+                            </div>
+                            <div id="divSearch">
+                                <div class="container">
+                                    <div class="row">
+                                        <div id="divUpdateBar" class="col-xl-6 col-lg-6 col-md-6 d-none d-md-block">
+                                            更新日期：2026-10-18&nbsp;&nbsp;參觀人次：0044262537
+                                        </div>
+                                        <div id="divSearchBar" class="col-xl-6 col-lg-6 col-md-6 col-sm-12">
+                                            <div id="divSearchBlock">
+                                                <div id="divSearchTable" style="display: table;">
+                                                    <div style="display: table-cell; width: 1%; white-space: nowrap;">
+                                                        <label for="txtSearch">全文檢索</label>
+                                                    </div>
+                                                    <div style="display: table-cell; padding: 0 5px;">
+                                                        <input name="ctl00$txtSearch" type="text" id="txtSearch" accesskey="S" class="txtSearch" />
+                                                    </div>
+                                                    <div id="divSearchButton" style="display: table-cell; width: 1%; white-space: nowrap;">
+                                                        <input type="submit" name="ctl00$btnSearch" value="搜尋" id="btnSearch" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="divMenu">
+                    <div class="container">
+                        
+                        <!-- Static navbar -->
+                        <nav class="navbar yamm navbar-expand-lg navbar-light">
+                            <a class="navbar-brand" href="#">功能選單</a>
+                            <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#navbar" aria-expanded="false" aria-controls="navbar">
+                                <span class="sr-only">Toggle navigation</span>
+                                <span class="icon-bar"></span>
+                                <span class="icon-bar"></span>
+                                <span class="icon-bar"></span>
+                            </button>
+                            <div id="navbar" class="navbar-collapse collapse">
+                                <ul class="nav navbar-nav">
+                                    
+                                            <li id="repMenu_liMenu_0" class="dropdown yamm-fw">
+                                                <a id="repMenu_lnkMenuItem_0" title="最新消息" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" onclick="AddHitLog(&#39;F0dU7SIgY5Naz6Lq5DVpPugiIK59YExi&#39;);" href="../content/Content.aspx?menu_id=6709">最新消息</a><span id="repMenu_spanMenuTouch_0" class="menu_touch" data-bs-toggle="dropdown" role="button"><img src="../images/SubComm/icon_arrowdown.gif" alt="Menu" /></span>
+                                                
+                                                        <ul class="dropdown-menu" role="menu">
+                                                    
+                                                        <li id="repMenu_repMenuListItem_0_liMenuListItem_0" class="dropdown-menu-li">
+                                                            <a id="repMenu_repMenuListItem_0_lnkMenuListItem_0" title="產業經濟統計簡訊" onclick="AddHitLog(&#39;dtSFG%2fd%2bQg%2bpKiH6ziBTzmScyr5GW21k&#39;);" href="../bulletin/Bulletin.aspx?kind=9&amp;html=1&amp;menu_id=18808">產業經濟統計簡訊</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_0_liMenuListItem_1">
+                                                            <a id="repMenu_repMenuListItem_0_lnkMenuListItem_1" title="外銷訂單統計" onclick="AddHitLog(&#39;0qmAY7nzZlt%2bTdydMD9lro2eiuopJaMr&#39;);" href="../bulletin/Bulletin.aspx?kind=5&amp;html=1&amp;menu_id=6724">外銷訂單統計</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_0_liMenuListItem_2">
+                                                            <a id="repMenu_repMenuListItem_0_lnkMenuListItem_2" title="工業生產統計" onclick="AddHitLog(&#39;FllajrO14LrP73dO0mLYeoS5VP3UF2Ye&#39;);" href="../bulletin/Bulletin.aspx?kind=6&amp;html=1&amp;menu_id=6725">工業生產統計</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_0_liMenuListItem_3">
+                                                            <a id="repMenu_repMenuListItem_0_lnkMenuListItem_3" title="批發、零售及餐飲業營業額統計" onclick="AddHitLog(&#39;rpi4lUUs%2fgVN3Ccs8RBFfqsRYy7I1tIx&#39;);" href="../bulletin/Bulletin.aspx?kind=8&amp;html=1&amp;menu_id=6727">批發、零售及餐飲業營業額統計</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_0_liMenuListItem_4">
+                                                            <a id="repMenu_repMenuListItem_0_lnkMenuListItem_4" title="製造業產值統計" onclick="AddHitLog(&#39;qZVJdMQUgxzX9kT9fqHrWIfBKnepBEO6&#39;);" href="../bulletin/Bulletin.aspx?kind=7&amp;html=1&amp;menu_id=6726">製造業產值統計</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_0_liMenuListItem_5">
+                                                            <a id="repMenu_repMenuListItem_0_lnkMenuListItem_5" title="製造業投資及營運統計" onclick="AddHitLog(&#39;xvxUwTthAdMvXWZQKltnSSIjeQYHtA81&#39;);" href="../bulletin/Bulletin.aspx?kind=11&amp;html=1&amp;menu_id=6728">製造業投資及營運統計</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_0_liMenuListItem_6">
+                                                            <a id="repMenu_repMenuListItem_0_lnkMenuListItem_6" title="專業技術服務業、租賃業營業額" onclick="AddHitLog(&#39;VfEyvjH1KR66CFg1O8akLx5l6XbTs6L3&#39;);" href="../bulletin/Bulletin.aspx?kind=12&amp;html=1&amp;menu_id=6729">專業技術服務業、租賃業營業額</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_0_liMenuListItem_7">
+                                                            <a id="repMenu_repMenuListItem_0_lnkMenuListItem_7" title="當前經濟情勢" onclick="AddHitLog(&#39;sf1sSuSMJHvb33dtgctODs8PjWADKvKy&#39;);" href="../bulletin/Bulletin.aspx?kind=23&amp;html=1&amp;menu_id=10212">當前經濟情勢</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_0_liMenuListItem_8">
+                                                            <a id="repMenu_repMenuListItem_0_lnkMenuListItem_8" title="工廠校正及營運調查" onclick="AddHitLog(&#39;sC%2bAX4Z8uY2MCZnPIOvkHQ118mU9%2f0Xq&#39;);" href="../bulletin/Bulletin.aspx?kind=17&amp;html=1&amp;menu_id=9773">工廠校正及營運調查</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_0_liMenuListItem_9">
+                                                            <a id="repMenu_repMenuListItem_0_lnkMenuListItem_9" title="批發、零售及餐飲業經營實況調查" onclick="AddHitLog(&#39;cY9%2bT07cyMr5VWH%2b3RH8L0QAPD%2fH5Fom&#39;);" href="../bulletin/Bulletin.aspx?kind=28&amp;html=1&amp;menu_id=16959">批發、零售及餐飲業經營實況調查</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_0_liMenuListItem_10">
+                                                            <a id="repMenu_repMenuListItem_0_lnkMenuListItem_10" title="外銷訂單海外生產實況調查" onclick="AddHitLog(&#39;i7eykPFyuwQelIsd6N7zzZNrdujnt0UG&#39;);" href="../bulletin/Bulletin.aspx?kind=27&amp;html=1&amp;menu_id=16958">外銷訂單海外生產實況調查</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_0_liMenuListItem_11">
+                                                            <a id="repMenu_repMenuListItem_0_lnkMenuListItem_11" title="其他類統計發布" onclick="AddHitLog(&#39;i%2fgd3JJWGbehtFrC3oaXnjaQAsAiO0xF&#39;);" href="../bulletin/Bulletin.aspx?kind=10&amp;html=1&amp;menu_id=6732">其他類統計發布</a></li>
+                                                    </ul>
+                                            </li>
+                                        
+                                            <li id="repMenu_liMenu_1" class="dropdown yamm-fw">
+                                                <a id="repMenu_lnkMenuItem_1" title="調查總覽" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" onclick="AddHitLog(&#39;iPggvrgNifu1E0kgfMsGQQ%2bDEWGtV%2bn%2b&#39;);" href="../content/Content.aspx?menu_id=6712">調查總覽</a><span id="repMenu_spanMenuTouch_1" class="menu_touch" data-bs-toggle="dropdown" role="button"><img src="../images/SubComm/icon_arrowdown.gif" alt="Menu" /></span>
+                                                
+                                                        <ul class="dropdown-menu" role="menu">
+                                                    
+                                                        <li id="repMenu_repMenuListItem_1_liMenuListItem_0" class="dropdown-menu-li">
+                                                            <a id="repMenu_repMenuListItem_1_lnkMenuListItem_0" title="外銷訂單調查" onclick="AddHitLog(&#39;QpJN%2b7ZjGs26f%2fQ%2bktxotaQXVm%2bZiqox&#39;);" href="../content/Content.aspx?menu_id=6805">外銷訂單調查</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_1_liMenuListItem_1">
+                                                            <a id="repMenu_repMenuListItem_1_lnkMenuListItem_1" title="工業產銷存動態調查" onclick="AddHitLog(&#39;92%2fOwID0sPp%2fLzFVL7cu0M18HjlxvvM2&#39;);" href="../content/Content.aspx?menu_id=6819">工業產銷存動態調查</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_1_liMenuListItem_2">
+                                                            <a id="repMenu_repMenuListItem_1_lnkMenuListItem_2" title="批發、零售及餐飲業動態調查" onclick="AddHitLog(&#39;HnHSSHPekKmCiMqpXSMEGLqcS3ZsauKv&#39;);" href="../content/Content.aspx?menu_id=6831">批發、零售及餐飲業動態調查</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_1_liMenuListItem_3">
+                                                            <a id="repMenu_repMenuListItem_1_lnkMenuListItem_3" title="專業技術服務業、租賃業調查" onclick="AddHitLog(&#39;wYehTzV2bt5dU5bTmf6aS3vtuIsOLy0W&#39;);" href="../content/Content.aspx?menu_id=6836">專業技術服務業、租賃業調查</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_1_liMenuListItem_4">
+                                                            <a id="repMenu_repMenuListItem_1_lnkMenuListItem_4" title="製造業投資及營運概況調查" onclick="AddHitLog(&#39;AugjAVi6vjWhaDI%2f%2fEVVRwvBhcmSaO%2bQ&#39;);" href="../content/Content.aspx?menu_id=6838">製造業投資及營運概況調查</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_1_liMenuListItem_5">
+                                                            <a id="repMenu_repMenuListItem_1_lnkMenuListItem_5" title="工廠校正及營運調查" onclick="AddHitLog(&#39;Bo8GY5NdJnzI4gCcXUChql8bQ7lgixlF&#39;);" href="../content/Content.aspx?menu_id=6813">工廠校正及營運調查</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_1_liMenuListItem_6">
+                                                            <a id="repMenu_repMenuListItem_1_lnkMenuListItem_6" title="外銷訂單海外生產實況調查" onclick="AddHitLog(&#39;IZEG9v%2bztg33V%2f22Ybc%2fz2jg2AJm9o1T&#39;);" href="../content/Content.aspx?menu_id=6811">外銷訂單海外生產實況調查</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_1_liMenuListItem_7">
+                                                            <a id="repMenu_repMenuListItem_1_lnkMenuListItem_7" title="批發、零售及餐飲業經營實況調查" onclick="AddHitLog(&#39;zTQJPIH6FkRElnj3uZjQRiHWnIKKSmEw&#39;);" href="../content/Content.aspx?menu_id=6825">批發、零售及餐飲業經營實況調查</a></li>
+                                                    </ul>
+                                            </li>
+                                        
+                                            <li id="repMenu_liMenu_2" class="dropdown yamm-fw">
+                                                <a id="repMenu_lnkMenuItem_2" title="資料查詢" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" onclick="AddHitLog(&#39;WXmjIYHJL4znYhR%2bx4MBSoM2l4j2pzny&#39;);" href="../content/SubMenu.aspx?menu_id=21040">資料查詢</a><span id="repMenu_spanMenuTouch_2" class="menu_touch" data-bs-toggle="dropdown" role="button"><img src="../images/SubComm/icon_arrowdown.gif" alt="Menu" /></span>
+                                                
+                                                        <ul class="dropdown-menu" role="menu">
+                                                    
+                                                        <li id="repMenu_repMenuListItem_2_liMenuListItem_0" class="dropdown-menu-li">
+                                                            <a id="repMenu_repMenuListItem_2_lnkMenuListItem_0" title="另開視窗，連結到常用指標" onclick="AddHitLog(&#39;dJUfiLRZHuINCzoTZShiyMa7xmpFYgGr&#39;);" href="https://service.moea.gov.tw/GA/common/Common.aspx" target="_blank">常用指標</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_2_liMenuListItem_1">
+                                                            <a id="repMenu_repMenuListItem_2_lnkMenuListItem_1" title="另開視窗，連結到資料庫查詢" onclick="AddHitLog(&#39;uJ903SBsmUxWpvUVY4aWimVtaqaK0EWH&#39;);" href="https://service.moea.gov.tw/EE521/query/Query.aspx" target="_blank">資料庫查詢</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_2_liMenuListItem_2">
+                                                            <a id="repMenu_repMenuListItem_2_lnkMenuListItem_2" title="另開視窗，連結到視覺化圖表" onclick="AddHitLog(&#39;SsA9TrLihK7tW1VldGP8L7yIDbkZbSli&#39;);" href="https://service.moea.gov.tw/GA/visualize/Visualize.aspx" target="_blank">視覺化圖表</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_2_liMenuListItem_3">
+                                                            <a id="repMenu_repMenuListItem_2_lnkMenuListItem_3" title="經濟統計指標電子書" onclick="AddHitLog(&#39;U%2bYdV01cpWao8PlNlPxg4m0FkhvFpvr9&#39;);" href="../../dos/content/ContentLink.aspx?menu_id=7710&amp;sub_menu_id=21058">經濟統計指標電子書</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_2_liMenuListItem_4">
+                                                            <a id="repMenu_repMenuListItem_2_lnkMenuListItem_4" title="性別統計與分析" onclick="AddHitLog(&#39;FkIqCWRZUWbsEZygDtkpB66wfPLaDnQc&#39;);" href="../content/SubMenu.aspx?menu_id=6716">性別統計與分析</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_2_liMenuListItem_5">
+                                                            <a id="repMenu_repMenuListItem_2_lnkMenuListItem_5" title="本部及所屬統計" onclick="AddHitLog(&#39;5QyR0JZQS%2bcPNGxn19fpPKKEuWqqc%2f80&#39;);" href="../content/Content.aspx?menu_id=6714">本部及所屬統計</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_2_liMenuListItem_6">
+                                                            <a id="repMenu_repMenuListItem_2_lnkMenuListItem_6" title="環境與經濟帳" onclick="AddHitLog(&#39;3h%2bvZsPzpdLopjr8NkDFhNWTrD8d4k0L&#39;);" href="../content/Content.aspx?menu_id=42671">環境與經濟帳</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_2_liMenuListItem_7">
+                                                            <a id="repMenu_repMenuListItem_2_lnkMenuListItem_7" title="統計教室影片" onclick="AddHitLog(&#39;rXoxUpX4Zkwe4VH1bAwsA2roiq0NGFst&#39;);" href="../content/SubMenu.aspx?menu_id=19190">統計教室影片</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_2_liMenuListItem_8">
+                                                            <a id="repMenu_repMenuListItem_2_lnkMenuListItem_8" title="經濟部公務統計報表程式" onclick="AddHitLog(&#39;MQu%2fCMguC0PEbgDGxGw9zadyMcqyfsT%2b&#39;);" href="../../dos/content/ContentLink.aspx?menu_id=43731">經濟部公務統計報表程式</a></li>
+                                                    </ul>
+                                            </li>
+                                        
+                                            <li id="repMenu_liMenu_3" class="dropdown yamm-fw">
+                                                <a id="repMenu_lnkMenuItem_3" title="網路填報" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" onclick="AddHitLog(&#39;AzyJXPKUwhPfgmptMxyPSDq0jXx8%2bT6Q&#39;);" href="../../dos/content/ContentLink.aspx?menu_id=6722">網路填報</a><span id="repMenu_spanMenuTouch_3" class="menu_touch" data-bs-toggle="dropdown" role="button"><img src="../images/SubComm/icon_arrowdown.gif" alt="Menu" /></span>
+                                                
+                                                        <ul class="dropdown-menu" role="menu">
+                                                    
+                                                        <li id="repMenu_repMenuListItem_3_liMenuListItem_0" class="dropdown-menu-li">
+                                                            <a id="repMenu_repMenuListItem_3_lnkMenuListItem_0" title="另開視窗，連結到外銷訂單調查" onclick="AddHitLog(&#39;UtKVQjjsIXKDuGBPXpqddOXMQaR9EkRn&#39;);" href="https://service.moea.gov.tw/EE114/" target="_blank">外銷訂單調查</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_3_liMenuListItem_1">
+                                                            <a id="repMenu_repMenuListItem_3_lnkMenuListItem_1" title="另開視窗，連結到工業產銷存動態調查" onclick="AddHitLog(&#39;u6JvUqNKq1z%2fRUa3DhaBJFHzFayTWu5y&#39;);" href="https://service.moea.gov.tw/EE112/" target="_blank">工業產銷存動態調查</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_3_liMenuListItem_2">
+                                                            <a id="repMenu_repMenuListItem_3_lnkMenuListItem_2" title="另開視窗，連結到(月)批發、零售及餐飲業動態調查" onclick="AddHitLog(&#39;06ESsyP7%2bU8I73WU%2ba0X1IpEEkbXM%2fTH&#39;);" href="https://service.moea.gov.tw/EE110/" target="_blank">(月)批發、零售及餐飲業動態調查</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_3_liMenuListItem_3">
+                                                            <a id="repMenu_repMenuListItem_3_lnkMenuListItem_3" title="另開視窗，連結到製造業投資及營運概況調查" onclick="AddHitLog(&#39;6arRbdsKQR%2bgDqmdT5y%2bx6LIS7d070SD&#39;);" href="https://service.moea.gov.tw/EE115/ioqs" target="_blank">製造業投資及營運概況調查</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_3_liMenuListItem_4">
+                                                            <a id="repMenu_repMenuListItem_3_lnkMenuListItem_4" title="另開視窗，連結到(季)專業技術服務業、租賃業動態調查" onclick="AddHitLog(&#39;9LWngif7UkuEfSbqeiQy0cojkjAYwGKZ&#39;);" href="https://service.moea.gov.tw/EE115/p" target="_blank">(季)專業技術服務業、租賃業動態調查</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_3_liMenuListItem_5">
+                                                            <a id="repMenu_repMenuListItem_3_lnkMenuListItem_5" title="另開視窗，連結到工廠校正及營運調查" onclick="AddHitLog(&#39;rgeGyXIvvVV0jx1k37HvjzW8MEz5%2bf%2bd&#39;);" href="https://service.moea.gov.tw/EE116/" target="_blank">工廠校正及營運調查</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_3_liMenuListItem_6">
+                                                            <a id="repMenu_repMenuListItem_3_lnkMenuListItem_6" title="另開視窗，連結到外銷訂單海外生產實況調查" onclick="AddHitLog(&#39;FYJxKyBylGeG6GCSXsePWssDVL88Qu%2fQ&#39;);" href="https://service.moea.gov.tw/EE115/k" target="_blank">外銷訂單海外生產實況調查</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_3_liMenuListItem_7">
+                                                            <a id="repMenu_repMenuListItem_3_lnkMenuListItem_7" title="另開視窗，連結到(年)批發、零售及餐飲業經營實況調查" onclick="AddHitLog(&#39;oZwS3YTHVEi4b45w2l8bTBmiSSbm76kH&#39;);" href="https://service.moea.gov.tw/EE115/b" target="_blank">(年)批發、零售及餐飲業經營實況調查</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_3_liMenuListItem_8">
+                                                            <a id="repMenu_repMenuListItem_3_lnkMenuListItem_8" title="另開視窗，連結到(年)專業服務業、倉儲業營運及投資概況調查" onclick="AddHitLog(&#39;KHP0ZkhdnQmSpMifMSc%2bkyZovqKNvVB3&#39;);" href="https://service.moea.gov.tw/EE115/b2" target="_blank">(年)專業服務業、倉儲業營運及投資概況調查</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_3_liMenuListItem_9">
+                                                            <a id="repMenu_repMenuListItem_3_lnkMenuListItem_9" title="另開視窗，連結到受僱員工薪資調查" onclick="AddHitLog(&#39;rRgn3i3CZyfse2ekNXr9GJL9n25y%2bw6t&#39;);" href="https://enterprise.dgbas.gov.tw/SALARY/" target="_blank">受僱員工薪資調查</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_3_liMenuListItem_10">
+                                                            <a id="repMenu_repMenuListItem_3_lnkMenuListItem_10" title="另開視窗，連結到經濟部公務統計方案" onclick="AddHitLog(&#39;rbzcr47LPa%2bvKotZIvvW9CMoTO7BwvSW&#39;);" href="https://service.moea.gov.tw/EE520/official/Default.aspx" target="_blank">經濟部公務統計方案</a></li>
+                                                    </ul>
+                                            </li>
+                                        
+                                            <li id="repMenu_liMenu_4" class="dropdown yamm-fw">
+                                                <a id="repMenu_lnkMenuItem_4" title="統計服務" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" onclick="AddHitLog(&#39;03OoWvFo85HuSFC6aJk4KMMmJtv%2bx8%2fi&#39;);" href="../content/SubMenu.aspx?menu_id=21044">統計服務</a><span id="repMenu_spanMenuTouch_4" class="menu_touch" data-bs-toggle="dropdown" role="button"><img src="../images/SubComm/icon_arrowdown.gif" alt="Menu" /></span>
+                                                
+                                                        <ul class="dropdown-menu" role="menu">
+                                                    
+                                                        <li id="repMenu_repMenuListItem_4_liMenuListItem_0" class="dropdown-menu-li">
+                                                            <a id="repMenu_repMenuListItem_4_lnkMenuListItem_0" title="統計處簡介" onclick="AddHitLog(&#39;rINAqBhmz3si91AwNoGeLnRs4hFD033l&#39;);" href="../content/SubMenu.aspx?menu_id=6710">統計處簡介</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_4_liMenuListItem_1">
+                                                            <a id="repMenu_repMenuListItem_4_lnkMenuListItem_1" title="出版品及電子書" onclick="AddHitLog(&#39;l0P%2fWbTFfHiWdic6cs%2bpvgKEUtVtNnqU&#39;);" href="../content/Content.aspx?menu_id=6989">出版品及電子書</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_4_liMenuListItem_2">
+                                                            <a id="repMenu_repMenuListItem_4_lnkMenuListItem_2" title="統計法規" onclick="AddHitLog(&#39;zKA0orXWHad16sBHbUTwKpz0hIwwA4uc&#39;);" href="../content/SubMenu.aspx?menu_id=19197">統計法規</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_4_liMenuListItem_3">
+                                                            <a id="repMenu_repMenuListItem_4_lnkMenuListItem_3" title="資料轉錄服務" onclick="AddHitLog(&#39;xbxskiG6R%2bbQ8YfmrulO%2fZlMBxGgRJF0&#39;);" href="../content/SubMenu.aspx?menu_id=12928">資料轉錄服務</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_4_liMenuListItem_4">
+                                                            <a id="repMenu_repMenuListItem_4_lnkMenuListItem_4" title="另開視窗，連結到預告統計發布時間表" onclick="AddHitLog(&#39;Z%2fkaSBZ2KsY%2buimeGyRlIcppt%2fuuCMdu&#39;);" href="https://www.stat.gov.tw/News_NoticeCalendar.aspx?n=3717&amp;IsControl=0&amp;_Hide=1&amp;Dept=A13000000G" target="_blank">預告統計發布時間表</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_4_liMenuListItem_5">
+                                                            <a id="repMenu_repMenuListItem_4_lnkMenuListItem_5" title="重要統計事項變更" onclick="AddHitLog(&#39;oCRXHvw0vyh6jxYO7aBZwvBYw9ZAELVy&#39;);" href="https://www.moea.gov.tw/Mns/dos/content/Content.aspx?menu_id=6718">重要統計事項變更</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_4_liMenuListItem_6">
+                                                            <a id="repMenu_repMenuListItem_4_lnkMenuListItem_6" title="相關網站" onclick="AddHitLog(&#39;y6uJH28mmSvwATlI6E91djp31qrvIcTQ&#39;);" href="../../dos/content/ContentLink.aspx?menu_id=6991">相關網站</a></li>
+                                                    
+                                                        <li id="repMenu_repMenuListItem_4_liMenuListItem_7">
+                                                            <a id="repMenu_repMenuListItem_4_lnkMenuListItem_7" title="另開視窗，連結到CRPD資訊網(身心障礙者權利公約)" onclick="AddHitLog(&#39;oWgTTmtSzT0XHMwY%2fLw0oeQfN1%2bsdfPM&#39;);" href="https://crpd.sfaa.gov.tw/BulletinCtrl?func=getBulletinList&amp;p=b_1&amp;page=1&amp;rows=15&amp;c=D" target="_blank">CRPD資訊網(身心障礙者權利公約)</a></li>
+                                                    </ul>
+                                            </li>
+                                        
+                                            <li id="repMenu_liMenu_5" class="d-block d-lg-none dropdown yamm-fw">
+                                                <a id="repMenu_lnkMenuItem_5" title="網站導覽" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" onclick="AddHitLog(&#39;xMCx1YJQiiUKBYChKAbWrEaZU1bHWGBv&#39;);" href="../home/SiteMap.aspx?menu_id=6706">網站導覽</a>
+                                                
+                                            </li>
+                                        
+                                            <li id="repMenu_liMenu_6" class="d-block d-lg-none dropdown yamm-fw">
+                                                <a id="repMenu_lnkMenuItem_6" title="回首頁" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" onclick="AddHitLog(&#39;h2wKBU%2frt38GYMmuMlIAKzd8OKpmhXRC&#39;);" href="../home/Home.aspx">回首頁</a>
+                                                
+                                            </li>
+                                        
+                                            <li id="repMenu_liMenu_7" class="d-block d-lg-none dropdown yamm-fw">
+                                                <a id="repMenu_lnkMenuItem_7" title="常見問答" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" onclick="AddHitLog(&#39;9DCk4Hvlg0HTkv4nu%2bVGBETf2IgBwWyv&#39;);" href="../../dos/qa/QuestionsAnswers.aspx?qa_kind_code=2&amp;menu_id=31646&amp;kind=599&amp;sub_menu_id=35023">常見問答</a>
+                                                
+                                            </li>
+                                        
+                                            <li id="repMenu_liMenu_8" class="d-block d-lg-none dropdown yamm-fw">
+                                                <a id="repMenu_lnkMenuItem_8" title="意見信箱" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" onclick="AddHitLog(&#39;Lbp%2brwIUniN%2fESXOkLfKS0ZR6fQ6%2brbN&#39;);" href="../home/Feedback_c.aspx?menu_id=6795">意見信箱</a>
+                                                
+                                            </li>
+                                        
+                                            <li id="repMenu_liMenu_9" class="d-block d-lg-none dropdown yamm-fw">
+                                                <a id="repMenu_lnkMenuItem_9" title="English" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" onclick="AddHitLog(&#39;uiVP6vwtMJ1sN3eWvkBj2H3bbcNKkfMq&#39;);" href="../../dos_e/home/Home.aspx">English</a>
+                                                
+                                            </li>
+                                        
+                                            <li id="repMenu_liMenu_10" class="d-block d-lg-none dropdown yamm-fw">
+                                                <a id="repMenu_lnkMenuItem_10" title="另開視窗，連結到經濟部全球資訊網" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" onclick="AddHitLog(&#39;IdkyJPZKnW6qJCuIQiv7bAQQ162TKAlu&#39;);" href="../../?menu_id=6708" target="_blank">經濟部全球資訊網</a>
+                                                
+                                            </li>
+                                        
+                                </ul>
+                            </div>
+                            <!--/.nav-collapse -->
+                        </nav>
+                    </div>
+                </div>
+            </div>
+            
+            
+            <div id="Float_layer" class="float-layer">
+                <div id="divContent" style="padding-bottom: 10px;">
+                    
+                        
+                        <div id="divPath">
+                            <div class="container">
+                                
+                                        目前位置：
+                                           <img src="../images/SubComm/icon_home.png" alt="首頁" style="border: 0px;" />
+                                
+                                        <a id="repPath_lnkMenu_0" href="../../dos/home/Home.aspx">首頁</a>
+                                        
+                                    
+                                        &gt;
+                                    
+                                        <a id="repPath_lnkMenu_1" href="../content/Content.aspx?menu_id=6709">最新消息</a>
+                                        
+                                    
+                                        &gt;
+                                    
+                                        
+                                        <span id="repPath_lblMenu_2" aria-current="page">外銷訂單統計</span>
+                                    
+                                
+                            </div>
+                        </div>
+                    
+                    
+                    
+                    <div class="container">
+                        <div class="div-table-content">
+                            <div class="row div-tr-content">
+                                
+                                    <div style="display: table-cell; width: 190px; padding: 0px 5px;" class="d-none d-sm-none d-md-none d-lg-table-cell d-print-none">
+                                        
+                                        <div id="divLeftMenu">
+                                            <a id="L" href="#L" accesskey="L" style="float: left;" class="sr-only sr-only-focusable" title="左方導覽區塊">:::</a>
+                                            <div class="menu_title">
+                                                <a id="lnkMenuItem" onclick="AddHitLog(&#39;F0dU7SIgY5Naz6Lq5DVpPugiIK59YExi&#39;);" href="../content/Content.aspx?menu_id=6709">最新消息</a>
+                                            </div>
+                                            
+                                                    <ul class="menu_list">
+                                                
+                                                    <li id="repLeftMenu_liItem_0" class="">
+                                                        <a id="repLeftMenu_lnkMenuListItem_0" onclick="AddHitLog(&#39;dtSFG%2fd%2bQg%2bpKiH6ziBTzmScyr5GW21k&#39;);" href="../bulletin/Bulletin.aspx?kind=9&amp;html=1&amp;menu_id=18808">產業經濟統計簡訊</a></li>
+                                                
+                                                    <li id="repLeftMenu_liItem_1" class="selected">
+                                                        <a id="repLeftMenu_lnkMenuListItem_1" onclick="AddHitLog(&#39;0qmAY7nzZlt%2bTdydMD9lro2eiuopJaMr&#39;);" href="../bulletin/Bulletin.aspx?kind=5&amp;html=1&amp;menu_id=6724">外銷訂單統計</a></li>
+                                                
+                                                    <li id="repLeftMenu_liItem_2" class="">
+                                                        <a id="repLeftMenu_lnkMenuListItem_2" onclick="AddHitLog(&#39;FllajrO14LrP73dO0mLYeoS5VP3UF2Ye&#39;);" href="../bulletin/Bulletin.aspx?kind=6&amp;html=1&amp;menu_id=6725">工業生產統計</a></li>
+                                                
+                                                    <li id="repLeftMenu_liItem_3" class="">
+                                                        <a id="repLeftMenu_lnkMenuListItem_3" onclick="AddHitLog(&#39;rpi4lUUs%2fgVN3Ccs8RBFfqsRYy7I1tIx&#39;);" href="../bulletin/Bulletin.aspx?kind=8&amp;html=1&amp;menu_id=6727">批發、零售及餐飲業營業額統計</a></li>
+                                                
+                                                    <li id="repLeftMenu_liItem_4" class="">
+                                                        <a id="repLeftMenu_lnkMenuListItem_4" onclick="AddHitLog(&#39;qZVJdMQUgxzX9kT9fqHrWIfBKnepBEO6&#39;);" href="../bulletin/Bulletin.aspx?kind=7&amp;html=1&amp;menu_id=6726">製造業產值統計</a></li>
+                                                
+                                                    <li id="repLeftMenu_liItem_5" class="">
+                                                        <a id="repLeftMenu_lnkMenuListItem_5" onclick="AddHitLog(&#39;xvxUwTthAdMvXWZQKltnSSIjeQYHtA81&#39;);" href="../bulletin/Bulletin.aspx?kind=11&amp;html=1&amp;menu_id=6728">製造業投資及營運統計</a></li>
+                                                
+                                                    <li id="repLeftMenu_liItem_6" class="">
+                                                        <a id="repLeftMenu_lnkMenuListItem_6" onclick="AddHitLog(&#39;VfEyvjH1KR66CFg1O8akLx5l6XbTs6L3&#39;);" href="../bulletin/Bulletin.aspx?kind=12&amp;html=1&amp;menu_id=6729">專業技術服務業、租賃業營業額</a></li>
+                                                
+                                                    <li id="repLeftMenu_liItem_7" class="">
+                                                        <a id="repLeftMenu_lnkMenuListItem_7" onclick="AddHitLog(&#39;sf1sSuSMJHvb33dtgctODs8PjWADKvKy&#39;);" href="../bulletin/Bulletin.aspx?kind=23&amp;html=1&amp;menu_id=10212">當前經濟情勢</a></li>
+                                                
+                                                    <li id="repLeftMenu_liItem_8" class="">
+                                                        <a id="repLeftMenu_lnkMenuListItem_8" onclick="AddHitLog(&#39;sC%2bAX4Z8uY2MCZnPIOvkHQ118mU9%2f0Xq&#39;);" href="../bulletin/Bulletin.aspx?kind=17&amp;html=1&amp;menu_id=9773">工廠校正及營運調查</a></li>
+                                                
+                                                    <li id="repLeftMenu_liItem_9" class="">
+                                                        <a id="repLeftMenu_lnkMenuListItem_9" onclick="AddHitLog(&#39;cY9%2bT07cyMr5VWH%2b3RH8L0QAPD%2fH5Fom&#39;);" href="../bulletin/Bulletin.aspx?kind=28&amp;html=1&amp;menu_id=16959">批發、零售及餐飲業經營實況調查</a></li>
+                                                
+                                                    <li id="repLeftMenu_liItem_10" class="">
+                                                        <a id="repLeftMenu_lnkMenuListItem_10" onclick="AddHitLog(&#39;i7eykPFyuwQelIsd6N7zzZNrdujnt0UG&#39;);" href="../bulletin/Bulletin.aspx?kind=27&amp;html=1&amp;menu_id=16958">外銷訂單海外生產實況調查</a></li>
+                                                
+                                                    <li id="repLeftMenu_liItem_11" class="">
+                                                        <a id="repLeftMenu_lnkMenuListItem_11" onclick="AddHitLog(&#39;i%2fgd3JJWGbehtFrC3oaXnjaQAsAiO0xF&#39;);" href="../bulletin/Bulletin.aspx?kind=10&amp;html=1&amp;menu_id=6732">其他類統計發布</a></li>
+                                                
+                                                    </ul>
+                                                
+                                        </div>
+                                    </div>
+                                
+                                <div class="div-table-content">
+                                    
+                                        <a id="C" href="#C" accesskey="C" style="float: left;" class="sr-only sr-only-focusable" title="中央內容區塊">:::</a>
+                                        <div id="divSubject">
+                                            
+<!-- AddToAny BEGIN -->
+<div class="a2a_kit a2a_kit_size_21 a2a_default_style" style="float: right;">
+    
+    <a class="a2a_button_facebook" title="另開新視窗，分享至 Facebook">
+        <img src="../../main/images/populace/share-fb.png" border="0" alt="另開新視窗，分享至 Facebook" width="21" ></a>
+    <a class="a2a_button_line" title="另開新視窗，分享至 Line">
+        <img src="../../main/images/populace/share-line.png" border="0" alt="另開新視窗，分享至 Line" width="21"></a>
+    <a class="a2a_button_twitter" title="另開新視窗，分享至 X">
+        <img src="../../main/images/populace/share-twitter.png" border="0" alt="另開新視窗，分享至 X" width="21" style="border: 1px solid #d5cece;"></a>
+    <a class="a2a_button_plurk" title="另開新視窗，分享至 Plurk">
+        <img src="../../main/images/populace/share-plurk.png" border="0" alt="另開新視窗，分享至 Plurk" width="21" ></a>
+    <a class="a2a_button_print d-none d-md-block" title="開啟彈跳視窗，友善列印">
+        <img src="../../main/images/populace/share-print.png" border="0" alt="開啟彈跳視窗，友善列印" width="21"></a>
+</div>
+<noscript>
+    <div style="text-align: right;">請按Ctrl+P即可列印.</div>
+</noscript>
+
+<script src="https://static.addtoany.com/menu/page.js"></script>
+<!-- AddToAny END -->
+
+                                            <h2>
+                                                外銷訂單統計
+                                            </h2>
+                                        </div>
+                                    
+                                    <div id="div_Content" class="div-content">
+                                        <noscript>
+                                            <div style="clear: both;">
+                                                SCRIPT關閉時，字級大小選擇請參考：<br />
+                                                IE6請利用鍵盤按住ALT鍵 + V → X → (G)最大(L)較大(M)中(S)較小(A)小，選擇適合您的文字大小，<br />
+                                                而IE7以上或Firefox瀏覽器則可利用鍵盤 Ctrl + (+)放大 (-)縮小來改變<br />
+                                            </div>
+                                        </noscript>
+                                        
+    
+            <div class="divTitle">
+                115年8月外銷訂單統計
+            </div>
+            種類：外銷訂單&nbsp;&nbsp;發布單位：統計處&nbsp;&nbsp;發布日期：2026-09-22 16:00
+            <div class="divBlank"></div>
+            <div>
+                <div id="holderContent_divHead_image" class="head-image">
+                    <a id="holderContent_lnkHeader" title="開啟彈跳視窗，連結到經濟部統計處－115年8月外銷訂單統計結果(png檔)" class="image-popup-no-margins news-image" href="../../DOS/bulletin/wHandBulletin_Image.ashx?bull_id=16911&amp;serial_no=1" target="_blank"><img id="holderContent_imgHeader" title="開啟彈跳視窗，連結到經濟部統計處－115年8月外銷訂單統計結果(png檔)" class="img-responsive" data-img-desc="經濟部統計處－115年8月外銷訂單統計結果" src="../../DOS/bulletin/wHandBulletin_Image.ashx?bull_id=16911&amp;serial_no=1&amp;thumb=1" alt="開啟彈跳視窗，連結到經濟部統計處－115年8月外銷訂單統計結果(png檔)" /></a>
+                </div>
+                1.與上月比較：8月外銷訂單1,029.6億美元，較上月增加50.2億美元或增5.1%，經季節調整後增5.9%。<br />2.與上年同月比較：外銷訂單增加428.7億美元或增71.4%，按新台幣計算增81.9%。<br />3.累計1-8月與上年同期比較：1至8月外銷訂單7,049.9億美元，較上年同期增加2,502.3億美元或增55.0%。<br /><br /><br /><br /><br />發言人：經濟部統計處 黃處長  <br />聯絡電話：(02)23212200#8498、0965-562-816<br /><br />業務聯絡人：經濟部統計處 蔡專門委員<br />聯絡電話：(02)23212200#8527
+            </div>
+            
+            <div id="holderContent_divLinks" class="margin_top">
+                <span class="item-text">相關網址</span>
+                
+                        <div class="table-links">
+                    
+                        <div class="td-links">
+                            <a id="holderContent_repLinks_lnkFiles_0" title="另開視窗，連結到常用指標" href="https://service.moea.gov.tw/EE521/common/Common.aspx" target="_blank">常用指標</a>
+                        </div>
+                    
+                        <div class="td-links">
+                            <a id="holderContent_repLinks_lnkFiles_1" title="另開視窗，連結到統計資料庫" href="https://service.moea.gov.tw/EE521/query/Query.aspx" target="_blank">統計資料庫</a>
+                        </div>
+                    
+                        <div class="td-links">
+                            <a id="holderContent_repLinks_lnkFiles_2" title="另開視窗，連結到視覺化圖表" href="https://service.moea.gov.tw/EE521/visualize/Visualize.aspx" target="_blank">視覺化圖表</a>
+                        </div>
+                    
+                        </div>
+                    
+            </div>
+            <div id="holderContent_divFiles" class="margin_top">
+                <span class="item-text">相關檔案</span>
+                
+                        <div class="table-files">
+                            <div class="tr-files">
+                                <div class="th-filesText">
+                                    檔案名稱
+                                </div>
+                                <div class="th-filesKind">
+                                    檔案格式
+                                </div>
+                            </div>
+                    
+                        <div class="tr-files">
+                            <div class="td-filesText">
+                                新聞稿
+                            </div>
+                            <div class="td-filesKind">
+                                
+                                        <a id="holderContent_repFiles_repFileTypes_0_lnkFiles_0" title="開啟新聞稿.pdf檔" href="../../DOS/bulletin/wHandBulletin_File.ashx?file_id=58247" target="_blank"><img id="holderContent_repFiles_repFileTypes_0_imgFileName_0" title="開啟新聞稿.pdf檔" class="img-file-icon" src="../../main/images/file_icon/pdf.png" alt="開啟新聞稿.pdf檔" style="vertical-align: middle;" /> (188.86KB)</a>
+                                    
+                            </div>
+                        </div>
+                    
+                        <div class="tr-files">
+                            <div class="td-filesText">
+                                經濟部提振外銷因應對策 
+                            </div>
+                            <div class="td-filesKind">
+                                
+                                        <a id="holderContent_repFiles_repFileTypes_1_lnkFiles_0" title="開啟經濟部提振外銷因應對策 .pdf檔" href="../../DOS/bulletin/wHandBulletin_File.ashx?file_id=58248" target="_blank"><img id="holderContent_repFiles_repFileTypes_1_imgFileName_0" title="開啟經濟部提振外銷因應對策 .pdf檔" class="img-file-icon" src="../../main/images/file_icon/pdf.png" alt="開啟經濟部提振外銷因應對策 .pdf檔" style="vertical-align: middle;" /> (244.56KB)</a>
+                                    
+                            </div>
+                        </div>
+                    
+                        <div class="tr-files">
+                            <div class="td-filesText">
+                                新聞稿及全部附表(PDF)
+                            </div>
+                            <div class="td-filesKind">
+                                
+                                        <a id="holderContent_repFiles_repFileTypes_2_lnkFiles_0" title="開啟新聞稿及全部附表(PDF).pdf檔" href="../../DOS/bulletin/wHandBulletin_File.ashx?file_id=58249" target="_blank"><img id="holderContent_repFiles_repFileTypes_2_imgFileName_0" title="開啟新聞稿及全部附表(PDF).pdf檔" class="img-file-icon" src="../../main/images/file_icon/pdf.png" alt="開啟新聞稿及全部附表(PDF).pdf檔" style="vertical-align: middle;" /> (1.71MB)</a>
+                                    
+                            </div>
+                        </div>
+                    
+                        <div class="tr-files">
+                            <div class="td-filesText">
+                                新聞稿全部附表(ODS/EXCEL)
+                            </div>
+                            <div class="td-filesKind">
+                                
+                                        <a id="holderContent_repFiles_repFileTypes_3_lnkFiles_0" title="開啟新聞稿全部附表(ODS/EXCEL).ods檔" href="../../DOS/bulletin/wHandBulletin_File.ashx?file_id=58250" target="_blank"><img id="holderContent_repFiles_repFileTypes_3_imgFileName_0" title="開啟新聞稿全部附表(ODS/EXCEL).ods檔" class="img-file-icon" src="../../main/images/file_icon/ods.png" alt="開啟新聞稿全部附表(ODS/EXCEL).ods檔" style="vertical-align: middle;" /> (116.03KB)</a>
+                                    &nbsp;
+                                        <a id="holderContent_repFiles_repFileTypes_3_lnkFiles_1" title="開啟新聞稿全部附表(ODS/EXCEL).xlsx檔" href="../../DOS/bulletin/wHandBulletin_File.ashx?file_id=58251" target="_blank"><img id="holderContent_repFiles_repFileTypes_3_imgFileName_1" title="開啟新聞稿全部附表(ODS/EXCEL).xlsx檔" class="img-file-icon" src="../../main/images/file_icon/xlsx.png" alt="開啟新聞稿全部附表(ODS/EXCEL).xlsx檔" style="vertical-align: middle;" /> (127.46KB)</a>
+                                    
+                            </div>
+                        </div>
+                    
+                        <div class="tr-files">
+                            <div class="td-filesText">
+                                　附表1 歷年外銷訂單金額
+                            </div>
+                            <div class="td-filesKind">
+                                
+                                        <a id="holderContent_repFiles_repFileTypes_4_lnkFiles_0" title="開啟　附表1 歷年外銷訂單金額.pdf檔" href="../../DOS/bulletin/wHandBulletin_File.ashx?file_id=58252" target="_blank"><img id="holderContent_repFiles_repFileTypes_4_imgFileName_0" title="開啟　附表1 歷年外銷訂單金額.pdf檔" class="img-file-icon" src="../../main/images/file_icon/pdf.png" alt="開啟　附表1 歷年外銷訂單金額.pdf檔" style="vertical-align: middle;" /> (89.52KB)</a>
+                                    
+                            </div>
+                        </div>
+                    
+                        <div class="tr-files">
+                            <div class="td-filesText">
+                                　附表2 歷年外銷訂單金額－按貨品別分
+                            </div>
+                            <div class="td-filesKind">
+                                
+                                        <a id="holderContent_repFiles_repFileTypes_5_lnkFiles_0" title="開啟　附表2 歷年外銷訂單金額－按貨品別分.pdf檔" href="../../DOS/bulletin/wHandBulletin_File.ashx?file_id=58253" target="_blank"><img id="holderContent_repFiles_repFileTypes_5_imgFileName_0" title="開啟　附表2 歷年外銷訂單金額－按貨品別分.pdf檔" class="img-file-icon" src="../../main/images/file_icon/pdf.png" alt="開啟　附表2 歷年外銷訂單金額－按貨品別分.pdf檔" style="vertical-align: middle;" /> (154.49KB)</a>
+                                    
+                            </div>
+                        </div>
+                    
+                        <div class="tr-files">
+                            <div class="td-filesText">
+                                　附表3 歷年外銷訂單金額－按地區別分
+                            </div>
+                            <div class="td-filesKind">
+                                
+                                        <a id="holderContent_repFiles_repFileTypes_6_lnkFiles_0" title="開啟　附表3 歷年外銷訂單金額－按地區別分.pdf檔" href="../../DOS/bulletin/wHandBulletin_File.ashx?file_id=58254" target="_blank"><img id="holderContent_repFiles_repFileTypes_6_imgFileName_0" title="開啟　附表3 歷年外銷訂單金額－按地區別分.pdf檔" class="img-file-icon" src="../../main/images/file_icon/pdf.png" alt="開啟　附表3 歷年外銷訂單金額－按地區別分.pdf檔" style="vertical-align: middle;" /> (113.83KB)</a>
+                                    
+                            </div>
+                        </div>
+                    
+                        <div class="tr-files">
+                            <div class="td-filesText">
+                                　附表4 資訊通信產品訂單－按地區別分
+                            </div>
+                            <div class="td-filesKind">
+                                
+                                        <a id="holderContent_repFiles_repFileTypes_7_lnkFiles_0" title="開啟　附表4 資訊通信產品訂單－按地區別分.pdf檔" href="../../DOS/bulletin/wHandBulletin_File.ashx?file_id=58255" target="_blank"><img id="holderContent_repFiles_repFileTypes_7_imgFileName_0" title="開啟　附表4 資訊通信產品訂單－按地區別分.pdf檔" class="img-file-icon" src="../../main/images/file_icon/pdf.png" alt="開啟　附表4 資訊通信產品訂單－按地區別分.pdf檔" style="vertical-align: middle;" /> (114.4KB)</a>
+                                    
+                            </div>
+                        </div>
+                    
+                        <div class="tr-files">
+                            <div class="td-filesText">
+                                　附表5 電子產品訂單－按地區別分
+                            </div>
+                            <div class="td-filesKind">
+                                
+                                        <a id="holderContent_repFiles_repFileTypes_8_lnkFiles_0" title="開啟　附表5 電子產品訂單－按地區別分.pdf檔" href="../../DOS/bulletin/wHandBulletin_File.ashx?file_id=58256" target="_blank"><img id="holderContent_repFiles_repFileTypes_8_imgFileName_0" title="開啟　附表5 電子產品訂單－按地區別分.pdf檔" class="img-file-icon" src="../../main/images/file_icon/pdf.png" alt="開啟　附表5 電子產品訂單－按地區別分.pdf檔" style="vertical-align: middle;" /> (113.93KB)</a>
+                                    
+                            </div>
+                        </div>
+                    
+                        <div class="tr-files">
+                            <div class="td-filesText">
+                                　附表6 光學器材訂單－按地區別分
+                            </div>
+                            <div class="td-filesKind">
+                                
+                                        <a id="holderContent_repFiles_repFileTypes_9_lnkFiles_0" title="開啟　附表6 光學器材訂單－按地區別分.pdf檔" href="../../DOS/bulletin/wHandBulletin_File.ashx?file_id=58257" target="_blank"><img id="holderContent_repFiles_repFileTypes_9_imgFileName_0" title="開啟　附表6 光學器材訂單－按地區別分.pdf檔" class="img-file-icon" src="../../main/images/file_icon/pdf.png" alt="開啟　附表6 光學器材訂單－按地區別分.pdf檔" style="vertical-align: middle;" /> (116.47KB)</a>
+                                    
+                            </div>
+                        </div>
+                    
+                        <div class="tr-files">
+                            <div class="td-filesText">
+                                　附表7 中國大陸及香港訂單－按貨品別分
+                            </div>
+                            <div class="td-filesKind">
+                                
+                                        <a id="holderContent_repFiles_repFileTypes_10_lnkFiles_0" title="開啟　附表7 中國大陸及香港訂單－按貨品別分.pdf檔" href="../../DOS/bulletin/wHandBulletin_File.ashx?file_id=58258" target="_blank"><img id="holderContent_repFiles_repFileTypes_10_imgFileName_0" title="開啟　附表7 中國大陸及香港訂單－按貨品別分.pdf檔" class="img-file-icon" src="../../main/images/file_icon/pdf.png" alt="開啟　附表7 中國大陸及香港訂單－按貨品別分.pdf檔" style="vertical-align: middle;" /> (112.97KB)</a>
+                                    
+                            </div>
+                        </div>
+                    
+                        <div class="tr-files">
+                            <div class="td-filesText">
+                                　附表8 美國訂單－按貨品別分
+                            </div>
+                            <div class="td-filesKind">
+                                
+                                        <a id="holderContent_repFiles_repFileTypes_11_lnkFiles_0" title="開啟　附表8 美國訂單－按貨品別分.pdf檔" href="../../DOS/bulletin/wHandBulletin_File.ashx?file_id=58259" target="_blank"><img id="holderContent_repFiles_repFileTypes_11_imgFileName_0" title="開啟　附表8 美國訂單－按貨品別分.pdf檔" class="img-file-icon" src="../../main/images/file_icon/pdf.png" alt="開啟　附表8 美國訂單－按貨品別分.pdf檔" style="vertical-align: middle;" /> (112.61KB)</a>
+                                    
+                            </div>
+                        </div>
+                    
+                        <div class="tr-files">
+                            <div class="td-filesText">
+                                　附表9 歐洲訂單－按貨品別分
+                            </div>
+                            <div class="td-filesKind">
+                                
+                                        <a id="holderContent_repFiles_repFileTypes_12_lnkFiles_0" title="開啟　附表9 歐洲訂單－按貨品別分.pdf檔" href="../../DOS/bulletin/wHandBulletin_File.ashx?file_id=58260" target="_blank"><img id="holderContent_repFiles_repFileTypes_12_imgFileName_0" title="開啟　附表9 歐洲訂單－按貨品別分.pdf檔" class="img-file-icon" src="../../main/images/file_icon/pdf.png" alt="開啟　附表9 歐洲訂單－按貨品別分.pdf檔" style="vertical-align: middle;" /> (113.69KB)</a>
+                                    
+                            </div>
+                        </div>
+                    
+                        <div class="tr-files">
+                            <div class="td-filesText">
+                                　附表10 外銷訂單動向指數
+                            </div>
+                            <div class="td-filesKind">
+                                
+                                        <a id="holderContent_repFiles_repFileTypes_13_lnkFiles_0" title="開啟　附表10 外銷訂單動向指數.pdf檔" href="../../DOS/bulletin/wHandBulletin_File.ashx?file_id=58261" target="_blank"><img id="holderContent_repFiles_repFileTypes_13_imgFileName_0" title="開啟　附表10 外銷訂單動向指數.pdf檔" class="img-file-icon" src="../../main/images/file_icon/pdf.png" alt="開啟　附表10 外銷訂單動向指數.pdf檔" style="vertical-align: middle;" /> (135.57KB)</a>
+                                    
+                            </div>
+                        </div>
+                    
+                        <div class="tr-files">
+                            <div class="td-filesText">
+                                　附表11 外銷訂單海外生產比
+                            </div>
+                            <div class="td-filesKind">
+                                
+                                        <a id="holderContent_repFiles_repFileTypes_14_lnkFiles_0" title="開啟　附表11 外銷訂單海外生產比.pdf檔" href="../../DOS/bulletin/wHandBulletin_File.ashx?file_id=58262" target="_blank"><img id="holderContent_repFiles_repFileTypes_14_imgFileName_0" title="開啟　附表11 外銷訂單海外生產比.pdf檔" class="img-file-icon" src="../../main/images/file_icon/pdf.png" alt="開啟　附表11 外銷訂單海外生產比.pdf檔" style="vertical-align: middle;" /> (102.67KB)</a>
+                                    
+                            </div>
+                        </div>
+                    
+                        <div class="tr-files">
+                            <div class="td-filesText">
+                                　附表12 主要國家貨幣對美元匯率
+                            </div>
+                            <div class="td-filesKind">
+                                
+                                        <a id="holderContent_repFiles_repFileTypes_15_lnkFiles_0" title="開啟　附表12 主要國家貨幣對美元匯率.pdf檔" href="../../DOS/bulletin/wHandBulletin_File.ashx?file_id=58263" target="_blank"><img id="holderContent_repFiles_repFileTypes_15_imgFileName_0" title="開啟　附表12 主要國家貨幣對美元匯率.pdf檔" class="img-file-icon" src="../../main/images/file_icon/pdf.png" alt="開啟　附表12 主要國家貨幣對美元匯率.pdf檔" style="vertical-align: middle;" /> (89.19KB)</a>
+                                    
+                            </div>
+                        </div>
+                    
+                        <div class="tr-files">
+                            <div class="td-filesText">
+                                　附表13 國際原油價格
+                            </div>
+                            <div class="td-filesKind">
+                                
+                                        <a id="holderContent_repFiles_repFileTypes_16_lnkFiles_0" title="開啟　附表13 國際原油價格.pdf檔" href="../../DOS/bulletin/wHandBulletin_File.ashx?file_id=58264" target="_blank"><img id="holderContent_repFiles_repFileTypes_16_imgFileName_0" title="開啟　附表13 國際原油價格.pdf檔" class="img-file-icon" src="../../main/images/file_icon/pdf.png" alt="開啟　附表13 國際原油價格.pdf檔" style="vertical-align: middle;" /> (89.59KB)</a>
+                                    
+                            </div>
+                        </div>
+                    
+                        </div>
+                    
+            </div>
+            
+            
+            <div id="holderContent_divHit" class="hit-item">
+                <span>點閱數</span>：<span id="holderContent_lblCount" class="cdnaddhit">1643</span>
+
+            </div>
+            <div style="clear: both;"></div>
+        
+
+                                    </div>
+                                    <div id="panUpdateDate">
+	
+                                        <br />
+                                        <div id="divContentUpdate">
+                                            更新日期：2017-09-29
+                                        </div>
+                                    
+</div>
+                                    <div id="panTopBack">
+	
+                                        <div style="text-align: center;">
+                                            <a class="aBack" href="javascript:history.back();" title="回上一頁">回上一頁</a>&nbsp;<a class="aPageTop" href="#U" title="回頁首">回頁首</a>
+                                            <noscript><br />當script無法執行時可按 "alt + ←" 鍵替代</noscript>
+                                        </div>
+                                    
+</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="divFatFotoer">
+                    <div class="container">
+                        
+                        <div id="panFatFooter" class="row">
+	
+                            
+                                    <div style="display: table; width: 100%;">
+                                        <div style="display: table-row;">
+                                
+                                    <div style="display: table-cell; width: 1%;">
+                                        <dl>
+                                            <dt>
+                                                <a id="repItem_lnkItem_0" title="最新消息" onclick="AddHitLog(&#39;wu%2b0%2fdO4ww3H3V3vVdevfUvgh3ZRTZyc&#39;);" href="../../dos/content/Content.aspx?menu_id=6709&amp;sub_menu_id=20979">最新消息</a></dt>
+                                            
+                                                    <dd>
+                                                        <ul>
+                                                
+                                                    <li>
+                                                        <a id="repItem_rptList_0_lnkList_0" title="產業經濟統計簡訊" onclick="AddHitLog(&#39;xzJBEyJ7K%2fztOxSU9AlnICiOg4sAYKFf&#39;);" href="../../dos/bulletin/Bulletin.aspx?kind=9&amp;html=1&amp;menu_id=18808&amp;sub_menu_id=20982">產業經濟統計簡訊</a></li>
+                                                
+                                                    <li>
+                                                        <a id="repItem_rptList_0_lnkList_1" title="外銷訂單" onclick="AddHitLog(&#39;YZrf41Ttw4738cjx7QHY1hG7oGp%2bzUU2&#39;);" href="../../dos/bulletin/Bulletin.aspx?kind=5&amp;html=1&amp;menu_id=6724&amp;sub_menu_id=20983">外銷訂單</a></li>
+                                                
+                                                    <li>
+                                                        <a id="repItem_rptList_0_lnkList_2" title="工業生產統計" onclick="AddHitLog(&#39;5stul%2bs%2fO2IG5GgN6t885iWSCHmN7xAo&#39;);" href="../../dos/bulletin/Bulletin.aspx?kind=6&amp;html=1&amp;menu_id=6725&amp;sub_menu_id=20984">工業生產統計</a></li>
+                                                
+                                                    <li>
+                                                        <a id="repItem_rptList_0_lnkList_3" title="批發、零售及餐飲業營業額統計" onclick="AddHitLog(&#39;N9naWCLVAhUr5i8iPBhfUATWSqOhtT7W&#39;);" href="../../dos/bulletin/Bulletin.aspx?kind=8&amp;html=1&amp;menu_id=6727&amp;sub_menu_id=20985">批發、零售及餐飲業營業額統計</a></li>
+                                                
+                                                    <li>
+                                                        <a id="repItem_rptList_0_lnkList_4" title="製造業產值統計" onclick="AddHitLog(&#39;zT12eHmSqvrbdBCBTWQeNrrfqf6vptB9&#39;);" href="../../dos/bulletin/Bulletin.aspx?kind=7&amp;html=1&amp;menu_id=6726&amp;sub_menu_id=20986">製造業產值統計</a></li>
+                                                
+                                                    <li>
+                                                        <a id="repItem_rptList_0_lnkList_5" title="製造業投資及營運統計" onclick="AddHitLog(&#39;sNavDMI6JvhnTvbfCeRYAPwF7h2KLsdx&#39;);" href="../../dos/bulletin/Bulletin.aspx?kind=11&amp;html=1&amp;menu_id=6728&amp;sub_menu_id=20987">製造業投資及營運統計</a></li>
+                                                
+                                                    <li>
+                                                        <a id="repItem_rptList_0_lnkList_6" title="專業技術服務業、租賃業營業額統計" onclick="AddHitLog(&#39;EtoTB43FQzVgtH%2fcgIbunJ1dyQV4Q45Q&#39;);" href="../../dos/bulletin/Bulletin.aspx?kind=12&amp;html=1&amp;menu_id=6729&amp;sub_menu_id=20988">專業技術服務業、租賃業營業額統計</a></li>
+                                                
+                                                    <li>
+                                                        <a id="repItem_rptList_0_lnkList_7" title="當前經濟情勢" onclick="AddHitLog(&#39;M%2bud%2bXhBwQH51YoADGS%2fpwYUx1Cs29VE&#39;);" href="../../dos/bulletin/Bulletin.aspx?kind=23&amp;html=1&amp;menu_id=10212&amp;sub_menu_id=20989">當前經濟情勢</a></li>
+                                                
+                                                    <li>
+                                                        <a id="repItem_rptList_0_lnkList_8" title="工廠校正及營運調查" onclick="AddHitLog(&#39;oTbyUWtHsh8yzk1JR7F6lE%2fqM5ZuzJGt&#39;);" href="../../dos/bulletin/Bulletin.aspx?kind=17&amp;html=1&amp;menu_id=9773&amp;sub_menu_id=20990">工廠校正及營運調查</a></li>
+                                                
+                                                    <li>
+                                                        <a id="repItem_rptList_0_lnkList_9" title="批發、零售及餐飲業經營實況調查" onclick="AddHitLog(&#39;Rm2VSe3hTK6DKNxNgQqtyTIS%2bDEejq2J&#39;);" href="../../dos/bulletin/Bulletin.aspx?kind=28&amp;html=1&amp;menu_id=16959&amp;sub_menu_id=20991">批發、零售及餐飲業經營實況調查</a></li>
+                                                
+                                                    <li>
+                                                        <a id="repItem_rptList_0_lnkList_10" title="外銷訂單海外生產實況調查" onclick="AddHitLog(&#39;fVmkGn97ksz3NkWEk1zj3w5VZMZPGvQr&#39;);" href="../../dos/bulletin/Bulletin.aspx?kind=27&amp;html=1&amp;menu_id=16958&amp;sub_menu_id=20992">外銷訂單海外生產實況調查</a></li>
+                                                
+                                                    <li>
+                                                        <a id="repItem_rptList_0_lnkList_11" title="其他類統計發布" onclick="AddHitLog(&#39;WJG6lf6bRzUUm7CfAQMBqtgy8HPFXnF%2b&#39;);" href="../../dos/bulletin/Bulletin.aspx?kind=10&amp;html=1&amp;menu_id=6732&amp;sub_menu_id=20993">其他類統計發布</a></li>
+                                                
+                                                    </ul>
+                                                    </dd>
+                                                
+                                        </dl>
+                                    </div>
+                                
+                                    <div style="display: table-cell; width: 1%;">
+                                        <dl>
+                                            <dt>
+                                                <a id="repItem_lnkItem_1" title="調查總覽" onclick="AddHitLog(&#39;S1cP%2b6S3SQXK1mzL3Bj1DMwwId%2bZLANg&#39;);" href="../../dos/content/Content.aspx?menu_id=6712&amp;sub_menu_id=20981">調查總覽</a></dt>
+                                            
+                                                    <dd>
+                                                        <ul>
+                                                
+                                                    <li>
+                                                        <a id="repItem_rptList_1_lnkList_0" title="外銷訂單調查" onclick="AddHitLog(&#39;5m5%2bJsFMsjBF%2foWhVtK3cZlUKjl2Bx%2fv&#39;);" href="../../dos/content/Content.aspx?menu_id=6805&amp;sub_menu_id=20999">外銷訂單調查</a></li>
+                                                
+                                                    <li>
+                                                        <a id="repItem_rptList_1_lnkList_1" title="工業產銷存動態調查" onclick="AddHitLog(&#39;CVdNxMhQCLcUTAcFzXrpktylmY0JMyRT&#39;);" href="../../dos/content/Content.aspx?menu_id=6819&amp;sub_menu_id=21000">工業產銷存動態調查</a></li>
+                                                
+                                                    <li>
+                                                        <a id="repItem_rptList_1_lnkList_2" title="批發、零售及餐飲業動態調查" onclick="AddHitLog(&#39;fPQ1qr1dO3Oy%2bTijpAV%2fpZhahAwL8YvJ&#39;);" href="../../dos/content/Content.aspx?menu_id=6831&amp;sub_menu_id=21001">批發、零售及餐飲業動態調查</a></li>
+                                                
+                                                    <li>
+                                                        <a id="repItem_rptList_1_lnkList_3" title="製造業投資及營運概況調查" onclick="AddHitLog(&#39;UT%2bMNfWN%2bfd1LGYeXDzkpAf7Pb%2f4aCY%2b&#39;);" href="../../dos/content/Content.aspx?menu_id=6838&amp;sub_menu_id=21002">製造業投資及營運概況調查</a></li>
+                                                
+                                                    <li>
+                                                        <a id="repItem_rptList_1_lnkList_4" title="專業技術服務業、租賃業動態調查" onclick="AddHitLog(&#39;w%2fWgS3lpQRSyYwiXrkiZPGzhN2qwTtAg&#39;);" href="../../dos/content/Content.aspx?menu_id=6836&amp;sub_menu_id=21003">專業技術服務業、租賃業動態調查</a></li>
+                                                
+                                                    <li>
+                                                        <a id="repItem_rptList_1_lnkList_5" title="工廠校正及營運調查" onclick="AddHitLog(&#39;QHZSuNcejJdPOKLN%2bSBbwtjauqrFBiAF&#39;);" href="../../dos/content/Content.aspx?menu_id=6813&amp;sub_menu_id=21004">工廠校正及營運調查</a></li>
+                                                
+                                                    <li>
+                                                        <a id="repItem_rptList_1_lnkList_6" title="外銷訂單海外生產實況調查" onclick="AddHitLog(&#39;N5uZSQ%2frv7UtzlXmOQsRvmV2I4YAm6j3&#39;);" href="../../dos/content/Content.aspx?menu_id=6811&amp;sub_menu_id=21005">外銷訂單海外生產實況調查</a></li>
+                                                
+                                                    <li>
+                                                        <a id="repItem_rptList_1_lnkList_7" title="批發、零售及餐飲業經營實況調查" onclick="AddHitLog(&#39;TeK9aQmordc1jAjs8VwzqU3b%2bg%2b73raS&#39;);" href="../../dos/content/Content.aspx?menu_id=6825&amp;sub_menu_id=21006">批發、零售及餐飲業經營實況調查</a></li>
+                                                
+                                                    </ul>
+                                                    </dd>
+                                                
+                                        </dl>
+                                    </div>
+                                
+                                    <div style="display: table-cell; width: 1%;">
+                                        <dl>
+                                            <dt>
+                                                <a id="repItem_lnkItem_2" title="資料查詢" onclick="AddHitLog(&#39;OSRVtGjtT1iNvRdzSducjXrpGnOjsKK0&#39;);" href="../../dos/content/SubMenu.aspx?menu_id=21040&amp;sub_menu_id=20980">資料查詢</a></dt>
+                                            
+                                                    <dd>
+                                                        <ul>
+                                                
+                                                    <li>
+                                                        <a id="repItem_rptList_2_lnkList_0" title="另開視窗，連結到常用指標" onclick="AddHitLog(&#39;3wgPUA37qZLN4D9JhZkXbgQy9EE7IeJu&#39;);" href="https://service.moea.gov.tw/EE521/common/Common.aspx" target="_blank">常用指標</a></li>
+                                                
+                                                    <li>
+                                                        <a id="repItem_rptList_2_lnkList_1" title="另開視窗，連結到資料庫查詢" onclick="AddHitLog(&#39;HBLzkKQdZ%2fTr6HB7oPTDqTpXZpDI83ZU&#39;);" href="https://service.moea.gov.tw/EE521/query/Query.aspx" target="_blank">資料庫查詢</a></li>
+                                                
+                                                    <li>
+                                                        <a id="repItem_rptList_2_lnkList_2" title="另開視窗，連結到視覺化圖表" onclick="AddHitLog(&#39;WNJhZ8xqbUeIBrg8zcFCMV7L0ZYm3rHg&#39;);" href="https://service.moea.gov.tw/EE521/visualize/Visualize.aspx" target="_blank">視覺化圖表</a></li>
+                                                
+                                                    <li>
+                                                        <a id="repItem_rptList_2_lnkList_3" title="經濟統計指標電子書" onclick="AddHitLog(&#39;EgUF5tF8U02w%2bcHkcVDbYUv2GBxi21pB&#39;);" href="../../dos/content/ContentLink.aspx?menu_id=7710&amp;sub_menu_id=20589">經濟統計指標電子書</a></li>
+                                                
+                                                    <li>
+                                                        <a id="repItem_rptList_2_lnkList_4" title="性別統計" onclick="AddHitLog(&#39;rFtL6cpuUak82HseUXF7ZEahCq2vMCTp&#39;);" href="../../dos/content/SubMenu.aspx?menu_id=6716&amp;sub_menu_id=20997">性別統計</a></li>
+                                                
+                                                    <li>
+                                                        <a id="repItem_rptList_2_lnkList_5" title="本部及所屬統計" onclick="AddHitLog(&#39;O4AXU2t9jofPyMk%2bQrEQLQ5BQcf6AAQd&#39;);" href="../../dos/content/Content.aspx?menu_id=6714&amp;sub_menu_id=20998">本部及所屬統計</a></li>
+                                                
+                                                    <li>
+                                                        <a id="repItem_rptList_2_lnkList_6" title="統計教室影片" onclick="AddHitLog(&#39;sr7nOZDXDEuY3my62e%2bQzNxTH0nlTCu7&#39;);" href="https://www.moea.gov.tw/Mns/dos/content/SubMenu.aspx?menu_id=19190">統計教室影片</a></li>
+                                                
+                                                    </ul>
+                                                    </dd>
+                                                
+                                        </dl>
+                                    </div>
+                                
+                                    </div>
+                                    </div>
+                                
+                        
+</div>
+                    </div>
+                </div>
+                <div id="divPageBottom">
+                    
+                    <div class="container">
+                        <div class="row">
+                            <div class="col-xl-3 col-lg-3 col-md-3 d-none d-md-block">
+                                <a class="e_gov" href="http://www.gov.tw/" target="_blank" title="另開視窗，連結到我的E政府">
+                                    <img src="../images/e_gov.gif" alt="我的E政府" /></a><a
+                                        href="https://accessibility.moda.gov.tw/Applications/Detail?category=20260713204204"
+                                        title="另開視窗，連結到無障礙網站" target="_blank" class="a_plus"><img
+                                            src="../../main/images/AA.png" alt="通過AA檢測等級無障礙網頁檢測" /></a>
+                            </div>
+                            <div class="col-xl-9 col-lg-9 col-md-9 col-sm-12">
+                                <div class="info">
+                                    經濟部統計處&nbsp;&nbsp;聯絡地址：100210 臺北市中正區福州街15號<br />
+                                    電話：02-23212200 轉 8762、8891&nbsp;&nbsp;傳真：02-2341-4060&nbsp;&nbsp;E-mail：<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="62060d11220f0d07034c050d144c1615">[email&#160;protected]</a><br />
+                                    <span>建議使用 Chrome、Edge、Safari、Firefox，最佳瀏覽解析度為1024x768以上</span><br />
+                                    <a id="lnkCopyright" href="../content/ContentFoot.aspx?menu_id=13863">政府網站資料開放宣告</a>&nbsp;|&nbsp;
+                                    <a id="lnkPrivate" href="../content/ContentFoot.aspx?menu_id=2290">隱私權政策</a>&nbsp;|&nbsp;<a id="lnkSecurity" href="../content/ContentFoot.aspx?menu_id=2291">網站安全政策</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="../../library/MNSWeb.min.js" type="text/javascript"></script>
+        <script type="text/javascript" src="../../library/Bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="../../library/jquery.autocomplete.min.js" type="text/javascript"></script>
+        <script src="../../library/jquery_dotdotdot_min.js" type="text/javascript"></script>
+        <script src="../../library/bxslider/jquery.bxslider.min.js" type="text/javascript"></script>
+        <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+        
+        <!-- Magnific Popup core CSS file -->
+        <link rel="stylesheet" href="../../library/MagnificPopup/magnific-popup.min.css" />
+        <!-- Magnific Popup core JS file -->
+        <script src="../../library/MagnificPopup/jquery.magnific-popup.min.js"></script>
+        
+        <script type="text/javascript">
+            $(document).ready(function () {
+                //$(window).smoothWheel(); 
+                $('.cssTextOverflow').dotdotdot({ wrap: 'letter', watch: 'window' });
+            });
+        </script>
+        <script>
+            $(document).ready(function () {
+                $('.image-popup-no-margins').magnificPopup({
+                    type: 'image',
+                    closeOnContentClick: false,
+                    closeOnBgClick: true,
+                    closeBtnInside: false,
+                    fixedContentPos: true,
+                    mainClass: 'mfp-no-margins mfp-with-zoom', // class to remove default margin from left and right side
+                    image: {
+                        verticalFit: true,
+                        titleSrc: function (item) {
+                            $('.mfp-title').hide();
+                        }
+                    },
+                    zoom: {
+                        enabled: true,
+                        duration: 300
+                    }
+                });
+                $('.image-popup-no-margins.news-image').magnificPopup({
+                    type: 'image',
+                    closeOnContentClick: false,
+                    closeOnBgClick: true,
+                    closeBtnInside: false,
+                    fixedContentPos: true,
+                    mainClass: 'mfp-no-margins mfp-with-zoom', // class to remove default margin from left and right side
+                    image: {
+                        verticalFit: true,
+                        titleSrc: function (item) {
+                            //$('.mfp-title').hide();
+                            return item.el.find('img').attr('data-img-desc');
+                        }
+                    },
+                    zoom: {
+                        enabled: true,
+                        duration: 300
+                    }
+                });
+            });
+        </script>
+        <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>      
+        <script src="../../library/Bootstrap/html5shiv.min.js" type="text/javascript"></script>      
+        <script src="../../library/Bootstrap/respond.min.js" type="text/javascript"></script>    
+        <![endif]-->
+    
+
+<script type="text/javascript">
+//<![CDATA[
+$(function() {$('.txtSearch').autocomplete('../../library/AutoCompleteSource.aspx', { delay: 10, cacheLength: 0, website: '_DOS' });});//]]>
+</script>
+</form>
+</body>
+</html>
