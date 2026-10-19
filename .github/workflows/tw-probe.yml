@@ -1,0 +1,50 @@
+name: 台灣景氣資料源探測（暫時）
+
+# 暫時性 workflow：在 GitHub 主機實測台灣官方資料源（政府資料開放平台、國發會、央行、中經院），
+# 結果推到 tw-probe-out 分支給 Claude 的工作環境讀取。合併前移除。
+on:
+  push:
+    branches: [tw-macro]
+    paths: ['.github/workflows/tw-probe.yml', 'scripts/probe/**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tw-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 探測（Node fetch，與正式程式相同的 HTTP 堆疊）
+        run: node scripts/probe/twProbe.mjs /tmp/out
+      - name: curl 對照（TLS 憑證鏈）
+        shell: bash
+        run: |
+          set +e
+          ME="macro-tw-dashboard/0.1 (+https://github.com/jey2204-creator/macro-tw-dashboard)"
+          for u in https://data.gov.tw/api/v2/rest/dataset/6099 https://www.cbc.gov.tw/ https://index.ndc.gov.tw/ https://ws.ndc.gov.tw/ https://www.cier.edu.tw/ https://scidm.nchc.org.tw/ https://ws.dgbas.gov.tw/ https://www.moea.gov.tw/ https://service.mof.gov.tw/ https://portal.sw.nat.gov.tw/; do
+            r=$(curl -sS -o /dev/null -w "code=%{http_code} t=%{time_total}s" -m 40 -A "$ME" "$u" 2>&1)
+            echo "CURL $u | ec=$? $r" | tee -a /tmp/out/log.txt
+          done
+      - name: 推送到 tw-probe-out 分支
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          cd /tmp/out
+          git init -q -b tw-probe-out
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "台灣景氣資料源探測 ${GITHUB_SHA:0:7}"
+          git push -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}" tw-probe-out
+          echo "::notice title=探測完成::$(wc -l < log.txt) 行紀錄，$(ls raw | wc -l) 個檔案"
