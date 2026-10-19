@@ -1,6 +1,7 @@
 /** 快速跳轉目標：id 對應各面板 section 的 id，順序＝頁面順序 */
 export const JUMP_TARGETS = [
   { id: 'sec-table', label: '指標' },
+  { id: 'sec-grp-tw_macro', label: '台灣景氣' },
   { id: 'sec-cm', label: '跨市場' },
   { id: 'sec-pi', label: '政策利率' },
   { id: 'sec-fc', label: '外資' },

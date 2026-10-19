@@ -1,28 +1,29 @@
 import { inflateRawSync } from 'node:zlib';
+import { TW_GOV_DATASET_ID, type SourceSpec } from '../../../src/shared/indicators';
 import type { Bar } from '../../../src/shared/types';
-import { getBytes, getJson, type HttpOptions } from '../http';
+import { getBytes, getJson, getText, type HttpOptions } from '../http';
 import type { SourceFetchResult } from './types';
 
 /**
  * 台灣官方總經資料（政府資料開放平台 data.gov.tw 登錄的資料集，檔案放在各機關網站）。
  *
- * 2026-10-19 探測（GitHub Actions，workflow「台灣景氣資料源探測」）：
+ * 2026-10-19 探測（GitHub Actions，暫時性 workflow「台灣景氣資料源探測」，共五輪）：
  *  - data.gov.tw API v2 可用，回傳各資料集目前的下載網址（國發會的網址會隨上傳改變，所以每次動態查）
- *  - 國發會 index.ndc.gov.tw、經濟部 www.moea.gov.tw 對 GitHub 主機回 403；檔案主機 ws.ndc.gov.tw、service.moea.gov.tw 可用
- *  - 主計總處 ws.dgbas.gov.tw 憑證鏈不完整（Node 驗證失敗），本模組不使用
- *  - 經濟部外銷訂單開放資料比新聞稿晚約一個月（10/19 時最新只到 7 月，8 月已於 9/20 公布）
+ *  - 國發會 index.ndc.gov.tw、經濟部首頁對 GitHub 主機回 403；檔案主機 ws.ndc.gov.tw、service.moea.gov.tw、
+ *    財政部 web02.mof.gov.tw、央行 www.cbc.gov.tw，以及經濟部統計處新聞稿頁（bulletin）皆可用（誠實 UA）
+ *  - 主計總處 ws.dgbas.gov.tw、www.stat.gov.tw 未附中繼憑證（Node 驗證失敗），本模組不使用
+ *  - 經濟部外銷訂單開放資料比新聞稿晚約一個月（10/19 時只到 7 月，8 月已於 9/22 公布）→ 用新聞稿補最新月份
  *
  * | 代號 | 資料集 | 內容 |
  * |---|---|---|
  * | NDC_SIGNAL | 6099 景氣指標及燈號（ZIP） | 景氣對策信號綜合分數 9–45，1984 年起 |
- * | NDC_LEADING | 同上 | 領先指標不含趨勢指數，1982 年起（每月回溯修正） |
  * | NDC_PMI | 6100 臺灣採購經理人指數 | 製造業 PMI（季調），2012-07 起 |
  * | MOF_EXPORTS | 8380 出口值_按主要貨品分（財政部） | 出口總值（百萬美元），2001 年起 |
- * | MOEA_ORDERS | 6845 外銷訂單（經濟部統計處） | 外銷訂單金額（百萬美元），1984 年起 |
+ * | MOEA_ORDERS | 6845 外銷訂單（經濟部統計處）＋新聞稿 | 外銷訂單金額（百萬美元），1984 年起 |
  * | CBC_M1B_M2 | 6024 貨幣總計數（央行 EF15M01，日平均） | M1B 年增率 − M2 年增率（百分點），1988 年起 |
  */
 
-export type TwGovSymbol = 'NDC_SIGNAL' | 'NDC_LEADING' | 'NDC_PMI' | 'MOF_EXPORTS' | 'MOEA_ORDERS' | 'CBC_M1B_M2';
+export type TwGovSymbol = Extract<SourceSpec, { provider: 'tw_gov' }>['symbol'];
 
 interface DatasetSpec {
   id: number;
@@ -34,35 +35,35 @@ interface DatasetSpec {
 
 export const TW_GOV_DATASETS: Record<TwGovSymbol, DatasetSpec> = {
   NDC_SIGNAL: {
-    id: 6099,
-    fallback:
-      'https://ws.ndc.gov.tw/Download.ashx?u=LzAwMS9hZG1pbmlzdHJhdG9yLzEwL3JlbGZpbGUvNTc4MS82MzkyL2VhMjM1YmQ5LWQwNTItNGE2OS1hYmZjLWQ1Yzc4NWQzZDBlMi56aXA%3d&n=5pmv5rCj5oyH5qiZ5Y%2bK54eI6JmfLnppcA%3d%3d&icon=.zip',
-  },
-  NDC_LEADING: {
-    id: 6099,
+    id: TW_GOV_DATASET_ID.NDC_SIGNAL,
     fallback:
       'https://ws.ndc.gov.tw/Download.ashx?u=LzAwMS9hZG1pbmlzdHJhdG9yLzEwL3JlbGZpbGUvNTc4MS82MzkyL2VhMjM1YmQ5LWQwNTItNGE2OS1hYmZjLWQ1Yzc4NWQzZDBlMi56aXA%3d&n=5pmv5rCj5oyH5qiZ5Y%2bK54eI6JmfLnppcA%3d%3d&icon=.zip',
   },
   NDC_PMI: {
-    id: 6100,
+    id: TW_GOV_DATASET_ID.NDC_PMI,
     fallback:
       'https://ws.ndc.gov.tw/Download.ashx?u=LzAwMS9hZG1pbmlzdHJhdG9yLzEwL3JlbGZpbGUvNTc4MS82MzkxL2JmOGE0ZWI3LTEwZmUtNGZhMC1iNjQ2LTMwZTg5MGQwMjE4YS5jc3Y%3d&n=6Ie654Gj5o6h6LO857aT55CG5Lq65oyH5pW4KHBtaeWPim5taSkuY3N2&icon=.csv',
   },
   MOF_EXPORTS: {
-    id: 8380,
+    id: TW_GOV_DATASET_ID.MOF_EXPORTS,
     fallback:
       'https://web02.mof.gov.tw/njswww/webMain.aspx?sys=220&ym=9000&kind=21&type=4&funid=i8121&cycle=41&outmode=12&compmode=00&outkind=1&fld0=1&codlst0=1101111010100011110111100111110110100&utf=1',
   },
-  MOEA_ORDERS: { id: 6845, fallback: 'https://service.moea.gov.tw/EE520/opendata/b.csv' },
+  MOEA_ORDERS: { id: TW_GOV_DATASET_ID.MOEA_ORDERS, fallback: 'https://service.moea.gov.tw/EE520/opendata/b.csv' },
   CBC_M1B_M2: {
-    id: 6024,
-    pick: (u) => /EF15M01/i.test(decodeURIComponent(u)),
+    id: TW_GOV_DATASET_ID.CBC_M1B_M2,
+    pick: (u) => /EF15M01/i.test(safeDecode(u)),
     fallback: 'https://www.cbc.gov.tw/public/data/OpenData/%E7%B6%93%E7%A0%94%E8%99%95/EF15M01.csv',
   },
 };
 
-/** 資料集頁面（人類可讀） */
-export const twGovPage = (symbol: TwGovSymbol) => `https://data.gov.tw/dataset/${TW_GOV_DATASETS[symbol].id}`;
+function safeDecode(u: string): string {
+  try {
+    return decodeURIComponent(u);
+  } catch {
+    return u;
+  }
+}
 
 // ── CSV／ZIP 解析 ────────────────────────────────────────────
 
@@ -89,7 +90,7 @@ export function csvLine(line: string): string[] {
   return out.map((s) => s.trim());
 }
 
-const lines = (text: string) => text.replace(/^﻿/, '').split(/\r?\n/).filter((l) => l.trim() !== '');
+const lines = (text: string) => text.replace(/^\uFEFF/, '').split(/\r?\n/).filter((l) => l.trim() !== '');
 const num = (s: string | undefined) => {
   if (s === undefined) return NaN;
   const t = s.replace(/,/g, '').trim();
@@ -241,6 +242,58 @@ export function parseCbcMoney(text: string): { gap: Bar[]; m1b: Bar[]; m2: Bar[]
   return { gap, m1b, m2 };
 }
 
+// ── 經濟部統計處新聞稿（補開放資料尚未收錄的最新月份） ──────────
+
+export const MOEA_BULLETIN_LIST = 'https://www.moea.gov.tw/Mns/dos/bulletin/Bulletin.aspx?kind=5&html=1&menu_id=6724';
+export const moeaBulletinUrl = (id: string) => `${MOEA_BULLETIN_LIST}&bull_id=${id}`;
+
+const decodeEntities = (s: string) =>
+  s.replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
+
+/** 新聞稿列表：「115年8月外銷訂單統計」→ { bullId, month: '2026-08-01' }（由新到舊） */
+export function parseMoeaBulletinList(html: string): { bullId: string; month: string }[] {
+  const out: { bullId: string; month: string }[] = [];
+  const seen = new Set<string>();
+  for (const m of html.matchAll(/<a\b[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/g)) {
+    const label = decodeEntities(m[2]!.replace(/<[^>]+>/g, '')).trim();
+    const t = /^(\d{2,3})年(\d{1,2})月外銷訂單統計$/.exec(label);
+    const id = /bull_id=(\d+)/.exec(decodeEntities(m[1]!));
+    if (!t || !id || seen.has(id[1]!)) continue;
+    seen.add(id[1]!);
+    out.push({ bullId: id[1]!, month: monthDate(Number(t[1]) + 1911, Number(t[2])) });
+  }
+  return out;
+}
+
+/** 新聞稿內文「8月外銷訂單1,029.6億美元」→ 百萬美元；月份需與標題一致 */
+export function parseMoeaBulletinValue(html: string, month: string): number | null {
+  const text = decodeEntities(html.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, '');
+  const m = /(\d{1,2})月外銷訂單([\d,]+(?:\.\d+)?)億美元/.exec(text);
+  if (!m || Number(m[1]) !== Number(month.slice(5, 7))) return null;
+  const v = num(m[2]) * 100;
+  return Number.isFinite(v) ? Math.round(v) : null;
+}
+
+/** 開放資料之後的月份用新聞稿補上（最多補 2 個月）；新聞稿失敗不影響開放資料 */
+async function supplementOrders(bars: Bar[], http: HttpOptions): Promise<Bar[]> {
+  const last = bars.at(-1)?.[0] ?? '';
+  try {
+    const list = parseMoeaBulletinList(await getText(MOEA_BULLETIN_LIST, http))
+      .filter((b) => b.month > last)
+      .slice(0, 2);
+    const extra: Bar[] = [];
+    for (const b of list) {
+      const v = parseMoeaBulletinValue(await getText(moeaBulletinUrl(b.bullId), http), b.month);
+      if (v !== null) extra.push(bar(b.month, v));
+    }
+    if (extra.length) console.log(`  [tw_gov] 外銷訂單以新聞稿補上 ${extra.map((b) => b[0].slice(0, 7)).join('、')}`);
+    return [...bars, ...extra].sort((a, b) => (a[0] < b[0] ? -1 : 1));
+  } catch (e) {
+    console.warn(`  [tw_gov] 外銷訂單新聞稿無法取得，只用開放資料：${e instanceof Error ? e.message : String(e)}`);
+    return bars;
+  }
+}
+
 // ── 抓取 ─────────────────────────────────────────────────────
 
 interface DataGovDataset {
@@ -267,7 +320,7 @@ async function resolveUrl(spec: DatasetSpec, http: HttpOptions): Promise<string>
 
 async function download(symbol: TwGovSymbol, http: HttpOptions): Promise<Uint8Array> {
   const spec = TW_GOV_DATASETS[symbol];
-  const key = String(spec.id) + (spec.pick ? symbol : '');
+  const key = `${spec.id}:${symbol}`;
   let p = cache.get(key);
   if (!p) {
     p = resolveUrl(spec, http).then((url) => getBytes(url, http));
@@ -284,11 +337,8 @@ export async function fetchTwGov(symbol: TwGovSymbol, http: HttpOptions): Promis
   let bars: Bar[];
   switch (symbol) {
     case 'NDC_SIGNAL':
-    case 'NDC_LEADING': {
-      const t = parseNdcIndicators(ndcIndicatorCsv(unzip(buf)));
-      bars = symbol === 'NDC_SIGNAL' ? t.signal : t.leading;
+      bars = parseNdcIndicators(ndcIndicatorCsv(unzip(buf))).signal;
       break;
-    }
     case 'NDC_PMI':
       bars = parseNdcPmi(utf8(buf));
       break;
@@ -296,7 +346,7 @@ export async function fetchTwGov(symbol: TwGovSymbol, http: HttpOptions): Promis
       bars = parseMofExports(utf8(buf));
       break;
     case 'MOEA_ORDERS':
-      bars = parseMoeaOrders(utf8(buf));
+      bars = await supplementOrders(parseMoeaOrders(utf8(buf)), http);
       break;
     case 'CBC_M1B_M2':
       bars = parseCbcMoney(utf8(buf)).gap;

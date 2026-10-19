@@ -10,6 +10,7 @@ import { fetchFred } from './sources/fred';
 import { fetchNaverKrForeign } from './sources/naverKr';
 import { fetchTaifex } from './sources/taifex';
 import { fetchTpex, fetchTwse } from './sources/twExchanges';
+import { fetchTwGov } from './sources/twGov';
 import { fetchTwseChips } from './sources/twseChips';
 import type { SourceFetchResult } from './sources/types';
 import { fetchYahoo } from './sources/yahoo';
@@ -92,6 +93,9 @@ async function fetchFromSource(
       return fetchTwseChips(spec.symbol, cacheLast ? cached!.data : null, today, http, fast);
     case 'naver_kr':
       return fetchNaverKrForeign(cacheLast ? cached!.data : null, today, http, fast);
+    case 'tw_gov':
+      // 每次整批重抓（官方每月回溯修正，檔案小）
+      return fetchTwGov(spec.symbol, http);
   }
 }
 

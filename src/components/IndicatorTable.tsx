@@ -153,6 +153,8 @@ function Row({
             {row.ev.excludedReason && <span className="warn">（不計分：{row.ev.excludedReason}）</span>}
           </span>
         )}
+        {/* 參考型（台灣景氣）：區間與連續月數，例如「紅燈（連 9 個月），近3月變化 +2分」 */}
+        {def.rule.kind === 'info' && def.rowReason && <span className="c-reason">{row.ev.signal.reason}</span>}
         {/* 公布日／實績／市場預期（僅供參考，不計分） */}
         {relLines.map((l) => (
           <span key={l.head} className="c-release">
@@ -171,7 +173,10 @@ function Row({
             <span className="next-head">
               ⏰ 下次 {whenText(scheduled)}
               <span className="next-cd">（{countdownText(releaseAt(scheduled), now)}）</span>
-              <span className="next-note">{RELEASE_KINDS[scheduled.kind].source}</span>
+              <span className="next-note">
+                {RELEASE_KINDS[scheduled.kind].source}
+                {scheduled.note ? `｜${scheduled.note}` : ''}
+              </span>
             </span>
           </span>
         )}
@@ -209,12 +214,12 @@ export function IndicatorTable({
         const list = rows.filter((r) => r.ev.def.category === cat);
         if (list.length === 0) return null;
         return (
-          <section key={cat} className="group" aria-label={CATEGORY_LABEL[cat]}>
+          <section key={cat} id={`sec-grp-${cat}`} className="group" aria-label={CATEGORY_LABEL[cat]}>
             <h2 className="group-head">
               <span>{CATEGORY_LABEL[cat]}</span>
               <span className="cols muted" aria-hidden="true">
                 <span>數值</span>
-                <span>{cat === 'macro' ? '前期變化' : cat === 'tw_chips' ? '前日比/5日計' : '日變化'}</span>
+                <span>{cat === 'macro' || cat === 'tw_macro' ? '前期變化' : cat === 'tw_chips' ? '前日比/5日計' : '日變化'}</span>
                 <span>近期</span>
                 <span>判斷</span>
               </span>
