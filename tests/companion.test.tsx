@@ -215,10 +215,20 @@ describe('景氣燈號圖表面板（載入加權指數）', () => {
     await waitFor(() => expect(screen.getByText('燈號期間')).toBeTruthy());
     const rows = [...document.querySelectorAll('.streak-table tbody tr')].map((tr) => tr.textContent);
     // 未公布 9–10 月：35000 ÷ 33000（8 月底）− 1 ＝ +6.1%；紅燈 25/12–26/08（9 個月）：33000 ÷ 24000（11 月底）− 1 ＝ +37.5%；黃紅 24000 ÷ 21000 − 1 ＝ +14.3%
-    expect(rows[0]).toBe('未公布26/09–26/102+6.1%');
+    expect(rows[0]).toBe('未公布26/09–至今2+6.1%');
     expect(rows[1]).toBe('紅燈25/12–26/089+37.5%');
     expect(rows[2]).toBe('黃紅燈25/09–25/113+14.3%');
     expect(rows[3]).toBe('綠燈25/07–25/082—');
     vi.unstubAllGlobals();
+  });
+});
+
+describe('漲跌顯示', () => {
+  it('四捨五入後為 0 顯示「0.0%」、不上色；缺資料顯示「—」', async () => {
+    const { pctSign, pctText } = await import('../src/lib/companion');
+    expect([pctText(-0.04), pctSign(-0.04)]).toEqual(['0.0%', 0]);
+    expect([pctText(67.04), pctSign(67.04)]).toEqual(['+67.0%', 1]);
+    expect([pctText(-12.2), pctSign(-12.2)]).toEqual(['-12.2%', -1]);
+    expect([pctText(null), pctSign(null)]).toEqual(['—', 0]);
   });
 });

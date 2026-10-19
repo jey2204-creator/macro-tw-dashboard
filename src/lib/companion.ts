@@ -63,3 +63,17 @@ export function zoneStreaks(score: readonly Point[], zones: readonly Zone[], com
 
 /** 2025-12-01 → 25/12 */
 export const shortMonth = (d: string) => `${d.slice(2, 4)}/${d.slice(5, 7)}`;
+
+/** 四捨五入到 0.1% 後的正負號（0 就不上色，避免「-0.0%」） */
+export function pctSign(v: number | null): -1 | 0 | 1 {
+  if (v === null) return 0;
+  const r = Math.round(v * 10) / 10;
+  return r > 0 ? 1 : r < 0 ? -1 : 0;
+}
+
+/** +67.0%／−12.2%／0.0%／—（缺資料） */
+export function pctText(v: number | null): string {
+  if (v === null) return '—';
+  const r = Math.round(v * 10) / 10;
+  return r === 0 ? '0.0%' : `${r > 0 ? '+' : ''}${r.toFixed(1)}%`;
+}

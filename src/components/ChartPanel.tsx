@@ -8,7 +8,7 @@ import type { BacktestStats, Bar, SummaryEntry } from '../shared/types';
 import { chartBars, MA_COLOR_VAR, type ChartKind } from '../lib/chartData';
 import { PriceChart } from './PriceChart';
 import { BacktestTable } from './BacktestTable';
-import { monthlyCloses, shortMonth, zoneStreaks, type Companion, type ZoneStreak } from '../lib/companion';
+import { monthlyCloses, pctSign, pctText, shortMonth, zoneStreaks, type Companion, type ZoneStreak } from '../lib/companion';
 import { SignalBadge } from './SignalBadge';
 
 const STATUS_TEXT: Record<SummaryEntry['status'], string> = {
@@ -228,11 +228,9 @@ function ZoneStreakTable({ streaks, label }: { streaks: ZoneStreak[]; label: str
                 {s.zone?.color && <i className="lamp" style={{ background: `var(${s.zone.color})` }} aria-hidden="true" />}
                 {s.zone ? s.zone.label : '未公布'}
               </td>
-              <td>{s.months > 1 ? `${shortMonth(s.from)}–${shortMonth(s.to)}` : shortMonth(s.from)}</td>
+              <td>{!s.zone ? `${shortMonth(s.from)}–至今` : s.months > 1 ? `${shortMonth(s.from)}–${shortMonth(s.to)}` : shortMonth(s.from)}</td>
               <td className="r">{s.months}</td>
-              <td className={`r ${s.change === null ? '' : toneClass({}, s.change > 0 ? 'up' : s.change < 0 ? 'down' : '')}`}>
-                {s.change === null ? '—' : `${s.change > 0 ? '+' : ''}${s.change.toFixed(1)}%`}
-              </td>
+              <td className={`r ${pctSign(s.change) ? toneClass({}, pctSign(s.change) > 0 ? 'up' : 'down') : ''}`}>{pctText(s.change)}</td>
             </tr>
           ))}
         </tbody>
