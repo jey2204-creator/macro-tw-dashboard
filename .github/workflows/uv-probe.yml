@@ -1,7 +1,8 @@
-name: 美股預估 EPS 資料源探測（暫時）
+name: 美股預估本益比資料源探測（暫時）
 
-# 暫時性探測：在 GitHub 主機下載 S&P Dow Jones Indices 的 S&P 500 盈餘與預估報表（xlsx），
-# 原始檔推到 uv-probe-out 分支讓工作環境解析版面（工作環境 shell 連不到 spglobal.com）。
+# 暫時性探測：spglobal.com 的 sp-500-eps-est.xlsx 對 GitHub 主機回 403（Security Controls Triggered，兩種 UA 皆同）；
+# 改測 FactSet Insight 部落格（HubSpot）的 RSS 與週報文章能否抓到「forward 12-month P/E ratio is X」，
+# 原始檔推到 uv-probe-out 分支讓工作環境驗證解析（工作環境 shell 連不到這些網站）。
 # 觸發：非 main 分支 commit 訊息含 [probe]。確認可行並寫好解析後即移除此 workflow。
 on:
   push:
@@ -26,16 +27,18 @@ jobs:
           import { writeFileSync } from 'node:fs';
           const UA = 'macro-tw-dashboard/0.1 (+https://github.com/jey2204-creator/macro-tw-dashboard)';
           const urls = {
-            'sp-500-eps-est.xlsx': 'https://www.spglobal.com/spdji/en/documents/additional-material/sp-500-eps-est.xlsx',
-            'sp-500-eps-est-browser-ua.xlsx': 'https://www.spglobal.com/spdji/en/documents/additional-material/sp-500-eps-est.xlsx',
+            'factset-rss.xml': 'https://insight.factset.com/rss.xml',
+            'factset-post.html': 'https://insight.factset.com/sp-500-earnings-season-update-october-16-2026',
+            'factset-topic.html': 'https://insight.factset.com/topic/earnings',
           };
           const log = [];
           for (const [name, url] of Object.entries(urls)) {
-            const ua = name.includes('browser') ? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36' : UA;
             try {
-              const res = await fetch(url, { headers: { 'User-Agent': ua, Accept: '*/*' }, redirect: 'follow' });
+              const res = await fetch(url, { headers: { 'User-Agent': UA, Accept: '*/*' }, redirect: 'follow' });
               const buf = Buffer.from(await res.arrayBuffer());
-              log.push(`${name}: HTTP ${res.status} ${res.headers.get('content-type')} ${buf.length} bytes last-modified=${res.headers.get('last-modified')} zip=${buf.slice(0, 2).toString() === 'PK'}`);
+              const text = buf.toString('utf8');
+              const m = /forward 12-month P\/E ratio[^.]{0,40}?is (\d+(?:\.\d+)?)/i.exec(text.replace(/<[^>]*>/g, ' '));
+              log.push(`${name}: HTTP ${res.status} ${res.headers.get('content-type')} ${buf.length} bytes fwdPE=${m ? m[1] : 'n/a'}`);
               writeFileSync(`/tmp/probe/${name}`, buf);
             } catch (e) {
               log.push(`${name}: ERROR ${e.message}`);
