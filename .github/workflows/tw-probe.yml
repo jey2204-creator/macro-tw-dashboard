@@ -26,7 +26,7 @@ jobs:
           node-version: 22
       - name: 探測（Node fetch，與正式程式相同的 HTTP 堆疊）
         timeout-minutes: 14
-        run: bash scripts/probe/twProbe3.sh /tmp/out
+        run: bash scripts/probe/twProbe4.sh /tmp/out
       - name: curl 對照（TLS 憑證鏈）
         if: always()
         shell: bash
