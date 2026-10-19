@@ -19,7 +19,7 @@ export interface SignalResult {
 const fmt = (v: number, d = 2) => (Number.isFinite(v) ? v.toFixed(d) : '—');
 const signed = (v: number, d = 2) => `${v >= 0 ? '+' : ''}${fmt(v, d)}`;
 
-export function describeRule(rule: SignalRule, def?: Pick<IndicatorDef, 'changeInBp'>): string {
+export function describeRule(rule: SignalRule, def?: Pick<IndicatorDef, 'changeInBp' | 'infoRule'>): string {
   switch (rule.kind) {
     case 'trend':
       return '檢查 收盤>MA60、MA60較20日前上揚、收盤>MA240：全部成立偏多、全部不成立偏空、其餘中性';
@@ -43,7 +43,7 @@ export function describeRule(rule: SignalRule, def?: Pick<IndicatorDef, 'changeI
     case 'growth':
       return `≥ ${rule.bullAt}% 偏多、< ${rule.bearAt}% 偏空、其餘中性`;
     case 'info':
-      return '僅供參考，不判多空、不計分（待回測驗證）';
+      return def?.infoRule ?? '僅供參考，不判多空、不計分（待回測驗證）';
   }
 }
 

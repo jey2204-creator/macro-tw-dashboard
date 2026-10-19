@@ -313,3 +313,13 @@ describe('真實資料比對（2026-10-19 探測抓到的值）', () => {
     expect(yoy.at(-1)![1].toFixed(1)).toBe('71.4');
   });
 });
+
+describe('規則說明', () => {
+  it('台灣景氣：已回測（不寫待回測驗證）；其他參考型維持原說明', async () => {
+    const { describeRule } = await import('../src/shared/signals');
+    const tw = getIndicator('tw_pmi');
+    expect(describeRule(tw.rule, tw)).toContain('回測：加進綜合分數沒有增量');
+    const chips = getIndicator('net_foreign');
+    expect(describeRule(chips.rule, chips)).toContain('待回測驗證');
+  });
+});

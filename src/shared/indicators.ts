@@ -109,6 +109,8 @@ export interface IndicatorDef {
   zoneStreak?: boolean;
   /** 參考型指標也在列上顯示依據小字（手機看不到 hover） */
   rowReason?: boolean;
+  /** 參考型指標的規則說明（已回測者寫結論；預設「待回測驗證」） */
+  infoRule?: string;
 }
 
 /** 依多空語意決定顏色 class：一般指標上升＝up；bearish 指標上升＝down（隨紅漲綠跌設定切換） */
@@ -130,6 +132,9 @@ export const CATEGORY_LABEL: Record<Category, string> = {
   tw_equity: '台股',
   tw_chips: '台股籌碼',
 };
+
+/** 台灣景氣指標的規則說明（2026-10 回測：加進綜合分數沒有增量） */
+const TW_INFO_RULE = '僅供參考，不判多空、不計分（2026-10 回測：加進綜合分數沒有增量）';
 
 export const CATEGORY_ORDER: Category[] = ['tw_equity', 'tw_chips', 'us_equity', 'asia_equity', 'rates', 'fx', 'energy', 'commodity', 'macro', 'tw_macro'];
 
@@ -554,12 +559,12 @@ export const INDICATORS: IndicatorDef[] = [
       { value: 23, label: '綠燈 23' },
       { value: 17, label: '黃藍 17' },
     ],
-    zoneStreak: true, rowReason: true,
-    note: '國發會 9 項指標各給 1–5 分加總：9–16 藍燈、17–22 黃藍、23–31 綠燈、32–37 黃紅、38–45 紅燈；9 項含股價指數與 M1B，拿來預測台股有一部分是用股價預測股價。回測 2010–2026（以公布日對齊）：紅燈之後 60 日加權平均仍 +5.0%、一年後 −1.8%（基準 +12.5%）；藍燈一年後 +16.9%。紅燈、藍燈各只有 6–8 段，紅燈不是馬上賣的訊號。僅供參考不計分',
+    zoneStreak: true, rowReason: true, infoRule: TW_INFO_RULE,
+    note: '國發會 9 項指標各給 1–5 分加總：9–16 藍燈、17–22 黃藍、23–31 綠燈、32–37 黃紅、38–45 紅燈；9 項含股價指數與 M1B。回測（以公布日對齊）：紅燈之後 60 日加權平均仍 +5.0%、一年後 −1.8%（2010–2026，基準 +12.5%）；但同樣是「加權過去一年已漲 ≥20%」時，燈號熱不熱一年後幾乎一樣（+0.6% vs +1.2%，1998–2026）——一年後轉弱主要來自股價本身已大漲。僅供參考不計分',
   },
   {
     id: 'tw_exports', name: '台灣出口年增率（海關，美元）', short: '出口年增', category: 'tw_macro', frequency: 'monthly',
-    subtitle: '財政部海關出口｜每月最早的實際數據',
+    subtitle: '海關出口｜每月最早的實際數據',
     unit: '%', decimals: 1, sources: [{ provider: 'tw_gov', symbol: 'MOF_EXPORTS' }], transform: 'yoy',
     market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 85, chart: 'histogram',
     zones: [
@@ -567,7 +572,7 @@ export const INDICATORS: IndicatorDef[] = [
       { max: Infinity, label: '成長' },
     ],
     refLines: [{ value: 0, label: '0%' }],
-    zoneStreak: true, rowReason: true,
+    zoneStreak: true, rowReason: true, infoRule: TW_INFO_RULE,
     note: '財政部海關出口總值（美元）的年增率，每月 7–9 日公布上月，是每月最早出來的實際數據；機械及運輸設備（含半導體、伺服器）占出口八成以上，和費半是同一個 AI 循環。回測：加進綜合分數沒有增量，僅供參考不計分',
   },
   {
@@ -580,7 +585,7 @@ export const INDICATORS: IndicatorDef[] = [
       { max: Infinity, label: '成長' },
     ],
     refLines: [{ value: 0, label: '0%' }],
-    zoneStreak: true, rowReason: true,
+    zoneStreak: true, rowReason: true, infoRule: TW_INFO_RULE,
     note: '經濟部外銷訂單金額（美元）的年增率，每月 20 日左右公布上月；接單到出貨約 1–3 個月，且四成五到五成在海外生產，不等於台灣出口。開放資料晚一個月，最新月份由新聞稿補上（金額到 0.1 億美元）。回測：「年增率加速」在 2010 年後對加權有利、1998–2009 年相反，不穩定。僅供參考不計分',
   },
   {
@@ -593,7 +598,7 @@ export const INDICATORS: IndicatorDef[] = [
       { max: Infinity, label: '擴張' },
     ],
     refLines: [{ value: 50, label: '榮枯線 50' }],
-    zoneStreak: true, rowReason: true,
+    zoneStreak: true, rowReason: true, infoRule: TW_INFO_RULE,
     note: '國發會委託中經院調查的製造業採購經理人指數（季調）：≥50 擴張、<50 緊縮，每月第 1 個工作日左右公布上月，是最早的問卷數據。回測 2012–2026：PMI<50 之後一年加權反而較好（+24.6%，≥50 時 +9.9%），景氣差時股價通常已先反映。僅供參考不計分',
   },
   {
@@ -606,7 +611,7 @@ export const INDICATORS: IndicatorDef[] = [
       { max: Infinity, label: '黃金交叉' },
     ],
     refLines: [{ value: 0, label: '0' }],
-    zoneStreak: true, rowReason: true,
+    zoneStreak: true, rowReason: true, infoRule: TW_INFO_RULE,
     note: '央行貨幣總計數（日平均）：M1B 年增率減 M2 年增率；正值＝黃金交叉，代表資金從定存移到活存，散戶常稱「資金行情」。M1B 也是景氣燈號的構成項目，會跟著股市成交額變動。回測（之後一年加權）：黃金交叉時 +7.2%、死亡交叉時反而 +24.4%（2010–2026；1998–2009 年也是死亡交叉較好），「資金行情」說法沒有數據支持。僅供參考不計分',
   },
 ];
