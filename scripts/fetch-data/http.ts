@@ -39,6 +39,16 @@ export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** 具逾時與重試（指數退避）的 HTTP 請求；回傳文字內容 */
 export async function getText(url: string, opts: HttpOptions, req: RequestOptions = {}): Promise<string> {
+  const buf = await getArrayBuffer(url, opts, req);
+  return new TextDecoder(req.encoding ?? 'utf-8').decode(buf);
+}
+
+/** 同 getText，回傳原始位元組（ZIP 等二進位檔） */
+export async function getBytes(url: string, opts: HttpOptions, req: RequestOptions = {}): Promise<Uint8Array> {
+  return new Uint8Array(await getArrayBuffer(url, opts, req));
+}
+
+async function getArrayBuffer(url: string, opts: HttpOptions, req: RequestOptions): Promise<ArrayBuffer> {
   const { fetchImpl, timeoutMs = 20_000, retries = 2, retryDelayMs = 1_500 } = opts;
   let lastErr: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -62,8 +72,7 @@ export async function getText(url: string, opts: HttpOptions, req: RequestOption
         if (res.status >= 400 && res.status < 500 && res.status !== 429) throw err;
         lastErr = err;
       } else {
-        if (!req.encoding) return await res.text();
-        return new TextDecoder(req.encoding).decode(await res.arrayBuffer());
+        return await res.arrayBuffer();
       }
     } catch (e) {
       lastErr = e;
