@@ -9,9 +9,10 @@ import { RELEASE_KINDS, releaseAt, SCHEDULE, type ScheduledRelease } from '../..
 import type { SummaryFile } from '../../src/shared/types';
 
 /**
- * 產生 public/data/macro-events.ics：美國重要總經公布（CPI、就業報告、GDP、FOMC）。
+ * 產生 public/data/macro-events.ics：美國重要總經公布（CPI、就業報告、GDP、FOMC）與台灣景氣指標公布。
  * 手機行事曆以 webcal:// 訂閱後會自動同步；每次資料更新都重寫描述中的門檻與總分影響。
- * 每個事件公布前 30 分鐘提醒；Fed「升息滿 120 天」等不需公布就會改變判斷的日子也列入。
+ * 美國事件公布前 30 分鐘提醒；台灣事件（不計分）不設提醒，只列在行事曆上。
+ * Fed「升息滿 120 天」等不需公布就會改變判斷的日子也列入。
  */
 
 const SITE = 'https://jey2204-creator.github.io/macro-tw-dashboard/';
@@ -54,10 +55,10 @@ export function buildIcs(opts: {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//macro-tw-dashboard//US macro releases//ZH-TW',
+    'PRODID:-//macro-tw-dashboard//US and Taiwan macro releases//ZH-TW',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    'X-WR-CALNAME:美國總經公布',
+    'X-WR-CALNAME:總經公布（美國・台灣）',
     'X-WR-TIMEZONE:Asia/Taipei',
     'X-PUBLISHED-TTL:PT6H',
     'REFRESH-INTERVAL;VALUE=DURATION:PT6H',
@@ -69,8 +70,11 @@ export function buildIcs(opts: {
     if (kind.importance !== 'high' || r.date < from) continue;
     const at = releaseAt(r);
     const desc: string[] = [];
+    const isTw = kind.region === 'tw';
     const isNext = kind.indicators.some((id) => outlooks[id]?.release === r);
-    if (regime && isNext) {
+    if (isTw) {
+      desc.push('台灣景氣指標：僅供參考，不計入網站總分。');
+    } else if (regime && isNext) {
       const range = eventRange(regime, r, outlooks);
       desc.push(`目前總分 ${regime.score.toFixed(2)}（${SIGNAL_LABEL[regime.signal]}）`);
       if (range) desc.push(`這次公布可能讓總分落在：${rangeText(range)}`);
@@ -89,14 +93,12 @@ export function buildIcs(opts: {
       `DTSTAMP:${dtstamp}`,
       `DTSTART:${stamp(at)}`,
       'DURATION:PT15M',
-      `SUMMARY:${esc(`🇺🇸 ${kind.name}${r.note ? `（${r.note}）` : ''}`)}`,
+      `SUMMARY:${esc(`${isTw ? '🇹🇼' : '🇺🇸'} ${kind.name}${r.note ? `（${r.note}）` : ''}`)}`,
       `DESCRIPTION:${esc(desc.join('\n'))}`,
       `URL:${SITE}`,
-      'BEGIN:VALARM',
-      'ACTION:DISPLAY',
-      `DESCRIPTION:${esc(`${kind.name} 30 分鐘後公布`)}`,
-      'TRIGGER:-PT30M',
-      'END:VALARM',
+      ...(isTw
+        ? []
+        : ['BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${esc(`${kind.name} 30 分鐘後公布`)}`, 'TRIGGER:-PT30M', 'END:VALARM']),
       'END:VEVENT',
     );
   }

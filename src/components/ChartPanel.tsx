@@ -1,13 +1,14 @@
 import { useMemo } from 'react';
 import { useSeries } from '../hooks/useData';
 import { formatTaipeiDateTime } from '../shared/dates';
-import { PROVIDER_LABEL, type IndicatorDef } from '../shared/indicators';
+import { coloredZones, PROVIDER_LABEL, toneClass, type IndicatorDef } from '../shared/indicators';
 import type { IndicatorEval } from '../shared/regime';
-import { MA_PERIODS, type MaPeriod, type Period, type RangeKey } from '../shared/timeseries';
+import { closes, MA_PERIODS, type MaPeriod, type Period, type RangeKey } from '../shared/timeseries';
 import type { BacktestStats, Bar, SummaryEntry } from '../shared/types';
 import { chartBars, MA_COLOR_VAR, type ChartKind } from '../lib/chartData';
 import { PriceChart } from './PriceChart';
 import { BacktestTable } from './BacktestTable';
+import { monthlyCloses, pctSign, pctText, shortMonth, zoneStreaks, type Companion, type ZoneStreak } from '../lib/companion';
 import { SignalBadge } from './SignalBadge';
 
 const STATUS_TEXT: Record<SummaryEntry['status'], string> = {
@@ -74,6 +75,19 @@ export function ChartPanel({ def, ev, entry, version, prefs, onPrefs, onClose, t
   const mas = def.market ? prefs.mas : [];
   const src = data?.source ?? entry?.source;
 
+  // 對照窗格（景氣燈號 vs 加權指數）：日資料轉月底收盤，與燈號的資料月份對齊
+  const compSeries = useSeries(def.companion?.id ?? null, version);
+  const compData = compSeries?.status === 'ready' ? compSeries.data : null;
+  const companion = useMemo<Companion | undefined>(
+    () => (def.companion && compData ? { label: def.companion.label, ...monthlyCloses(compData.data) } : undefined),
+    [def.companion, compData],
+  );
+  const zones = coloredZones(def);
+  const streaks = useMemo(
+    () => (companion && zones ? zoneStreaks(closes(bars), zones, closes(companion.bars)).slice(0, 8) : []),
+    [companion, zones, bars],
+  );
+
   return (
     <section className="chartpanel" aria-label={`${def.name} 圖表`}>
       <header className="cp-head">
@@ -106,7 +120,20 @@ export function ChartPanel({ def, ev, entry, version, prefs, onPrefs, onClose, t
         {series?.status === 'error' && <div className="cp-msg warn">無法載入歷史資料：{series.error}</div>}
         {data && bars.length === 0 && <div className="cp-msg warn">此指標目前沒有資料</div>}
         {data && bars.length > 0 && (
-          <PriceChart bars={bars} kind={kind} mas={mas} range={prefs.range} decimals={def.decimals} showPct={def.unit !== '%' && def.unit !== 'k'} themeKey={themeKey} refLines={def.refLines} bearish={def.bearish} />
+          <PriceChart
+            bars={bars}
+            kind={kind}
+            mas={mas}
+            range={prefs.range}
+            decimals={def.decimals}
+            showPct={!['%', 'pp', 'k', '分'].includes(def.unit)}
+            themeKey={themeKey}
+            refLines={def.refLines}
+            bearish={def.bearish}
+            zones={zones}
+            companion={companion}
+            mainLabel={def.short}
+          />
         )}
       </div>
 
@@ -118,6 +145,14 @@ export function ChartPanel({ def, ev, entry, version, prefs, onPrefs, onClose, t
         </dd>
         <dt>規則</dt>
         <dd className="muted">{ev.signal.ruleText}</dd>
+        {streaks.length > 0 && companion && (
+          <>
+            <dt>燈號期間</dt>
+            <dd>
+              <ZoneStreakTable streaks={streaks} label={companion.label} />
+            </dd>
+          </>
+        )}
         {backtest && (
           <>
             <dt>歷史表現</dt>
@@ -167,5 +202,39 @@ export function ChartPanel({ def, ev, entry, version, prefs, onPrefs, onClose, t
         )}
       </dl>
     </section>
+  );
+}
+
+/** 每段燈號期間（資料月份）加權指數的漲跌；最上面是燈號還沒公布、加權已經走完的月份 */
+function ZoneStreakTable({ streaks, label }: { streaks: ZoneStreak[]; label: string }) {
+  return (
+    <div className="table-wrap">
+      <table className="bt-table streak-table num">
+        <caption className="small muted">
+          期間＝燈號的資料月份。燈號約晚 4 週公布（例：8 月紅燈 9/29 才知道），所以表內的漲跌在當時還看不到。
+        </caption>
+        <thead>
+          <tr>
+            <th>燈號</th>
+            <th>期間</th>
+            <th className="r">月數</th>
+            <th className="r">{label}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {streaks.map((s) => (
+            <tr key={s.from} className={s.zone ? '' : 'all'}>
+              <td>
+                {s.zone?.color && <i className="lamp" style={{ background: `var(${s.zone.color})` }} aria-hidden="true" />}
+                {s.zone ? s.zone.label : '未公布'}
+              </td>
+              <td>{!s.zone ? `${shortMonth(s.from)}–至今` : s.months > 1 ? `${shortMonth(s.from)}–${shortMonth(s.to)}` : shortMonth(s.from)}</td>
+              <td className="r">{s.months}</td>
+              <td className={`r ${pctSign(s.change) ? toneClass({}, pctSign(s.change) > 0 ? 'up' : 'down') : ''}`}>{pctText(s.change)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

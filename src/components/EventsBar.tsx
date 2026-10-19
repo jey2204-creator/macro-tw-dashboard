@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { rangeText } from '../lib/outlookText';
+import { INDICATOR_MAP } from '../shared/indicators';
 import { eventRange, type IndicatorOutlook } from '../shared/outlook';
 import type { Regime } from '../shared/regime';
 import {
@@ -13,7 +14,7 @@ import {
   type ScheduledRelease,
 } from '../shared/schedule';
 
-/** 頁首：接下來 14 天的美國總經公布＋每一場最好／最壞會讓總分變多少 */
+/** 頁首：接下來 14 天的總經公布（美國＋台灣）＋每一場最好／最壞會讓總分變多少 */
 export function EventsBar({
   regime,
   outlooks,
@@ -42,7 +43,7 @@ export function EventsBar({
   const webcal = icsHttps.replace(/^https?:/, 'webcal:');
 
   return (
-    <section className="events" aria-label="接下來的美國總經公布">
+    <section className="events" aria-label="接下來的總經公布">
       <div className="events-head">
         <span className="label">📅 接下來 {days} 天公布</span>
         <span className="events-tools">
@@ -67,7 +68,7 @@ export function EventsBar({
         <button type="button" className="linkbtn" onClick={() => setAll(!all)}>
           {all ? '只看 14 天' : '看 60 天'}
         </button>
-        <span>台北時間；區間＝這次公布最好／最壞情況下的總分（只算這一項，美債、美元會另外反應）</span>
+        <span>台北時間；區間＝這次公布最好／最壞情況下的總分（只算這一項，美債、美元會另外反應）；台灣指標僅供參考</span>
       </div>
       {stale.length > 0 && (
         <p className="warn small">
@@ -93,6 +94,8 @@ function EventRow({
 }) {
   const def = RELEASE_KINDS[r.kind];
   const range = eventRange(regime, r, outlooks);
+  // PPI、PCE、台灣指標：權重 0，公布不會改變總分
+  const unscored = def.indicators.every((id) => (INDICATOR_MAP[id]?.weight ?? 0) === 0);
   const flips = range && (range.best.regime !== range.now.regime || range.worst.regime !== range.now.regime);
   const cd = countdownText(releaseAt(r), now);
   return (
@@ -107,7 +110,7 @@ function EventRow({
           <span className="ev-when num">{whenText(r)}</span>
         </span>
         <span className={`ev-impact small${flips ? ' flip' : ''}`}>
-          {range ? `${flips ? '⚠️ 可能翻轉結論：' : ''}${rangeText(range)}` : <span className="muted">—</span>}
+          {range ? `${flips ? '⚠️ 可能翻轉結論：' : ''}${rangeText(range)}` : <span className="muted">{unscored ? '不計分' : '—'}</span>}
         </span>
       </button>
     </li>

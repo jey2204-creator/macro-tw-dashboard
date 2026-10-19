@@ -12,6 +12,8 @@ export type SourceSpec =
   | { provider: 'twse'; symbol: 'TAIEX' }
   | { provider: 'taifex'; symbol: 'TXF_FOREIGN_OI' | 'MXF_RETAIL_OI' | 'TXO_FOREIGN_NET' | 'TX_TOP10_SPECIFIC' }
   | { provider: 'naver_kr'; symbol: 'KOSPI_FOREIGN' }
+  /** 台灣官方總經（政府資料開放平台；scripts/fetch-data/sources/twGov.ts） */
+  | { provider: 'tw_gov'; symbol: 'NDC_SIGNAL' | 'NDC_PMI' | 'MOF_EXPORTS' | 'MOEA_ORDERS' | 'CBC_M1B_M2' }
   | {
       provider: 'twse_chips';
       symbol:
@@ -61,6 +63,25 @@ export type SignalRule =
   /** 僅供參考：不判多空，只顯示近期累計（台股籌碼，待回測驗證） */
   | { kind: 'info' };
 
+/** 數值分區（例如景氣燈號 9–16 藍燈） */
+export interface Zone {
+  /** 上限（不含）：取第一個 value < max 的區間 */
+  max: number;
+  label: string;
+  /** 區間顏色（CSS 變數名，例如 '--lamp-red'）；只有景氣燈號這類有官方顏色的分區才設定 */
+  color?: string;
+}
+
+/** 數值所在的區間 */
+export function zoneAt(zones: readonly Zone[] | undefined, v: number): Zone | undefined {
+  return zones?.find((z) => v < z.max);
+}
+
+/** 有顏色的分區（景氣燈號）；沒有顏色就回傳 undefined，圖表維持原樣 */
+export function coloredZones(def: Pick<IndicatorDef, 'zones'>): Zone[] | undefined {
+  return def.zones?.some((z) => z.color) ? def.zones : undefined;
+}
+
 export interface IndicatorDef {
   id: string;
   name: string;
@@ -71,7 +92,7 @@ export interface IndicatorDef {
   category: Category;
   frequency: Frequency;
   /** 顯示單位 */
-  unit: '%' | 'pt' | 'USD' | 'TWD' | 'KRW' | 'JPY' | 'k' | '口' | '億' | '家';
+  unit: '%' | 'pp' | 'pt' | '分' | 'USD' | 'TWD' | 'KRW' | 'JPY' | 'k' | '口' | '億' | '家';
   decimals: number;
   /** 依優先順序排列；第一個失敗會嘗試下一個 */
   sources: SourceSpec[];
@@ -99,10 +120,18 @@ export interface IndicatorDef {
   chart?: 'line' | 'histogram';
   /** 圖表參考線（例如融資維持率 130%／140%／170%） */
   refLines?: { value: number; label: string }[];
-  /** 依數值分區的說明（由低到高，取第一個 value < max 的區間） */
-  zones?: { max: number; label: string }[];
+  /** 依數值分區的說明（由低到高，取第一個 value < max 的區間）；有 color 的區間在圖上畫色帶、線段與圖例依區間上色 */
+  zones?: Zone[];
   /** 數值越大越偏空（跌停、下跌家數）：漲跌顏色反轉，用空方色 */
   bearish?: boolean;
+  /** 依據文字加上「目前區間連續幾期」（景氣燈號「紅燈（連 9 個月）」；需搭配 zones） */
+  zoneStreak?: boolean;
+  /** 參考型指標也在列上顯示依據小字（手機看不到 hover） */
+  rowReason?: boolean;
+  /** 參考型指標的規則說明（已回測者寫結論；預設「待回測驗證」） */
+  infoRule?: string;
+  /** 圖表上方另開一格對照（月底收盤，同一時間軸），例如景氣燈號對照加權指數 */
+  companion?: { id: string; label: string };
 }
 
 /** 依多空語意決定顏色 class：一般指標上升＝up；bearish 指標上升＝down（隨紅漲綠跌設定切換） */
@@ -118,13 +147,17 @@ export const CATEGORY_LABEL: Record<Category, string> = {
   energy: '能源',
   commodity: '原物料',
   macro: '美國總經',
+  tw_macro: '台灣景氣',
   us_equity: '美股',
   asia_equity: '亞股',
   tw_equity: '台股',
   tw_chips: '台股籌碼',
 };
 
-export const CATEGORY_ORDER: Category[] = ['tw_equity', 'tw_chips', 'us_equity', 'asia_equity', 'rates', 'fx', 'energy', 'commodity', 'macro'];
+/** 台灣景氣指標的規則說明（2026-10 回測：加進綜合分數沒有增量） */
+const TW_INFO_RULE = '僅供參考，不判多空、不計分（2026-10 回測：加進綜合分數沒有增量）';
+
+export const CATEGORY_ORDER: Category[] = ['tw_equity', 'tw_chips', 'us_equity', 'asia_equity', 'rates', 'fx', 'energy', 'commodity', 'macro', 'tw_macro'];
 
 /**
  * 權重與規則依 2010–2026 回測審查後調整（2026-10，scripts/fetch-data/backtest.ts）：
@@ -527,6 +560,85 @@ export const INDICATORS: IndicatorDef[] = [
     market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true, bearish: true,
     note: '下跌的上市普通股家數（含跌停）',
   },
+  // ── 台灣景氣（僅供參考，權重 0）──────────────────────
+  // 回測（2026-10，claude/台灣景氣回測紀錄）：加進綜合分數都沒有增量；燈號含股價指數與 M1B，有循環論證 → 只看不計分
+  {
+    id: 'tw_signal', name: '台灣景氣對策信號（綜合分數）', short: '景氣燈號', category: 'tw_macro', frequency: 'monthly',
+    subtitle: '國發會9項加總｜含股價，月底公布',
+    unit: '分', decimals: 0, sources: [{ provider: 'tw_gov', symbol: 'NDC_SIGNAL' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 105, chart: 'line',
+    // 分數是整數：區間界線放在 .5（16.5、22.5…），圖上的色帶邊界不會壓在某個月的點上
+    zones: [
+      { max: 16.5, label: '藍燈', color: '--lamp-blue' },
+      { max: 22.5, label: '黃藍燈', color: '--lamp-yellowblue' },
+      { max: 31.5, label: '綠燈', color: '--lamp-green' },
+      { max: 37.5, label: '黃紅燈', color: '--lamp-yellowred' },
+      { max: Infinity, label: '紅燈', color: '--lamp-red' },
+    ],
+    // 各燈號的分數門檻（右側標籤）：38 以上紅燈、32–37 黃紅、23–31 綠燈、17–22 黃藍、16 以下藍燈
+    refLines: [
+      { value: 38, label: '紅燈' },
+      { value: 32, label: '黃紅燈' },
+      { value: 23, label: '綠燈' },
+      { value: 17, label: '黃藍燈' },
+      { value: 16, label: '藍燈' },
+    ],
+    zoneStreak: true, rowReason: true, infoRule: TW_INFO_RULE,
+    companion: { id: 'taiex', label: '加權指數' },
+    note: '國發會 9 項指標各給 1–5 分加總：9–16 藍燈、17–22 黃藍、23–31 綠燈、32–37 黃紅、38–45 紅燈；9 項含股價指數與 M1B。回測（以公布日對齊）：紅燈之後 60 日加權平均仍 +5.0%、一年後 −1.8%（2010–2026，基準 +12.5%）；但同樣是「加權過去一年已漲 ≥20%」時，燈號熱不熱一年後幾乎一樣（+0.6% vs +1.2%，1998–2026）——一年後轉弱主要來自股價本身已大漲。僅供參考不計分',
+  },
+  {
+    id: 'tw_exports', name: '台灣出口年增率（海關，美元）', short: '出口年增', category: 'tw_macro', frequency: 'monthly',
+    subtitle: '海關出口｜每月最早的實際數據',
+    unit: '%', decimals: 1, sources: [{ provider: 'tw_gov', symbol: 'MOF_EXPORTS' }], transform: 'yoy',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 85, chart: 'histogram',
+    zones: [
+      { max: 0, label: '衰退' },
+      { max: Infinity, label: '成長' },
+    ],
+    refLines: [{ value: 0, label: '0%' }],
+    zoneStreak: true, rowReason: true, infoRule: TW_INFO_RULE,
+    note: '財政部海關出口總值（美元）的年增率，每月 7–9 日公布上月，是每月最早出來的實際數據；機械及運輸設備（含半導體、伺服器）占出口八成以上，和費半是同一個 AI 循環。回測：加進綜合分數沒有增量，僅供參考不計分',
+  },
+  {
+    id: 'tw_orders', name: '台灣外銷訂單年增率（美元）', short: '外銷訂單', category: 'tw_macro', frequency: 'monthly',
+    subtitle: '經濟部接單金額｜約領先出口1–3月',
+    unit: '%', decimals: 1, sources: [{ provider: 'tw_gov', symbol: 'MOEA_ORDERS' }], transform: 'yoy',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 95, chart: 'histogram',
+    zones: [
+      { max: 0, label: '衰退' },
+      { max: Infinity, label: '成長' },
+    ],
+    refLines: [{ value: 0, label: '0%' }],
+    zoneStreak: true, rowReason: true, infoRule: TW_INFO_RULE,
+    note: '經濟部外銷訂單金額（美元）的年增率，每月 20 日左右公布上月；接單到出貨約 1–3 個月，且四成五到五成在海外生產，不等於台灣出口。開放資料晚一個月，最新月份由新聞稿補上（金額到 0.1 億美元）。回測：「年增率加速」在 2010 年後對加權有利、1998–2009 年相反，不穩定。僅供參考不計分',
+  },
+  {
+    id: 'tw_pmi', name: '台灣製造業採購經理人指數（PMI）', short: '製造業PMI', category: 'tw_macro', frequency: 'monthly',
+    subtitle: '採購經理人指數｜50以上＝擴張',
+    unit: '%', decimals: 1, sources: [{ provider: 'tw_gov', symbol: 'NDC_PMI' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 80, chart: 'line',
+    zones: [
+      { max: 50, label: '緊縮' },
+      { max: Infinity, label: '擴張' },
+    ],
+    refLines: [{ value: 50, label: '榮枯線 50' }],
+    zoneStreak: true, rowReason: true, infoRule: TW_INFO_RULE,
+    note: '國發會委託中經院調查的製造業採購經理人指數（季調）：≥50 擴張、<50 緊縮，每月第 1 個工作日左右公布上月，是最早的問卷數據。回測 2012–2026：PMI<50 之後一年加權反而較好（+24.6%，≥50 時 +9.9%），景氣差時股價通常已先反映。僅供參考不計分',
+  },
+  {
+    id: 'tw_m1b_m2', name: '台灣 M1B 年增率 − M2 年增率', short: 'M1B−M2', category: 'tw_macro', frequency: 'monthly',
+    subtitle: '貨幣年增差｜正＝黃金交叉',
+    unit: 'pp', decimals: 2, sources: [{ provider: 'tw_gov', symbol: 'CBC_M1B_M2' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 95, chart: 'histogram',
+    zones: [
+      { max: 0, label: '死亡交叉' },
+      { max: Infinity, label: '黃金交叉' },
+    ],
+    refLines: [{ value: 0, label: '0' }],
+    zoneStreak: true, rowReason: true, infoRule: TW_INFO_RULE,
+    note: '央行貨幣總計數（日平均）：M1B 年增率減 M2 年增率；正值＝黃金交叉，代表資金從定存移到活存，散戶常稱「資金行情」。M1B 也是景氣燈號的構成項目，會跟著股市成交額變動。回測（之後一年加權）：黃金交叉時 +7.2%、死亡交叉時反而 +24.4%（2010–2026；1998–2009 年也是死亡交叉較好），「資金行情」說法沒有數據支持。僅供參考不計分',
+  },
 ];
 
 export const INDICATOR_MAP: Record<string, IndicatorDef> = Object.fromEntries(
@@ -558,8 +670,19 @@ export function sourceUrl(spec: SourceSpec): string {
       return 'https://www.twse.com.tw/zh/';
     case 'naver_kr':
       return 'https://m.stock.naver.com/domestic/index/KOSPI/total';
+    case 'tw_gov':
+      return `https://data.gov.tw/dataset/${TW_GOV_DATASET_ID[spec.symbol]}`;
   }
 }
+
+/** 政府資料開放平台資料集編號（抓取時用 API 查目前的下載網址） */
+export const TW_GOV_DATASET_ID: Record<Extract<SourceSpec, { provider: 'tw_gov' }>['symbol'], number> = {
+  NDC_SIGNAL: 6099,
+  NDC_PMI: 6100,
+  MOF_EXPORTS: 8380,
+  MOEA_ORDERS: 6845,
+  CBC_M1B_M2: 6024,
+};
 
 export const PROVIDER_LABEL: Record<SourceSpec['provider'], string> = {
   yahoo: 'Yahoo Finance',
@@ -569,4 +692,5 @@ export const PROVIDER_LABEL: Record<SourceSpec['provider'], string> = {
   taifex: '臺灣期交所 TAIFEX',
   twse_chips: '臺灣證交所 TWSE',
   naver_kr: 'Naver Pay 證券（韓國交易所資料）',
+  tw_gov: '政府資料開放平台（國發會／財政部／經濟部／央行）',
 };

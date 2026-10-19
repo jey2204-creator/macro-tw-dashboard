@@ -1,5 +1,5 @@
 import { addDays, daysBetween } from './dates';
-import type { IndicatorDef, SignalRule } from './indicators';
+import { zoneAt, type IndicatorDef, type SignalRule } from './indicators';
 import { changeOver, changeOverDays, sma, valueAtOrBefore, type Point } from './timeseries';
 import type { Signal } from './types';
 
@@ -19,7 +19,7 @@ export interface SignalResult {
 const fmt = (v: number, d = 2) => (Number.isFinite(v) ? v.toFixed(d) : '—');
 const signed = (v: number, d = 2) => `${v >= 0 ? '+' : ''}${fmt(v, d)}`;
 
-export function describeRule(rule: SignalRule, def?: Pick<IndicatorDef, 'changeInBp'>): string {
+export function describeRule(rule: SignalRule, def?: Pick<IndicatorDef, 'changeInBp' | 'infoRule'>): string {
   switch (rule.kind) {
     case 'trend':
       return '檢查 收盤>MA60、MA60較20日前上揚、收盤>MA240：全部成立偏多、全部不成立偏空、其餘中性';
@@ -43,7 +43,7 @@ export function describeRule(rule: SignalRule, def?: Pick<IndicatorDef, 'changeI
     case 'growth':
       return `≥ ${rule.bullAt}% 偏多、< ${rule.bearAt}% 偏空、其餘中性`;
     case 'info':
-      return '僅供參考，不判多空、不計分（待回測驗證）';
+      return def?.infoRule ?? '僅供參考，不判多空、不計分（待回測驗證）';
   }
 }
 
@@ -158,8 +158,27 @@ export function evaluateSignal(def: IndicatorDef, pts: readonly Point[]): Signal
   }
 }
 
+/** 計數型單位：數值後面直接接單位字 */
+const COUNT_UNITS = new Set<IndicatorDef['unit']>(['億', '口', '家', '分']);
+
 const unitText = (def: Pick<IndicatorDef, 'unit' | 'decimals'>, v: number) =>
-  `${v > 0 && def.unit !== '家' ? '+' : ''}${v.toLocaleString('en-US', { minimumFractionDigits: def.decimals, maximumFractionDigits: def.decimals })}${def.unit === '億' || def.unit === '口' || def.unit === '家' ? def.unit : ''}`;
+  `${v > 0 && def.unit !== '家' ? '+' : ''}${v.toLocaleString('en-US', { minimumFractionDigits: def.decimals, maximumFractionDigits: def.decimals })}${COUNT_UNITS.has(def.unit) ? def.unit : ''}`;
+
+/** 百分比類單位：變化以 pp 表示 */
+const isPctUnit = (u: IndicatorDef['unit']) => u === '%' || u === 'pp';
+
+/** 目前區間與連續期數：「紅燈（連 9 個月）」；只有 1 期時不加括號 */
+export function zoneText(def: Pick<IndicatorDef, 'zones' | 'zoneStreak' | 'frequency'>, pts: readonly Point[]): string | undefined {
+  const zoneOf = (v: number) => zoneAt(def.zones, v)?.label;
+  const last = pts.at(-1);
+  if (!last || !def.zones) return undefined;
+  const zone = zoneOf(last[1]);
+  if (!zone || !def.zoneStreak) return zone;
+  let n = 0;
+  for (let i = pts.length - 1; i >= 0 && zoneOf(pts[i]![1]) === zone; i--) n++;
+  const unit = def.frequency === 'monthly' ? '個月' : def.frequency === 'quarterly' ? '季' : def.frequency === 'weekly' ? '週' : '日';
+  return n >= 2 ? `${zone}（連 ${n} ${unit}）` : zone;
+}
 
 /** N 期合計（流量型） */
 export function sumLast(pts: readonly Point[], n: number): number | null {
@@ -181,10 +200,12 @@ export function infoReason(def: IndicatorDef, pts: readonly Point[]): string {
   const label = def.frequency === 'monthly' ? `近${n}月` : `近${n}日`;
   const ch = changeOver(pts, n);
   const last = pts.at(-1);
-  const zone = last && def.zones ? def.zones.find((z) => last[1] < z.max)?.label : undefined;
+  const zone = zoneText(def, pts);
+  // 有連續期數的指標會顯示在列上，數值欄已有年增率 → 不再重複「年增 x%」
+  const yoyHead = def.transform === 'yoy' && last && !def.zoneStreak ? `年增 ${fmt(last[1], 1)}%，` : '';
   const chText = ch
-    ? def.unit === '%'
-      ? `${def.transform === 'yoy' && last ? `年增 ${fmt(last[1], 1)}%，` : ''}${label} ${signed(ch.abs, def.frequency === 'monthly' ? 1 : 2)}pp`
+    ? isPctUnit(def.unit)
+      ? `${yoyHead}${label} ${signed(ch.abs, def.frequency === 'monthly' ? (def.unit === 'pp' ? def.decimals : 1) : 2)}pp`
       : `${label}變化 ${unitText(def, ch.abs)}`
     : null;
   return [zone, chText].filter(Boolean).join('，') || '資料不足';
@@ -253,17 +274,17 @@ export function recentDirection(def: IndicatorDef, pts: readonly Point[]): { dir
   // 判斷持平的門檻：價格類 0.5%、利率類 5bp、其他 1% 相對值
   let dir: Direction;
   if (def.changeInBp) dir = Math.abs(ch.abs) < 0.05 ? 'flat' : ch.abs > 0 ? 'up' : 'down';
-  else if (def.unit === '口' || def.unit === '家') dir = ch.abs === 0 ? 'flat' : ch.abs > 0 ? 'up' : 'down';
-  else if (def.unit === '%' || def.unit === 'k')
-    dir = Math.abs(ch.abs) < (def.unit === 'k' ? 25 : 0.1) ? 'flat' : ch.abs > 0 ? 'up' : 'down';
+  else if (def.unit === '口' || def.unit === '家' || def.unit === '分') dir = ch.abs === 0 ? 'flat' : ch.abs > 0 ? 'up' : 'down';
+  else if (isPctUnit(def.unit) || def.unit === 'k')
+    dir = Math.abs(ch.abs) < (def.unit === 'k' ? 25 : def.unit === 'pp' ? 0.05 : 0.1) ? 'flat' : ch.abs > 0 ? 'up' : 'down';
   else dir = ch.pct === null || Math.abs(ch.pct) < 0.5 ? 'flat' : ch.pct > 0 ? 'up' : 'down';
   const amount = def.changeInBp
     ? `${signed(ch.abs * 100, 0)}bp`
-    : def.unit === '%'
-      ? `${signed(ch.abs, 1)}pp`
+    : isPctUnit(def.unit)
+      ? `${signed(ch.abs, def.unit === 'pp' ? def.decimals : 1)}pp`
       : def.unit === 'k'
         ? `${signed(ch.abs, 0)}k`
-        : def.unit === '口' || def.unit === '家'
+        : def.unit === '口' || def.unit === '家' || def.unit === '分'
           ? unitText(def, ch.abs)
           : `${signed(ch.pct ?? 0, 1)}%`;
   return { dir, text: `${label} ${amount}` };

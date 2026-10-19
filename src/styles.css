@@ -21,6 +21,15 @@
   --ma60: #eb6834;
   --ma120: #4a3aa7;
   --ma240: #1baf7a;
+  /* 景氣燈號（國發會五色）：不隨紅漲綠跌切換；dataviz 驗證器（相鄰色、色盲模擬）通過，
+     黃藍、黃紅在白底對比 <3:1 → 圖上一律附文字標籤（右側燈號名、十字線讀值） */
+  --lamp-blue: #1a64c8;
+  --lamp-yellowblue: #1fa6d0;
+  --lamp-green: #0e8a3a;
+  --lamp-yellowred: #ec8b00;
+  --lamp-red: #d42f35;
+  /* 背景色帶透明度 */
+  --lamp-band-alpha: 0.1;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -45,6 +54,12 @@
     --ma60: #d95926;
     --ma120: #9085e9;
     --ma240: #199e70;
+    --lamp-blue: #035ecb;
+    --lamp-yellowblue: #2da3b7;
+    --lamp-green: #2c7026;
+    --lamp-yellowred: #c18510;
+    --lamp-red: #cb263e;
+    --lamp-band-alpha: 0.15;
     color-scheme: dark;
   }
 }
@@ -69,6 +84,12 @@
   --ma60: #d95926;
   --ma120: #9085e9;
   --ma240: #199e70;
+  --lamp-blue: #035ecb;
+  --lamp-yellowblue: #2da3b7;
+  --lamp-green: #2c7026;
+  --lamp-yellowred: #c18510;
+  --lamp-red: #cb263e;
+  --lamp-band-alpha: 0.15;
   color-scheme: dark;
 }
 /* 漲跌色慣例：台灣紅漲綠跌（預設）／美式綠漲紅跌 */
@@ -757,6 +778,16 @@ th {
   width: 10px;
   height: 3px;
   border-radius: 2px;
+}
+/* 景氣燈號圓點（顏色由 style 帶入 --lamp-*；文字仍用一般字色） */
+.lamp {
+  display: inline-block;
+  width: 0.72em;
+  height: 0.72em;
+  border-radius: 50%;
+  margin-right: 0.3em;
+  vertical-align: -0.05em;
+  flex: none;
 }
 .cp-chart {
   position: relative;
