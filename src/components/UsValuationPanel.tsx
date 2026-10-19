@@ -176,7 +176,6 @@ export function UsValuationPanel({ version, themeKey }: Props) {
       bands.push({ lower: bandValues[k]!, upper: bandValues[k + 1]!, color: hexAlpha(zoneColor(RIVER_MULTIPLES[k]!), alpha) });
     }
     priceS.attachPrimitive(new RiverBands(bands));
-    chart.priceScale('right', 0).applyOptions({ mode: PriceScaleMode.Logarithmic });
 
     // 中窗格：本益比，線段依區間上色（與指標表的 S&P本益比 圖一致）；虛線＝基期中位數
     const peS = chart.addSeries(
@@ -208,6 +207,12 @@ export function UsValuationPanel({ version, themeKey }: Props) {
     );
     spreadS.setData(rows.map((r, i) => (r.spread === null ? { time: times[i]! } : { time: times[i]!, value: r.spread })));
     spreadS.createPriceLine({ price: 0, color: textColor, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false });
+
+    // 對數軸只給河流圖那一格。要在三個窗格都建好之後才設：priceScale('right', i).applyOptions 會把選項合併進
+    // 圖表層級的 rightPriceScale 預設，之後新建的窗格都會繼承（實測中、下窗格也變成對數軸）
+    chart.priceScale('right', 0).applyOptions({ mode: PriceScaleMode.Logarithmic });
+    chart.priceScale('right', 1).applyOptions({ mode: PriceScaleMode.Normal });
+    chart.priceScale('right', 2).applyOptions({ mode: PriceScaleMode.Normal });
 
     const wm = (paneIndex: number, text: string) => {
       const pane = chart.panes()[paneIndex];
@@ -313,6 +318,7 @@ export function UsValuationPanel({ version, themeKey }: Props) {
           它決定的是部位大小（跌 25% 撐不撐得住），不是進出場時機。
           股債利差＝盈餘殖利率（EPS÷指數）− 美債10Y：負值＝無風險的債券報酬已高於股票的盈餘報酬，股票沒有估值緩衝。
           百分位與中位數以 {BASE_YEAR} 年起為基期（1871 年起均值 16 倍）；預估本益比（forward P/E）沒有免費資料源，看 FactSet Earnings Insight（每週五）。
+          EPS 每月更新一筆，所以河道與本益比呈階梯狀；2009 年本益比飆到 120 倍是 EPS 崩跌（分母變小），不是股價貴。
           資料：multpl.com（Shiller 月資料，最新一筆以最新收盤估計）、Yahoo ^GSPC、FRED DGS10。參考、不計分。
         </p>
       </PanelNote>

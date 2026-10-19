@@ -129,7 +129,8 @@ describe('美股估值面板', () => {
     // 倍數線不畫最新值水平線（只有指數、本益比、利差三條保留）
     expect(chartLog.series.filter((s) => s.priceLine).length).toBe(3);
     expect(chartLog.primitives).toBe(1);
-    expect(chartLog.scaleModes).toEqual([{ pane: 0, mode: 1 }]);
+    // 對數軸只有上窗格；中、下窗格明確設回一般軸（圖表層級預設會被前一個呼叫改掉）
+    expect(chartLog.scaleModes).toEqual([{ pane: 0, mode: 1 }, { pane: 1, mode: 0 }, { pane: 2, mode: 0 }]);
     expect(chartLog.priceLines).toEqual([
       { price: 25.5, axis: false },
       { price: 0, axis: false },
