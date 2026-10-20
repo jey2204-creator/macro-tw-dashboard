@@ -26,10 +26,10 @@ jobs:
         run: |
           mkdir -p /tmp/probe
           node scripts/probe/fwdProbe.mjs /tmp/probe
-          if [ -s /tmp/probe/msci-factsheet.pdf ]; then
-            pdftotext -layout /tmp/probe/msci-factsheet.pdf /tmp/probe/msci-factsheet.txt || true
-            grep -n -A3 -i "FUNDAMENTALS\|P/E Fwd" /tmp/probe/msci-factsheet.txt | head -20 >> /tmp/probe/log.txt || true
-          fi
+          for f in /tmp/probe/wb/*.pdf; do
+            [ -s "$f" ] || continue
+            pdftotext -layout "$f" "${f%.pdf}.txt" 2>/dev/null || echo "pdftotext 失敗 $f" >> /tmp/probe/log.txt
+          done
           while IFS= read -r line; do echo "::notice title=探測::$line"; done < <(head -n 30 /tmp/probe/log.txt)
       - name: 推送到 tv-probe-out 分支
         env:
