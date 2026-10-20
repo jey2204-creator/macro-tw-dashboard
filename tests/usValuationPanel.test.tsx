@@ -174,5 +174,9 @@ describe('美股估值面板', () => {
     expect(chartLog.series.map((s) => `${s.pane}:${s.type}`)).toEqual([
       '0:Line', '0:Line', '0:Line', '0:Line', '0:Line', '0:Line', '1:Line', '1:Line', '2:Baseline',
     ]);
+    // 圖例多一個圓點色塊，否則中窗格那個藍點看不懂
+    expect(screen.getAllByRole('listitem').map((e) => e.textContent)).toEqual([
+      '15–19倍 偏低', '19–23倍 合理', '23–27倍 偏高', '27–31倍 昂貴', '預估本益比（週）',
+    ]);
   });
 });

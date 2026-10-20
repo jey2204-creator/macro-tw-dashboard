@@ -399,6 +399,12 @@ export function UsValuationPanel({ version, themeKey }: Props) {
             {c.label}
           </span>
         ))}
+        {fs && (
+          <span className="ma-chip" role="listitem" aria-pressed="true" aria-disabled="true">
+            <i className="swatch uv-dot" style={{ background: 'var(--accent)' }} />
+            預估本益比（週）
+          </span>
+        )}
       </div>
 
       <div className="seg" role="group" aria-label="時間區間">
