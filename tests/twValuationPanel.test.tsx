@@ -163,13 +163,16 @@ describe('台股估值面板', () => {
     render(<TwValuationPanel version="v1" themeKey="auto-false-tw" />);
     await waitFor(() => expect(document.querySelector('.tv-bt')).toBeTruthy());
     const rows = [...document.querySelectorAll('.tv-bt tbody tr')].map((tr) => tr.textContent ?? '');
-    expect(rows[0]).toBe('本益比');
+    expect(rows[0]).toBe('本益比（倍）');
     expect(rows.slice(1, 5).map((r) => r.split(/\d/)[0])).toEqual(['<', '', '', '≥']);
-    expect(rows[5]).toBe('淨值比');
-    expect(rows.at(-1)).toMatch(/^所有月份（基準）264/);
-    // 最新本益比 26.1 → ≥23、淨值比 4.11 → ≥2.5 兩列標示
+    expect(rows[5]).toBe('淨值比（倍）');
+    expect(rows[10]).toBe('股債利差（pp）');
+    const firstCells = [...document.querySelectorAll('.tv-bt tbody tr')].map((tr) => tr.firstElementChild!.textContent);
+    expect(firstCells.slice(11, 14)).toEqual(['<0', '0–3', '≥3']);
+    expect(rows.at(-1)).toMatch(/^全部（基準）264/);
+    // 最新本益比 26.1 → ≥23、淨值比 4.11 → ≥2.5、股債利差 +1.88 → 0–3，三列標示
     const hl = [...document.querySelectorAll('.tv-bt tr.hl')].map((tr) => tr.firstElementChild!.textContent);
-    expect(hl).toEqual(['≥23', '≥2.5']);
+    expect(hl).toEqual(['≥23', '≥2.5', '0–3']);
     expect(document.querySelector('.tv-bt caption')!.textContent).toMatch(/2004-10～2026-09 月底/);
   });
 });

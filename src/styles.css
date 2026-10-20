@@ -1114,6 +1114,9 @@ th {
   color: var(--text-2);
   font-weight: 700;
 }
+.bt-table td.nowrap {
+  white-space: nowrap;
+}
 /* 跨市場對照：公布日標記統計與圖例 */
 .cm-stats {
   margin: 0 0 6px;

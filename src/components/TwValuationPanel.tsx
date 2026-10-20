@@ -87,15 +87,18 @@ interface Props {
   themeKey: string;
 }
 
+/** 整數百分比（手機上「前段／後段」一格放得下） */
+const pctInt = (v: number | null, sign = true) => (v === null ? '—' : `${sign && v > 0 ? '+' : ''}${Math.round(v)}%`);
+
 function BucketRow({ b, hl }: { b: ValBucket; hl?: boolean }) {
   return (
     <tr className={hl ? 'hl' : ''}>
       <td>{b.label}</td>
       <td className="r">{b.months}</td>
       <td className="r">{pctCell(b.avg1)}</td>
-      <td className="r">{pctCell(b.win1, false)}</td>
-      <td className="r">
-        {pctCell(b.early1)}／{pctCell(b.late1)}
+      <td className="r">{pctInt(b.win1, false)}</td>
+      <td className="r nowrap">
+        {pctInt(b.early1)}／{pctInt(b.late1)}
       </td>
       <td className="r">{pctCell(b.avg3)}</td>
     </tr>
@@ -129,7 +132,7 @@ export function TwValuationPanel({ version, themeKey }: Props) {
     () => summarizeTw(rows, data.peMonthly, data.pbMonthly, data.dyMonthly, data.eps, data.tw10y, data.us10y, PE_ZONES, PB_ZONES),
     [rows, data],
   );
-  const backtest = useMemo(() => valuationBacktest(data.peMonthly, data.pbMonthly, data.taiex), [data]);
+  const backtest = useMemo(() => valuationBacktest(data.peMonthly, data.pbMonthly, data.taiex, data.tw10y), [data]);
 
   const pickRange = (r: RangeKey) => {
     setRange(r);
@@ -274,6 +277,7 @@ export function TwValuationPanel({ version, themeKey }: Props) {
   }));
   const peHit = (b: ValBucket) => !!summary && summary.pe >= b.lo && summary.pe < b.hi;
   const pbHit = (b: ValBucket) => !!summary && summary.pb !== null && summary.pb >= b.lo && summary.pb < b.hi;
+  const spHit = (b: ValBucket) => !!summary && summary.spread !== null && summary.spread >= b.lo && summary.spread < b.hi;
 
   return (
     <section ref={sectionRef} id="sec-tv" className="regime ms tv" aria-label="台股估值">
@@ -396,7 +400,7 @@ export function TwValuationPanel({ version, themeKey }: Props) {
             </caption>
             <thead>
               <tr>
-                <th>區間（倍）</th>
+                <th>區間</th>
                 <th className="r">月數</th>
                 <th className="r">1年後</th>
                 <th className="r">上漲</th>
@@ -406,16 +410,24 @@ export function TwValuationPanel({ version, themeKey }: Props) {
             </thead>
             <tbody>
               <tr className="grp">
-                <td colSpan={6}>本益比</td>
+                <td colSpan={6}>本益比（倍）</td>
               </tr>
               {backtest.pe.map((b) => (
                 <BucketRow key={`pe${b.label}`} b={b} hl={peHit(b)} />
               ))}
               <tr className="grp">
-                <td colSpan={6}>淨值比</td>
+                <td colSpan={6}>淨值比（倍）</td>
               </tr>
               {backtest.pb.map((b) => (
                 <BucketRow key={`pb${b.label}`} b={b} hl={pbHit(b)} />
+              ))}
+              {backtest.spread.length > 0 && (
+                <tr className="grp">
+                  <td colSpan={6}>股債利差（pp）</td>
+                </tr>
+              )}
+              {backtest.spread.map((b) => (
+                <BucketRow key={`sp${b.label}`} b={b} hl={spHit(b)} />
               ))}
               <BucketRow b={backtest.base} />
             </tbody>

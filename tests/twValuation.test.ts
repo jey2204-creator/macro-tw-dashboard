@@ -161,6 +161,18 @@ describe('台股估值：回測（估值區間 vs 之後加權報酬）', () => 
     expect(bt.pe[1]!.avg1).toBeNull();
   });
 
+  it('股債利差分組：月底盈餘殖利率 − 當月台債 10Y；沒有台債資料就不分組', () => {
+    // 本益比 12／20／30 → 盈餘殖利率 8.33／5／3.33；台債 10Y 固定 4% → 利差 +4.33／+1／−0.67
+    const tw10y: Point[] = pe.map((p) => [p[0], 4]);
+    const bt = valuationBacktest(pe, pb, taiex, tw10y)!;
+    expect(bt.spread.map((b) => [b.label, b.months])).toEqual([
+      ['<0', 24],
+      ['0–3', 24],
+      ['≥3', 24],
+    ]);
+    expect(valuationBacktest(pe, pb, taiex)!.spread).toEqual([]);
+  });
+
   it('樣本少於 24 個月不回測', () => {
     expect(valuationBacktest(pe.slice(0, 10), pb.slice(0, 10), taiex)).toBeNull();
   });

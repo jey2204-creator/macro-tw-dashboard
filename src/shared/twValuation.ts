@@ -232,6 +232,8 @@ export interface ValBacktest {
   base: ValBucket;
   pe: ValBucket[];
   pb: ValBucket[];
+  /** 股債利差（月底盈餘殖利率 − 當月台債 10Y 平均）；沒有台債資料時為空 */
+  spread: ValBucket[];
 }
 
 /** 回測分組＝指標表的區間（本益比：偏低以下／合理／偏高／昂貴；淨值比：便宜／合理／偏高／昂貴） */
@@ -247,6 +249,12 @@ export const PB_BUCKETS: readonly [number, number, string][] = [
   [2, 2.5, '2.0–2.5'],
   [2.5, Infinity, '≥2.5'],
 ];
+/** 股債利差（pp）：負值＝債券殖利率高於盈餘殖利率（只出現在 1999–2001 年台債 5% 以上時） */
+export const SPREAD_BUCKETS: readonly [number, number, string][] = [
+  [-Infinity, 0, '<0'],
+  [0, 3, '0–3'],
+  [3, Infinity, '≥3'],
+];
 /** 前後段分界：前段含 2000 年泡沫、2008 金融海嘯；後段是 2013 年後的長多 */
 export const BACKTEST_SPLIT = '2013-01';
 /** 月報約在下個月第 7 個營業日公布 → 月底後 10 天起算報酬 */
@@ -258,12 +266,15 @@ interface Obs {
   month: string;
   pe: number;
   pb: number | null;
+  spread: number | null;
   r1: number | null;
   r3: number | null;
 }
 
-function observations(peM: readonly Point[], pbM: readonly Point[], taiex: readonly Point[]): Obs[] {
+function observations(peM: readonly Point[], pbM: readonly Point[], taiex: readonly Point[], tw10y: readonly Point[]): Obs[] {
   const pbBy = new Map(pbM.map((p) => [monthKey(p[0]), p[1]]));
+  // 當月台債 10Y 平均：月底時市場上已看得到這個利率水準（央行月資料晚公布，但不是未來資訊）
+  const y10By = new Map(tw10y.map((p) => [monthKey(p[0]), p[1]]));
   const dates = taiex.map((p) => p[0]);
   const lowerBound = (d: string) => {
     let lo = 0;
@@ -285,7 +296,8 @@ function observations(peM: readonly Point[], pbM: readonly Point[], taiex: reado
     const p0 = taiex[s]?.[1];
     const r1 = p0 && s + Y1 < taiex.length ? (taiex[s + Y1]![1] / p0 - 1) * 100 : null;
     const r3 = p0 && s + Y3 < taiex.length ? ((taiex[s + Y3]![1] / p0) ** (1 / 3) - 1) * 100 : null;
-    out.push({ month: key, pe, pb: pbBy.get(key) ?? null, r1, r3 });
+    const y = y10By.get(key);
+    out.push({ month: key, pe, pb: pbBy.get(key) ?? null, spread: y !== undefined && pe > 0 ? 100 / pe - y : null, r1, r3 });
   }
   return out;
 }
@@ -312,17 +324,25 @@ function bucket(label: string, lo: number, hi: number, obs: readonly Obs[]): Val
   };
 }
 
-export function valuationBacktest(peM: readonly Point[], pbM: readonly Point[], taiex: readonly Point[]): ValBacktest | null {
-  const obs = observations(peM, pbM, taiex);
+export function valuationBacktest(
+  peM: readonly Point[],
+  pbM: readonly Point[],
+  taiex: readonly Point[],
+  tw10y: readonly Point[] = [],
+): ValBacktest | null {
+  const obs = observations(peM, pbM, taiex, tw10y);
   if (obs.length < 24) return null;
   const inRange = (v: number | null, lo: number, hi: number) => v !== null && v >= lo && v < hi;
   return {
     start: obs[0]!.month,
     end: obs.at(-1)!.month,
     split: BACKTEST_SPLIT,
-    base: bucket('所有月份（基準）', -Infinity, Infinity, obs),
+    base: bucket('全部（基準）', -Infinity, Infinity, obs),
     pe: PE_BUCKETS.map(([lo, hi, label]) => bucket(label, lo, hi, obs.filter((o) => inRange(o.pe, lo, hi)))),
     pb: PB_BUCKETS.map(([lo, hi, label]) => bucket(label, lo, hi, obs.filter((o) => inRange(o.pb, lo, hi)))),
+    spread: obs.some((o) => o.spread !== null)
+      ? SPREAD_BUCKETS.map(([lo, hi, label]) => bucket(label, lo, hi, obs.filter((o) => inRange(o.spread, lo, hi))))
+      : [],
   };
 }
 
