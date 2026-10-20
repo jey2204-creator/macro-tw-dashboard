@@ -16,6 +16,8 @@ export type SourceSpec =
   | { provider: 'tw_gov'; symbol: 'NDC_SIGNAL' | 'NDC_PMI' | 'MOF_EXPORTS' | 'MOEA_ORDERS' | 'CBC_M1B_M2' | 'CBC_GOV10Y' }
   /** 證交所「證券市場統計概要」月報的大盤本益比、股價淨值比、殖利率（scripts/fetch-data/sources/twseValuation.ts） */
   | { provider: 'twse_val'; symbol: 'PE' | 'PB' | 'DY' }
+  /** MSCI 台灣指數 factsheet 的預估本益比（scripts/fetch-data/sources/msciFactsheet.ts） */
+  | { provider: 'msci_tw'; symbol: 'FWD_PE' }
   /** multpl.com 的 Shiller S&P 500 月資料（本益比、月均價、CAPE；scripts/fetch-data/sources/multpl.ts） */
   | { provider: 'multpl'; symbol: 'SP500_PE' | 'SP500_PRICE' | 'SHILLER_PE' }
   /** FactSet Insight 週報的 S&P 500 預估本益比（scripts/fetch-data/sources/factset.ts） */
@@ -550,6 +552,29 @@ export const INDICATORS: IndicatorDef[] = [
     infoRule: '僅供參考，不判多空、不計分（淨值比 ≥2.5 之後一年：2000 年約 −40%、2024–25 年 −2%～+92%，同一門檻在不同時代結果相反）',
     note: '證交所大盤總市值 ÷ 淨值總額，月底值（1999 年起）。不受單季獲利起伏影響，比本益比穩定；但 AI 循環讓台積電等權值股的 ROE 拉高，淨值比天花板跟著上移（2026 年 4 倍以上，2025 年以前最高 3.2 倍）。「1.8 以上減碼」這類固定門檻 2023 年起每個月都觸發，照做會錯過大漲。僅供參考不計分',
   },
+  // 預估本益比：MSCI 台灣指數 factsheet（每月一次、上月底值）。2021 起只有 Wayback 存檔的 14 個月份，之後每月累積
+  {
+    id: 'tw_fwd_pe', name: '台股預估本益比（MSCI 台灣，未來 12 月預估 EPS）', short: '台股預估本益比', category: 'tw_equity', frequency: 'monthly',
+    subtitle: '台股估值｜MSCI台灣÷未來12月預估EPS',
+    unit: '倍', decimals: 2, sources: [{ provider: 'msci_tw', symbol: 'FWD_PE' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 75, chart: 'line',
+    // 區間＝面板「建議」：15 倍以下可加碼（長期均值約 15）、15–20 正常持有、20 以上不加碼；23 以上是十年高點區
+    zones: [
+      { max: 12, label: '便宜', color: '--lamp-blue' },
+      { max: 15, label: '偏低', color: '--lamp-yellowblue' },
+      { max: 20, label: '合理', color: '--lamp-green' },
+      { max: 23, label: '偏高', color: '--lamp-yellowred' },
+      { max: Infinity, label: '昂貴', color: '--lamp-red' },
+    ],
+    refLines: [
+      { value: 23, label: '23倍' },
+      { value: 20, label: '20倍' },
+      { value: 15, label: '15倍' },
+    ],
+    zoneStreak: true, rowReason: true,
+    infoRule: '僅供參考，不判多空、不計分（2021 起只有 15 個月份，無法回測；看預估 EPS 每月是否下修）',
+    note: 'MSCI 台灣指數（74 檔大中型股，台積電約占 54%）÷ 分析師未來 12 個月預估 EPS，月底值，每月初更新（MSCI 官方 factsheet）。與近 12 月本益比的差距＝市場押注的盈餘成長；預估 EPS 一下修，預估本益比就會變貴。與加權指數口徑不同（彭博的加權預估本益比通常較低），只跟自己的歷史比。2021 起 Wayback 存檔 14 個月份，之後每月累積。僅供參考不計分',
+  },
   // 大盤殖利率：面板讀數用，不單獨顯示
   {
     id: 'tw_dy', name: '台股殖利率（大盤，證交所月報）', short: '台股殖利率', category: 'tw_equity', frequency: 'monthly',
@@ -795,6 +820,8 @@ export function sourceUrl(spec: SourceSpec): string {
       return 'https://insight.factset.com/topic/earnings';
     case 'twse_val':
       return 'https://www.twse.com.tw/zh/trading/statistics/index02.html';
+    case 'msci_tw':
+      return 'https://www.msci.com/indexes/index/915800';
   }
 }
 
@@ -827,4 +854,5 @@ export const PROVIDER_LABEL: Record<SourceSpec['provider'], string> = {
   multpl: 'multpl.com（Robert Shiller S&P 500 月資料）',
   factset: 'FactSet Insight（Earnings Insight 週報）',
   twse_val: '臺灣證交所 TWSE（證券市場統計概要月報）',
+  msci_tw: 'MSCI（台灣指數 factsheet）',
 };

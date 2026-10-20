@@ -4,6 +4,7 @@ import type { FactsetEpsFile } from '../shared/factsetEps';
 import type { BreadthStressFile } from '../shared/breadthStress';
 import type { ForeignChipsFile } from '../shared/foreignChips';
 import type { MarginStressFile } from '../shared/marginStress';
+import type { MsciTwFile } from '../shared/msciTw';
 import type { BacktestFile, SeriesFile, SummaryFile } from '../shared/types';
 
 export type LoadState<T> =
@@ -192,6 +193,22 @@ export function useFactsetEps(version: string | null): FactsetEpsFile | null {
     const ctrl = new AbortController();
     getJson<FactsetEpsFile>(`${DATA_BASE}/factset-eps.json?v=${encodeURIComponent(version)}`, ctrl.signal)
       .then((data) => setState({ v: version, data: data.schemaVersion === 1 && Array.isArray(data.posts) ? data : null }))
+      .catch(() => {
+        if (!ctrl.signal.aborted) setState({ v: version, data: null });
+      });
+    return () => ctrl.abort();
+  }, [version]);
+  return state && state.v === version ? state.data : null;
+}
+
+/** MSCI 台灣 factsheet 月底估值（選用資料）：載入失敗時回傳 null */
+export function useMsciTw(version: string | null): MsciTwFile | null {
+  const [state, setState] = useState<{ v: string; data: MsciTwFile | null } | null>(null);
+  useEffect(() => {
+    if (!version) return;
+    const ctrl = new AbortController();
+    getJson<MsciTwFile>(`${DATA_BASE}/msci-tw.json?v=${encodeURIComponent(version)}`, ctrl.signal)
+      .then((data) => setState({ v: version, data: data.schemaVersion === 1 && Array.isArray(data.records) ? data : null }))
       .catch(() => {
         if (!ctrl.signal.aborted) setState({ v: version, data: null });
       });

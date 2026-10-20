@@ -100,9 +100,9 @@ describe('景氣燈號分區與顏色', () => {
     expect([9, 16, 17, 22, 23, 31, 32, 37, 38, 45].map(label)).toEqual([
       '藍燈', '藍燈', '黃藍燈', '黃藍燈', '綠燈', '綠燈', '黃紅燈', '黃紅燈', '紅燈', '紅燈',
     ]);
-    // 有顏色分區的只有估值（S&P 本益比、台股本益比與淨值比：便宜→昂貴，與燈號同一套冷→熱色）與景氣燈號；
+    // 有顏色分區的只有估值（S&P 本益比、台股本益比、淨值比與預估本益比：便宜→昂貴，與燈號同一套冷→熱色）與景氣燈號；
     // 其他台灣指標（成長／衰退等）不上色
-    expect(INDICATORS.filter((d) => coloredZones(d)).map((d) => d.id)).toEqual(['spx_pe', 'tw_pe', 'tw_pb', 'tw_signal']);
+    expect(INDICATORS.filter((d) => coloredZones(d)).map((d) => d.id)).toEqual(['spx_pe', 'tw_pe', 'tw_pb', 'tw_fwd_pe', 'tw_signal']);
   });
 
   it('色帶：相鄰區間首尾相接，最上與最下延伸到圖邊', () => {

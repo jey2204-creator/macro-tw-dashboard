@@ -1109,6 +1109,11 @@ th {
 .tv .ma-chip[aria-disabled='true'] {
   cursor: default;
 }
+.tv .swatch.tv-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
 .bt-table tr.grp td {
   padding-top: 6px;
   color: var(--text-2);

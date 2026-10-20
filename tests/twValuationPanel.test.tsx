@@ -89,9 +89,13 @@ const FILES: Record<string, SeriesFile> = {
   tw_dy: series('tw_dy', [flat('2026-09-01', 1.58)]),
   tw10y: series('tw10y', [flat('2026-07-01', 1.9), flat('2026-08-01', 1.955)]),
   us10y: series('us10y', [flat('2026-10-16', 5.09)]),
+  usdtwd: series('usdtwd', [flat('2026-05-29', 31.424), flat('2026-09-28', 31.85)]),
 };
 
+/** MSCI 台灣 factsheet 紀錄（第四個測試才提供；其餘回 404 → 面板沒有預估本益比列） */
+let MSCI: object | null = null;
 beforeEach(() => {
+  MSCI = null;
   chartLog.series = [];
   chartLog.watermarks = [];
   chartLog.priceLines = [];
@@ -99,6 +103,9 @@ beforeEach(() => {
   chartLog.scaleModes = [];
   window.localStorage.clear();
   vi.stubGlobal('fetch', (url: string) => {
+    if (/msci-tw\.json/.test(url)) {
+      return Promise.resolve(MSCI ? new Response(JSON.stringify(MSCI), { status: 200 }) : new Response('not found', { status: 404 }));
+    }
     const id = /series\/([a-z0-9_]+)\.json/.exec(url)?.[1] ?? '';
     const f = FILES[id];
     return Promise.resolve(f ? new Response(JSON.stringify(f), { status: 200 }) : new Response('not found', { status: 404 }));
@@ -174,5 +181,34 @@ describe('台股估值面板', () => {
     const hl = [...document.querySelectorAll('.tv-bt tr.hl')].map((tr) => tr.firstElementChild!.textContent);
     expect(hl).toEqual(['≥23', '≥2.5', '0–3']);
     expect(document.querySelector('.tv-bt caption')!.textContent).toMatch(/2004-10～2026-09 月底/);
+  });
+
+  it('有 MSCI 紀錄時：第四行讀數（預估本益比、隱含成長、對全球溢價、EPS 預估變化、歷史範圍）、本益比窗格多一條點狀序列', async () => {
+    const r = (asOf: string, fwdPe: number, ytd: number, extra: object = {}) => ({
+      asOf, fwdPe, pe: null, pbv: null, dy: 1.4, ret1m: null, ytd, acwiFwdPe: null, ...extra,
+    });
+    MSCI = {
+      schemaVersion: 1,
+      generatedAt: '2026-10-20T00:00:00Z',
+      records: [
+        r('2022-11-30', 12.19, -25.07),
+        r('2026-05-29', 22.71, 60.54),
+        r('2026-09-28', 18.65, 70.7, { pe: 29.51, acwiFwdPe: 16.2 }),
+      ],
+      annual: {},
+    };
+    render(<TwValuationPanel version="v1" themeKey="auto-false-tw" />);
+    await waitFor(() => expect(document.querySelector('.tv-fwd')).toBeTruthy());
+    const l4 = document.querySelector('.tv-fwd')!.textContent ?? '';
+    expect(l4).toMatch(/預估本益比 18\.65倍→ 合理（MSCI 台灣 2026\/9 底；近 12 月 29\.51倍 → 隱含 EPS 成長 \+58%）｜對全球 16\.20倍 \+15%/);
+    // 5 月底 → 9 月底：含息報酬 1.707/1.6054 × 扣息 × 22.71/18.65 × 匯率 31.85/31.424 ≈ +30.7%
+    expect(l4).toMatch(/｜未來 12 月 EPS 預估比 2026\/5 底 \+30\.\d%（4 個月）/);
+    expect(l4).toMatch(/2021 起 3 期：最低 12\.19（2022\/11）、中位數 18\.65、最高 22\.71（2026\/5）/);
+    expect(l4).not.toMatch(/⚠️/);
+    await waitFor(() => expect(chartLog.series.length).toBe(11));
+    expect(chartLog.series.map((x) => `${x.pane}:${x.type}`)).toEqual([
+      '0:Line', '0:Line', '0:Line', '0:Line', '0:Line', '0:Line', '0:Line', '1:Line', '1:Line', '2:Line', '3:Baseline',
+    ]);
+    expect(screen.getAllByRole('listitem').map((e) => e.textContent).at(-1)).toBe('預估本益比（MSCI 月）');
   });
 });

@@ -12,13 +12,14 @@ import {
   type Time,
 } from 'lightweight-charts';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSeriesMap } from '../hooks/useData';
+import { useMsciTw, useSeriesMap } from '../hooks/useData';
 import { CHART_INTERACTION, attachTimeAxis, resetPaneStretch, resetPriceScales, TIME_AXIS } from '../lib/chartInteraction';
 import { RiverBands, type RiverBand } from '../lib/riverBands';
 import { loadPref, savePref } from '../lib/storage';
 import { cssVar, pctCell } from '../lib/stressFormat';
 import { hexAlpha } from '../lib/zoneBands';
 import { INDICATOR_MAP, zoneAt } from '../shared/indicators';
+import { msciSummary } from '../shared/msciTw';
 import { rangeStart, type Point, type RangeKey } from '../shared/timeseries';
 import {
   TW_BASE_START,
@@ -44,9 +45,10 @@ const RANGES: { k: RangeKey; label: string }[] = [
   { k: 'ALL', label: '全部' },
 ];
 const PANE_STRETCH = [0.46, 0.18, 0.18, 0.18] as const;
-const IDS = ['taiex', 'tw_pe', 'tw_pb', 'tw_dy', 'tw10y', 'us10y'];
+const IDS = ['taiex', 'tw_pe', 'tw_pb', 'tw_dy', 'tw10y', 'us10y', 'usdtwd'];
 const PE_ZONES = INDICATOR_MAP['tw_pe']!.zones ?? [];
 const PB_ZONES = INDICATOR_MAP['tw_pb']!.zones ?? [];
+const FWD_ZONES = INDICATOR_MAP['tw_fwd_pe']!.zones ?? [];
 const BASE_YEAR = TW_BASE_START.slice(0, 4);
 
 const fin = (v: number | null | undefined) => v !== null && v !== undefined && Number.isFinite(v);
@@ -57,6 +59,8 @@ const fpct = (v: number | null | undefined, d = 1) => (fin(v) ? `${v! > 0 ? '+' 
 const fpp = (v: number | null | undefined) => (fin(v) ? `${v! > 0 ? '+' : ''}${v!.toFixed(2)}pp` : '—');
 const pctile = (v: number | null | undefined) => (fin(v) ? `第 ${Math.round(v!)} 百分位` : '—');
 const monthLabel = (ym: string | null) => (ym ? `${Number(ym.slice(5, 7))}月` : '');
+/** 2026-09-30 → 2026/9 */
+const ymLabel = (d: string) => `${d.slice(0, 4)}/${Number(d.slice(5, 7))}`;
 
 /** 進入可視範圍（含前後 600px）才載入資料 */
 function useNearViewport(ref: { current: HTMLElement | null }): boolean {
@@ -116,6 +120,7 @@ export function TwValuationPanel({ version, themeKey }: Props) {
   const [chartGen, setChartGen] = useState(0);
 
   const files = useSeriesMap(near ? IDS : [], version);
+  const msci = useMsciTw(near ? version : null);
   const data = useMemo(() => {
     const ready = (id: string): Point[] => (files[id]?.status === 'ready' ? closesOf(files[id]!.data.data) : []);
     const taiex = ready('taiex');
@@ -125,7 +130,7 @@ export function TwValuationPanel({ version, themeKey }: Props) {
     const eps = perShareSeries(peMonthly, taiex);
     const bv = perShareSeries(pbMonthly, taiex);
     const rows = twRiverRows(taiex, eps, bv, tw10y);
-    return { rows, taiex, peMonthly, pbMonthly, dyMonthly: ready('tw_dy'), tw10y, us10y: ready('us10y'), eps };
+    return { rows, taiex, peMonthly, pbMonthly, dyMonthly: ready('tw_dy'), tw10y, us10y: ready('us10y'), usdTwd: ready('usdtwd'), eps };
   }, [files]);
   const { rows } = data;
   const summary = useMemo(
@@ -133,6 +138,8 @@ export function TwValuationPanel({ version, themeKey }: Props) {
     [rows, data],
   );
   const backtest = useMemo(() => valuationBacktest(data.peMonthly, data.pbMonthly, data.taiex, data.tw10y), [data]);
+  // MSCI 台灣預估本益比（月）：讀數＋本益比窗格的點
+  const fwd = useMemo(() => msciSummary(msci, data.usdTwd, rows.at(-1)?.date ?? '2000-01-01'), [msci, data.usdTwd, rows]);
 
   const pickRange = (r: RangeKey) => {
     setRange(r);
@@ -196,6 +203,29 @@ export function TwValuationPanel({ version, themeKey }: Props) {
     if (summary.peStats) {
       peS.createPriceLine({ price: summary.peStats.median, color: textColor, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false });
     }
+    // 預估本益比（MSCI 每月一點）：日期貼到 ≤ 資料日的交易日（所有序列時間點相同，色帶才能用列索引畫）
+    const fwdPts = new Map<string, number>();
+    for (const r of msci?.records ?? []) {
+      const row = twRowAtOrBefore(rows, r.asOf);
+      if (row && row.date >= rows[0]!.date) fwdPts.set(row.date, r.fwdPe);
+    }
+    if (fwdPts.size > 0) {
+      const fwdS = chart.addSeries(
+        LineSeries,
+        {
+          color: cssVar('--accent'),
+          lineWidth: 1,
+          lineStyle: LineStyle.Dotted,
+          pointMarkersVisible: true,
+          pointMarkersRadius: 3,
+          priceFormat: x1Fmt,
+          lastValueVisible: false,
+          priceLineVisible: false,
+        },
+        1,
+      );
+      fwdS.setData([...fwdPts.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([d, v]) => ({ time: d as Time, value: v })));
+    }
 
     // 第三格：淨值比（依區間上色）；虛線＝基期中位數
     const pbS = chart.addSeries(LineSeries, { color: pbColor(summary.pb ?? 0), lineWidth: 2, priceFormat: x2Fmt, lastValueVisible: false }, 2);
@@ -247,7 +277,7 @@ export function TwValuationPanel({ version, themeKey }: Props) {
       chart.remove();
       chartRef.current = null;
     };
-  }, [loaded, rows, summary, themeKey]);
+  }, [loaded, rows, summary, msci, themeKey]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -335,6 +365,31 @@ export function TwValuationPanel({ version, themeKey }: Props) {
             )}
             {summary.usSpread !== null && <span className="muted">｜對美債10Y {fpp(summary.usSpread)}</span>}
           </p>
+          {fwd && (
+            <p className="score num tv-state tv-fwd">
+              預估本益比 <b>{f2(fwd.latest.fwdPe)}倍</b>
+              {zoneAt(FWD_ZONES, fwd.latest.fwdPe) && <>→ <b>{zoneAt(FWD_ZONES, fwd.latest.fwdPe)!.label}</b></>}
+              （MSCI 台灣 {ymLabel(fwd.latest.asOf)} 底
+              {fwd.impliedGrowth !== null && <>；近 12 月 {f2(fwd.latest.pe)}倍 → 隱含 EPS 成長 {fpct(fwd.impliedGrowth, 0)}</>}）
+              {fwd.premium !== null && <>｜對全球 {f2(fwd.latest.acwiFwdPe)}倍 {fpct(fwd.premium, 0)}</>}
+              {fwd.epsChg !== null && fwd.prevAsOf && (
+                fwd.cut ? (
+                  <b className="warn">
+                    {' '}⚠️ 未來 12 月 EPS 預估比 {ymLabel(fwd.prevAsOf)} 底 {fpct(fwd.epsChg)}（下修）
+                  </b>
+                ) : (
+                  <>
+                    ｜未來 12 月 EPS 預估比 {ymLabel(fwd.prevAsOf)} 底 <b>{fpct(fwd.epsChg)}</b>
+                    {fwd.epsMonths !== null && fwd.epsMonths > 1 && <span className="muted">（{fwd.epsMonths} 個月）</span>}
+                  </>
+                )
+              )}
+              <span className="muted">
+                ｜2021 起 {fwd.n} 期：最低 {f2(fwd.min.fwdPe)}（{ymLabel(fwd.min.asOf)}）、中位數 {f2(fwd.median)}、最高 {f2(fwd.max.fwdPe)}（{ymLabel(fwd.max.asOf)}）
+              </span>
+              {fwd.stale && <b className="warn">（超過 2 個月未更新）</b>}
+            </p>
+          )}
         </>
       )}
 
@@ -345,7 +400,11 @@ export function TwValuationPanel({ version, themeKey }: Props) {
           台股獲利循環大：獲利谷底時本益比會飆高（2009 年底 110 倍以上、2010 年 1 月 125 倍），高峰時反而看起來便宜，所以加看淨值比（不受單季獲利起伏影響），
           但 AI 循環把權值股 ROE 拉高，淨值比的天花板也跟著上移。股債利差＝盈餘殖利率 − 台灣 10 年期公債（月均）；外資比較的是美債，另列在讀數末。
           百分位與中位數以 {BASE_YEAR} 年起為基期（證交所自 2005 年起總市值改以發行股數計算）。
-          資料：證交所「證券市場統計概要」月報（1999 年起，月底值、每月第 7 個營業日左右公布）、Yahoo ^TWII、央行資本市場利率、FRED DGS10。參考、不計分。
+          預估本益比＝MSCI 台灣指數（74 檔大中型股，台積電約占 54%）÷ 分析師未來 12 個月預估 EPS（MSCI 官方 factsheet，月底值、每月初更新）；
+          中窗格藍點即是。與近 12 月本益比的差距＝市場押注的成長。「未來 12 月 EPS 預估」由 factsheet 的美元含息報酬、殖利率與美元兌台幣推算（台幣計）：
+          這個窗格每月往後滾一個月，成長期每月本來就會上升，所以持平或下降都標 ⚠️ 下修。口徑與加權指數不同（彭博的加權預估本益比通常較低），只跟自己的歷史比；
+          2021 起只有 Wayback 存檔的 14 個月份，之後每月累積。
+          資料：證交所「證券市場統計概要」月報（1999 年起，月底值、每月第 7 個營業日左右公布）、MSCI 台灣指數 factsheet、Yahoo ^TWII 與 TWD=X、央行資本市場利率、FRED DGS10。參考、不計分。
         </p>
       </PanelNote>
 
@@ -356,6 +415,12 @@ export function TwValuationPanel({ version, themeKey }: Props) {
             {c.label}
           </span>
         ))}
+        {fwd && (
+          <span className="ma-chip" role="listitem" aria-pressed="true" aria-disabled="true">
+            <i className="swatch tv-dot" style={{ background: 'var(--accent)' }} />
+            預估本益比（MSCI 月）
+          </span>
+        )}
       </div>
 
       <div className="seg" role="group" aria-label="時間區間">
