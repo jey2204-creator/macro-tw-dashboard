@@ -14,6 +14,7 @@ import { fetchTaifex } from './sources/taifex';
 import { fetchTpex, fetchTwse } from './sources/twExchanges';
 import { fetchTwGov } from './sources/twGov';
 import { fetchTwseChips } from './sources/twseChips';
+import { fetchTwseValuation } from './sources/twseValuation';
 import type { SourceFetchResult } from './sources/types';
 import { fetchYahoo } from './sources/yahoo';
 
@@ -104,6 +105,9 @@ async function fetchFromSource(
     case 'factset':
       // 只抓比快取新的週報文章；歷史無法回補，從開始抓的那週往後累積
       return fetchFactsetForwardPe(cacheLast ? cached!.data : null, http);
+    case 'twse_val':
+      // 沒有快取時回補 1999 年起每年 12 月檔；之後只在缺上個月時抓最新一期
+      return fetchTwseValuation(spec.symbol, cacheLast ? cached!.data : null, today, http, fast);
   }
 }
 

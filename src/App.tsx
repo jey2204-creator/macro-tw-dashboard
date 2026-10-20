@@ -10,6 +10,7 @@ import { MarginStressPanel } from './components/MarginStressPanel';
 import { PolicyInflationPanel } from './components/PolicyInflationPanel';
 import { RegimePanel } from './components/RegimePanel';
 import { SourceStatus } from './components/SourceStatus';
+import { TwValuationPanel } from './components/TwValuationPanel';
 import { UsValuationPanel } from './components/UsValuationPanel';
 import { useBacktest, useCalendar, useBreadthStress, useForeignChips, useMarginStress, useSummary } from './hooks/useData';
 import { buildRow } from './lib/rows';
@@ -201,6 +202,7 @@ export default function App() {
               now={new Date(nowMs)}
             />
             <PolicyInflationPanel version={summary.generatedAt} themeKey={themeKey} />
+            <TwValuationPanel version={summary.generatedAt} themeKey={themeKey} />
             <UsValuationPanel version={summary.generatedAt} themeKey={themeKey} />
             <ForeignChipsPanel data={foreignChips} themeKey={themeKey} />
             <MarginStressPanel data={marginStress} themeKey={themeKey} />

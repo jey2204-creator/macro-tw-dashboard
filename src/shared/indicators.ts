@@ -13,7 +13,9 @@ export type SourceSpec =
   | { provider: 'taifex'; symbol: 'TXF_FOREIGN_OI' | 'MXF_RETAIL_OI' | 'TXO_FOREIGN_NET' | 'TX_TOP10_SPECIFIC' }
   | { provider: 'naver_kr'; symbol: 'KOSPI_FOREIGN' }
   /** 台灣官方總經（政府資料開放平台；scripts/fetch-data/sources/twGov.ts） */
-  | { provider: 'tw_gov'; symbol: 'NDC_SIGNAL' | 'NDC_PMI' | 'MOF_EXPORTS' | 'MOEA_ORDERS' | 'CBC_M1B_M2' }
+  | { provider: 'tw_gov'; symbol: 'NDC_SIGNAL' | 'NDC_PMI' | 'MOF_EXPORTS' | 'MOEA_ORDERS' | 'CBC_M1B_M2' | 'CBC_GOV10Y' }
+  /** 證交所「證券市場統計概要」月報的大盤本益比、股價淨值比、殖利率（scripts/fetch-data/sources/twseValuation.ts） */
+  | { provider: 'twse_val'; symbol: 'PE' | 'PB' | 'DY' }
   /** multpl.com 的 Shiller S&P 500 月資料（本益比、月均價、CAPE；scripts/fetch-data/sources/multpl.ts） */
   | { provider: 'multpl'; symbol: 'SP500_PE' | 'SP500_PRICE' | 'SHILLER_PE' }
   /** FactSet Insight 週報的 S&P 500 預估本益比（scripts/fetch-data/sources/factset.ts） */
@@ -187,6 +189,13 @@ export const INDICATORS: IndicatorDef[] = [
     market: true, changeInBp: true,
     rule: { kind: 'risingIsBearish', lookback: 20, mode: 'abs', bearAt: 0.2, bullAt: -0.2 },
     weight: 1, maxAgeDays: 7, note: '全球資產定價錨；急升壓抑科技股評價',
+  },
+  // 台灣 10 年期公債（央行「資本市場利率」月資料，約晚 1.5 個月）：台股估值面板的股債利差用，不單獨顯示
+  {
+    id: 'tw10y', name: '台灣 10 年期公債殖利率（次級市場，月）', short: '台債10Y', category: 'rates', frequency: 'monthly',
+    unit: '%', decimals: 2, sources: [{ provider: 'tw_gov', symbol: 'CBC_GOV10Y' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 110, hidden: true,
+    note: '央行資本市場利率：十年期政府公債次級市場利率（月）。台股估值面板的股債利差用，不計分',
   },
   {
     id: 'spread', name: '10Y−2Y 利差', short: '10Y-2Y', category: 'rates', frequency: 'daily',
@@ -494,6 +503,60 @@ export const INDICATORS: IndicatorDef[] = [
     market: true, rule: { kind: 'trend' }, weight: 0.25, maxAgeDays: 5,
     note: '中小型股風險偏好',
   },
+  // ── 台股估值（僅供參考，權重 0；「台股估值」面板用）──
+  // 證交所月報的大盤（加權指數採樣股票）值，月底、1999 年起。回測（2026-10，claude/台股估值回測紀錄）：
+  // 估值區間對之後一年報酬，前段（1999–2012）與後段（2013–）方向不一致 → 只看不計分
+  {
+    id: 'tw_pe', name: '台股本益比（大盤市值 ÷ 近四季純益，證交所月報）', short: '台股本益比', category: 'tw_equity', frequency: 'monthly',
+    subtitle: '台股估值｜大盤市值÷近四季純益',
+    unit: '倍', decimals: 2, sources: [{ provider: 'twse_val', symbol: 'PE' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 85, chart: 'line',
+    // 區間＝「台股估值」面板河流圖的倍數線：15（2005 起 25 分位）、19（約 70 分位）、23（約 90 分位）；11 以下是 2009、2022 年谷底
+    zones: [
+      { max: 11, label: '便宜', color: '--lamp-blue' },
+      { max: 15, label: '偏低', color: '--lamp-yellowblue' },
+      { max: 19, label: '合理', color: '--lamp-green' },
+      { max: 23, label: '偏高', color: '--lamp-yellowred' },
+      { max: Infinity, label: '昂貴', color: '--lamp-red' },
+    ],
+    refLines: [
+      { value: 27, label: '27倍' },
+      { value: 23, label: '23倍' },
+      { value: 19, label: '19倍' },
+      { value: 15, label: '15倍' },
+      { value: 11, label: '11倍' },
+    ],
+    zoneStreak: true, rowReason: true,
+    infoRule: '僅供參考，不判多空、不計分（2026-10 回測：估值區間對之後一年報酬前後兩段方向不一致；估值用來決定部位大小）',
+    note: '證交所大盤（加權指數採樣股票）總市值 ÷ 近四季純益總額，月底值，每月第 7 個營業日左右公布上月（1999 年起）。2005 年起中位數約 17 倍。台股獲利循環大：2009 年 1 月 9 倍、一年後 125 倍（獲利崩跌、分母變小），所以獲利谷底時本益比偏高、高峰時看起來便宜，要搭配淨值比一起看。回測：本益比區間對之後一年報酬前後兩段方向不一致。僅供參考不計分',
+  },
+  {
+    id: 'tw_pb', name: '台股股價淨值比（大盤市值 ÷ 淨值，證交所月報）', short: '台股淨值比', category: 'tw_equity', frequency: 'monthly',
+    subtitle: '台股估值｜大盤市值÷淨值',
+    unit: '倍', decimals: 2, sources: [{ provider: 'twse_val', symbol: 'PB' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 85, chart: 'line',
+    zones: [
+      { max: 1.5, label: '便宜', color: '--lamp-blue' },
+      { max: 2, label: '合理', color: '--lamp-green' },
+      { max: 2.5, label: '偏高', color: '--lamp-yellowred' },
+      { max: Infinity, label: '昂貴', color: '--lamp-red' },
+    ],
+    refLines: [
+      { value: 2.5, label: '2.5倍' },
+      { value: 2, label: '2倍' },
+      { value: 1.5, label: '1.5倍' },
+    ],
+    zoneStreak: true, rowReason: true,
+    infoRule: '僅供參考，不判多空、不計分（淨值比 ≥2.5 之後一年：2000 年約 −40%、2024–25 年 −2%～+92%，同一門檻在不同時代結果相反）',
+    note: '證交所大盤總市值 ÷ 淨值總額，月底值（1999 年起）。不受單季獲利起伏影響，比本益比穩定；但 AI 循環讓台積電等權值股的 ROE 拉高，淨值比天花板跟著上移（2026 年 4 倍以上，2025 年以前最高 3.2 倍）。「1.8 以上減碼」這類固定門檻 2023 年起每個月都觸發，照做會錯過大漲。僅供參考不計分',
+  },
+  // 大盤殖利率：面板讀數用，不單獨顯示
+  {
+    id: 'tw_dy', name: '台股殖利率（大盤，證交所月報）', short: '台股殖利率', category: 'tw_equity', frequency: 'monthly',
+    unit: '%', decimals: 2, sources: [{ provider: 'twse_val', symbol: 'DY' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 85, hidden: true,
+    note: '大盤股利總額 ÷ 總市值（含股票股利；報表另附現金殖利率）。台股估值面板讀數用，不計分',
+  },
   // ── 台股籌碼（僅供參考，權重 0；待回測驗證後再決定是否計分） ──
   {
     id: 'fut_foreign_oi', name: '外資台指期淨未平倉', short: '外資期淨OI', category: 'tw_chips', frequency: 'daily',
@@ -730,6 +793,8 @@ export function sourceUrl(spec: SourceSpec): string {
       return `https://www.multpl.com/${MULTPL_PAGE[spec.symbol]}`;
     case 'factset':
       return 'https://insight.factset.com/topic/earnings';
+    case 'twse_val':
+      return 'https://www.twse.com.tw/zh/trading/statistics/index02.html';
   }
 }
 
@@ -747,6 +812,7 @@ export const TW_GOV_DATASET_ID: Record<Extract<SourceSpec, { provider: 'tw_gov' 
   MOF_EXPORTS: 8380,
   MOEA_ORDERS: 6845,
   CBC_M1B_M2: 6024,
+  CBC_GOV10Y: 10840,
 };
 
 export const PROVIDER_LABEL: Record<SourceSpec['provider'], string> = {
@@ -760,4 +826,5 @@ export const PROVIDER_LABEL: Record<SourceSpec['provider'], string> = {
   tw_gov: '政府資料開放平台（國發會／財政部／經濟部／央行）',
   multpl: 'multpl.com（Robert Shiller S&P 500 月資料）',
   factset: 'FactSet Insight（Earnings Insight 週報）',
+  twse_val: '臺灣證交所 TWSE（證券市場統計概要月報）',
 };
