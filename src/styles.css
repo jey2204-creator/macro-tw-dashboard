@@ -1083,6 +1083,22 @@ th {
 .pi .ma-chip[aria-disabled='true'] {
   cursor: default;
 }
+/* 美股估值：上窗格河流圖（對數軸）、中窗格本益比、下窗格股債利差 */
+.uv-host {
+  height: max(480px, 66vh);
+}
+.wide .uv-host {
+  height: 560px;
+}
+.uv .ma-chip[aria-disabled='true'] {
+  cursor: default;
+}
+/* 預估本益比是每週一個點，圖例用圓點而非線段 */
+.uv .swatch.uv-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
 /* 跨市場對照：公布日標記統計與圖例 */
 .cm-stats {
   margin: 0 0 6px;

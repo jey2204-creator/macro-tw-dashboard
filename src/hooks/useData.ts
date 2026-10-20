@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { CalendarFile } from '../shared/calendar';
+import type { FactsetEpsFile } from '../shared/factsetEps';
 import type { BreadthStressFile } from '../shared/breadthStress';
 import type { ForeignChipsFile } from '../shared/foreignChips';
 import type { MarginStressFile } from '../shared/marginStress';
@@ -175,6 +176,22 @@ export function useForeignChips(version: string | null): ForeignChipsFile | null
     const ctrl = new AbortController();
     getJson<ForeignChipsFile>(`${DATA_BASE}/foreign-chips.json?v=${encodeURIComponent(version)}`, ctrl.signal)
       .then((data) => setState({ v: version, data: data.schemaVersion === 1 && Array.isArray(data.rows) ? data : null }))
+      .catch(() => {
+        if (!ctrl.signal.aborted) setState({ v: version, data: null });
+      });
+    return () => ctrl.abort();
+  }, [version]);
+  return state && state.v === version ? state.data : null;
+}
+
+/** FactSet 週報估值讀數（選用資料）：載入失敗時回傳 null */
+export function useFactsetEps(version: string | null): FactsetEpsFile | null {
+  const [state, setState] = useState<{ v: string; data: FactsetEpsFile | null } | null>(null);
+  useEffect(() => {
+    if (!version) return;
+    const ctrl = new AbortController();
+    getJson<FactsetEpsFile>(`${DATA_BASE}/factset-eps.json?v=${encodeURIComponent(version)}`, ctrl.signal)
+      .then((data) => setState({ v: version, data: data.schemaVersion === 1 && Array.isArray(data.posts) ? data : null }))
       .catch(() => {
         if (!ctrl.signal.aborted) setState({ v: version, data: null });
       });

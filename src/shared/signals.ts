@@ -159,7 +159,7 @@ export function evaluateSignal(def: IndicatorDef, pts: readonly Point[]): Signal
 }
 
 /** 計數型單位：數值後面直接接單位字 */
-const COUNT_UNITS = new Set<IndicatorDef['unit']>(['億', '口', '家', '分']);
+const COUNT_UNITS = new Set<IndicatorDef['unit']>(['億', '口', '家', '分', '倍']);
 
 const unitText = (def: Pick<IndicatorDef, 'unit' | 'decimals'>, v: number) =>
   `${v > 0 && def.unit !== '家' ? '+' : ''}${v.toLocaleString('en-US', { minimumFractionDigits: def.decimals, maximumFractionDigits: def.decimals })}${COUNT_UNITS.has(def.unit) ? def.unit : ''}`;
@@ -275,6 +275,7 @@ export function recentDirection(def: IndicatorDef, pts: readonly Point[]): { dir
   let dir: Direction;
   if (def.changeInBp) dir = Math.abs(ch.abs) < 0.05 ? 'flat' : ch.abs > 0 ? 'up' : 'down';
   else if (def.unit === '口' || def.unit === '家' || def.unit === '分') dir = ch.abs === 0 ? 'flat' : ch.abs > 0 ? 'up' : 'down';
+  else if (def.unit === '倍') dir = Math.abs(ch.abs) < 0.1 ? 'flat' : ch.abs > 0 ? 'up' : 'down';
   else if (isPctUnit(def.unit) || def.unit === 'k')
     dir = Math.abs(ch.abs) < (def.unit === 'k' ? 25 : def.unit === 'pp' ? 0.05 : 0.1) ? 'flat' : ch.abs > 0 ? 'up' : 'down';
   else dir = ch.pct === null || Math.abs(ch.pct) < 0.5 ? 'flat' : ch.pct > 0 ? 'up' : 'down';
@@ -284,7 +285,7 @@ export function recentDirection(def: IndicatorDef, pts: readonly Point[]): { dir
       ? `${signed(ch.abs, def.unit === 'pp' ? def.decimals : 1)}pp`
       : def.unit === 'k'
         ? `${signed(ch.abs, 0)}k`
-        : def.unit === '口' || def.unit === '家' || def.unit === '分'
+        : def.unit === '口' || def.unit === '家' || def.unit === '分' || def.unit === '倍'
           ? unitText(def, ch.abs)
           : `${signed(ch.pct ?? 0, 1)}%`;
   return { dir, text: `${label} ${amount}` };

@@ -6,7 +6,9 @@ import { isStale } from '../../src/shared/signals';
 import { isValidBar, mergeBars } from '../../src/shared/timeseries';
 import type { Bar, SeriesFile, SourceRef, SummaryEntry, SummaryFile } from '../../src/shared/types';
 import type { FetchLike, HttpOptions } from './http';
+import { fetchFactsetForwardPe } from './sources/factset';
 import { fetchFred } from './sources/fred';
+import { fetchMultpl } from './sources/multpl';
 import { fetchNaverKrForeign } from './sources/naverKr';
 import { fetchTaifex } from './sources/taifex';
 import { fetchTpex, fetchTwse } from './sources/twExchanges';
@@ -96,6 +98,12 @@ async function fetchFromSource(
     case 'tw_gov':
       // 每次整批重抓（官方每月回溯修正，檔案小）
       return fetchTwGov(spec.symbol, http);
+    case 'multpl':
+      // 每次整批重抓：最上面的「今天」列日期每天改變，整批取代才不會累積成多筆
+      return fetchMultpl(spec.symbol, http);
+    case 'factset':
+      // 只抓比快取新的週報文章；歷史無法回補，從開始抓的那週往後累積
+      return fetchFactsetForwardPe(cacheLast ? cached!.data : null, http);
   }
 }
 

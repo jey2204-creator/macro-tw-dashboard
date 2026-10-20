@@ -8,6 +8,7 @@ import { INDICATORS } from '../../src/shared/indicators';
 import { updateCalendar } from './calendar';
 import { writeBacktest } from './writeBacktest';
 import { writeIcs } from './writeIcs';
+import { writeFactsetEps } from './writeFactsetEps';
 import { writeForeignChips } from './writeForeignChips';
 import { lastBreadth, writeMarginStress } from './writeMarginStress';
 import { runPipeline } from './pipeline';
@@ -63,6 +64,14 @@ async function main() {
     console.log(`[breadth-stress] ${lastBreadth?.start}～${lastBreadth?.end}，事件 ${lastBreadth?.events.length}，最新 ${JSON.stringify(lastBreadth?.latest)}`);
   } catch (e) {
     console.warn('[margin-stress] 略過：', e instanceof Error ? e.message : e);
+  }
+  // FactSet 週報（預估本益比、盈餘預估）失敗不影響資料更新
+  try {
+    const fe = await writeFactsetEps(outDir);
+    const last = fe?.posts.at(-1);
+    console.log(`[factset-eps] ${fe ? `${fe.posts.length} 篇，最新 ${last?.date} 預估本益比 ${last?.fwdPe}` : '無資料'}`);
+  } catch (e) {
+    console.warn('[factset-eps] 略過：', e instanceof Error ? e.message : e);
   }
   // 外資籌碼對照失敗不影響資料更新
   try {
