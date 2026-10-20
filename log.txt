@@ -1,0 +1,24 @@
+TW 存檔 15 份：20210210 20210512 20210905 20221225 20230323 20230602 20231101 20231226 20240104 20240716 20250321 20260114 20260208 20260327 20260603
+  20210210090518: HTTP 200 application/pdf 178218
+  20210512053629: HTTP 200 application/pdf 176328
+  20210905142652: HTTP 200 application/pdf 178443
+  20221225101329: HTTP 200 application/pdf 179496
+  20230323111801: HTTP 200 application/pdf 179262
+  20230602045049: HTTP 200 application/pdf 178593
+  20231101125135: HTTP 200 application/pdf 178908
+  20231226043707: HTTP 200 application/pdf 179133
+  20240104070946: HTTP 200 application/pdf 179133
+  20240716160124: HTTP 200 application/pdf 177930
+  20250321032008: HTTP 200 application/pdf 175521
+  20260114140351: HTTP 200 application/pdf 176526
+  20260208111229: HTTP 200 application/pdf 176523
+  20260327030522: HTTP 200 application/pdf 176271
+  20260603160501: HTTP 200 application/pdf 175266
+6915088e-8dc3-413e-846a-cd29eac266be: HTTP 200 application/pdf title=MSCI Taiwan Index 存檔=4
+9ccebaa5-5511-4ec3-ab8c-d2fa2d5e2645: HTTP 200 application/pdf title=MSCI Taiwan Index 存檔=9
+b74d8961-6be4-41c2-8ad0-50984a58be46: HTTP 200 application/pdf title=MSCI Taiwan High Dividend Yield Index 存檔=0
+87981248-b0ed-4441-96de-37a7eacf163b: HTTP 200 application/pdf title=MSCI Taiwan Value Weighted Index 存檔=0
+21f4c074-cd49-f368-a923-292ca5db0e79: HTTP 200 application/pdf title=MSCI Taiwan 20/35 Custom Index 存檔=3
+41fe372f-90df-621b-a01a-65ac18ad2d37: HTTP 200 application/pdf title=MSCI Taiwan Focus Index 存檔=0
+9e0beb48-ab2d-4096-9b59-f10ebcfe0d3c: HTTP 200 application/pdf title=MSCI Taiwan Quality Index 存檔=0
+5cc96fdf-a9c0-2dda-05a8-328d1d011465: HTTP 200 application/pdf title=MSCI Taiwan 20/35 Index 存檔=3

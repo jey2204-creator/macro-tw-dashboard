@@ -1,0 +1,208 @@
+                                                                                                                                                                                   Index Factsheet
+
+
+
+
+MSCI Taiwan Index (USD)
+
+The MSCI Taiwan Index is designed to measure the performance of the large and mid cap segments of the Taiwan market. With87
+constituents, the index covers approximately 85% of the free ﬂoat-adjusted market capitalization in Taiwan.
+
+CUMULATIVE INDEX PERFORMANCE — GROSS RETURNS (USD)                                                                                                   ANNUAL PERFORMANCE (%)
+(NOV 2007 – NOV 2022)                                                                                                                                                             MSCI         MSCI
+                                                                                                                                                     Year MSCI Taiwan           Emerging      ACWI IMI
+                                                                                                                                                                                 Markets
+            MSCI Taiwan                                                                                                                              2021         26.82            -2.22        18.71
+            MSCI Emerging Markets                                                                                                                    2020         42.02           18.69         16.81
+ 400
+            MSCI ACWI IMI                                                                                                                            2019         37.69           18.88         27.04
+                                                                                                                                                     2018          -8.16         -14.24          -9.61
+                                                                                                                                            313.06   2017         28.51           37.75         24.58
+ 300
+                                                                                                                                                     2016         19.59           11.60           8.96
+                                                                                                                                                     2015        -10.97          -14.60          -1.68
+                                                                                                                                            229.81
+ 200
+                                                                                                                                                     2014         10.05            -1.82          4.36
+                                                                                                                                                     2013           9.77           -2.27        24.17
+                                                                                                                                                     2012         17.66           18.63         17.04
+                                                                                                                                            118.04
+ 100                                                                                                                                                 2011        -20.15          -18.17          -7.43
+                                                                                                                                                     2010         22.73           19.20         14.87
+                                                                                                                                                     2009         80.25           79.02         37.18
+   0                                                                                                                                                 2008        -45.88          -53.18        -42.01
+   Nov 07    Feb 09   May 10   Aug 11       Nov 12   Feb 14       May 15      Aug 16   Nov 17      Feb 19         May 20   Aug 21     Nov 22
+
+
+
+INDEX PERFORMANCE — GROSS RETURNS (%) (NOV 30, 2022)                                                                                                 FUNDAMENTALS (NOV 30, 2022)
+                                                                                                                  ANNUALIZED
+
+                                              1 Mo       3 Mo          1 Yr        YTD          3 Yr          5 Yr         10 Yr MaySince            Div Yld (%)        P/E        P/E Fwd       P/BV
+                                                                                                                                     31, 1994
+
+  MSCI Taiwan                                22.21       -2.34       -20.98       -25.07       13.20          11.54        11.03       5.54              4.45          10.98       12.19         2.13
+
+  MSCI Emerging Markets                      14.85       -1.70       -17.07       -18.64        0.51          -0.04        2.44        5.05              3.37          12.47       11.49         1.61
+
+  MSCI ACWI IMI                               7.66       3.32        -11.35       -14.76        6.98          6.65         9.17        7.37              2.22          17.26       15.20         2.46
+
+
+INDEX RISK AND RETURN CHARACTERISTICS (NOV 30, 2022)
+                                                               ANNUALIZED STD DEV (%) 2                               SHARPE RATIO 2 , 3                                MAXIMUM DRAWDOWN
+                                                                                                                                                Since
+                                            Turnover          3 Yr         5 Yr        10 Yr           3 Yr            5 Yr         10 Yr      May 31,          (%)            Period YYYY-MM-DD
+                                              (%) 1                                                                                             1994
+
+  MSCI Taiwan                                 3.40           27.99       23.78         18.84           0.56            0.52         0.61        0.29        77.90          1990-01-31—1990-09-28
+
+  MSCI Emerging Markets                       5.59           20.99       18.89         16.76           0.10            0.03         0.18        0.38        65.14          2007-10-29—2008-10-27
+
+  MSCI ACWI IMI                               2.66           20.44       17.91         14.44           0.40            0.38         0.62        0.37        58.28          2007-10-31—2009-03-09
+                                    1                    2                                                    3
+                                        Last 12 months       Based on monthly gross returns data                  Based on NY FED Overnight SOFR from Sep 1 2021 & on ICE LIBOR 1M prior that date
+
+
+
+
+The MSCI Taiwan Index was launched on Jul 31, 1989. Data prior to the launch date is back-tested test (i.e. calculations of how the index might have performed over that time
+period had the index existed). There are frequently material differences between back-tested performance and actual results. Past performance -- whether actual or back-tested
+-- is no indication or guarantee of future performance.
+
+
+
+                                                                                                                                                                      MSCI Taiwan Index (USD) | msci.com
+NOV 30, 2022                                                                                                                                       Index Factsheet
+
+INDEX CHARACTERISTICS                                                            TOP 10 CONSTITUENTS
+                                    MSCI Taiwan                                                                       Float Adj Mkt       Index                Sector
+ Number of                                            87                                                                        Cap      Wt. (%)
+                                                                                                                     ( USD Billions)
+ Constituents                                                                       TAIWAN SEMICONDUCTOR MFG               390.56         42.52            Info Tech
+                               Mkt Cap ( USD Millions)
+                                                                                    HON HAI PRECISION IND CO                40.57          4.42            Info Tech
+ Index                                    918,462.67
+                                                                                    MEDIATEK INC                            36.03          3.92            Info Tech
+ Largest                                  390,564.53                                DELTA ELECTRONICS                       19.04          2.07            Info Tech
+ Smallest                                     663.84                                UNITED MICROELECTRONICS                 17.57          1.91            Info Tech
+ Average                                   10,557.04                                FUBON FINANCIAL HOLDING                 14.63          1.59           Financials
+ Median                                     4,241.46                                CHUNGHWA TELECOM CO                     13.96          1.52         Comm Srvcs
+                                                                                    CTBC FINANCIAL HOLDING                  13.06          1.42           Financials
+                                                                                    FORMOSA PLASTIC CORP                    12.08          1.31            Materials
+                                                                                    NAN YA PLASTIC                          11.84          1.29            Materials
+                                                                                    Total                                  569.34         61.99
+
+
+
+FACTORS - KEY EXPOSURES THAT DRIVE RISK AND RETURN
+MSCI FACTOR BOX                                                                                                MSCI FaCS
+                 UNDERWEIGHT           NEUTRAL             OVERWEIGHT
+                                                                                                                         VALUE
+                                                                                                                         Relatively Inexpensive Stocks
+
+                                                                                                                         LOW SIZE
+                                                                                                                         Smaller Companies
+
+                                                                                                                         MOMENTUM
+                                                                                                                         Rising Stocks
+
+                                                                                                                         QUALITY
+                                                                                                                         Sound Balance Sheet Stocks
+
+                                                                                                                         YIELD
+                                                                                                                         Cash Flow Paid Out
+
+                                                                                                                         LOW VOLATILITY
+                                                                                                                         Lower Risk Stocks
+
+
+                                                                                                               MSCI FaCS provides absolute factor exposures
+                                                                                                               relative to a
+         <-1.5                            0                             +1.5<                                  broad global index - MSCI ACWI IMI.
+                         MSCI Taiwan      MSCI Emerging Markets
+                                                                                                               Neutral factor exposure (FaCS = 0) represents
+                                                                                                               MSCI ACWI IMI.
+
+
+
+SECTOR WEIGHTS
+                                                                                14.33%
+
+                                                                                 5.82%
+
+                                                                                 3.47%
+
+                                                                                 2.48%
+
+                                                                                 2.33%
+
+                                                                                 1.67%
+
+                                                                                 0.34%
+         69.27%
+                                                                                 0.28%
+
+
+
+
+   Information Technology 69.27%       Financials 14.33%       Materials 5.82%
+
+   Industrials 3.47%     Communication Services 2.48%         Consumer Discretionary 2.33%
+
+   Consumer Staples 1.67%        Energy 0.34%      Real Estate 0.28%
+
+
+
+
+                                                                                                                                       MSCI Taiwan Index (USD) | msci.com
+NOV 30, 2022                                                                                                                                                                         Index Factsheet
+
+INDEX FRAMEWORK
+The index is based on the MSCI Global Investable Market Indexes (GIMI) Methodology —a comprehensive and consistent approach
+to index construction that allows for meaningful global views and cross regional comparisons across all market capitalization size,
+sector and style segments and combinations. This methodology aims to provide exhaustive coverage of the relevant investment
+opportunity set with a strong emphasis on index liquidity, investability and replicability. The index is reviewed quarterly—in February,
+May, August and November—with the objective of reﬂecting change in the underlying equity markets in a timely manner, while
+limiting undue index turnover. During the May and November semi-annual index reviews, the index is rebalanced and the large and
+mid capitalization cutoff points are recalculated.
+
+This summary is provided for illustrative purposes only and does not include all material elements of the index or its methodology. For a complete
+description of the index methodology, please see Index methodology - MSCI.
+
+
+MSCI FACTOR BOX AND FaCS FRAMEWORK (Please refer to complete description of the MSCI FaCS methodology here)
+MSCI FaCS is a standard method for evaluating and reporting the Factor characteristics of equity portfolios. MSCI FaCS consists
+of Factor Groups (e.g. Value, Size, Momentum, Quality, Yield, and Volatility) that have been extensively documented in academic
+literature and validated by MSCI Research as key drivers of risk and return in equity portfolios. These Factor Groups are constructed
+by aggregating 16 factors (e.g. Book-to-Price, Earnings/Dividend Yields, LT Reversal, Leverage, Earnings Variability/Quality, Beta)
+from the latest Barra global equity factor risk model, GEMLT, designed to make fund comparisons transparent and intuitive for use.
+The MSCI Factor Box, which is powered by MSCI FaCS, provides a visualization designed to easily compare absolute exposures
+of funds/indexes and their benchmarks along 6 Factor Groups that have historically demonstrated excess market returns over
+the long run.
+
+
+
+
+ABOUT MSCI
+MSCI is a leading provider of critical decision support tools and services for the global investment community. With over 45 years of expertise in research, data and technology, we power better investment
+decisions by enabling clients to understand and analyze key drivers of risk and return and conﬁdently build more effective portfolios. We create industry-leading research-enhanced solutions that clients use
+to gain insight into and improve transparency across the investment process. To learn more, please visit www.msci.com.
+
+The information contained herein (the "Information") may not be reproduced or redisseminated in whole or in part without prior written permission from MSCI. The Information may not be used to verify or
+correct other data, to create indexes, risk models, or analytics, or in connection with issuing, offering, sponsoring, managing or marketing any securities, portfolios, ﬁnancial products or other investment
+vehicles. Historical data and analysis should not be taken as an indication or guarantee of any future performance, analysis, forecast or prediction. None of the Information or MSCI index or other product
+or service constitutes an offer to buy or sell, or a promotion or recommendation of, any security, ﬁnancial instrument or product or trading strategy. Further, none of the Information or any MSCI index is
+intended to constitute investment advice or a recommendation to make (or refrain from making) any kind of investment decision and may not be relied on as such. The Information is provided "as is"
+and the user of the Information assumes the entire risk of any use it may make or permit to be made of the Information. NONE OF MSCI INC. OR ANY OF ITS SUBSIDIARIES OR ITS OR THEIR DIRECT
+OR INDIRECT SUPPLIERS OR ANY THIRD PARTY INVOLVED IN THE MAKING OR COMPILING OF THE INFORMATION (EACH, AN "MSCI PARTY") MAKES ANY WARRANTIES OR REPRESENTATIONS AND,
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, EACH MSCI PARTY HEREBY EXPRESSLY DISCLAIMS ALL IMPLIED WARRANTIES, INCLUDING WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE. WITHOUT LIMITING ANY OF THE FOREGOING AND TO THE MAXIMUM EXTENT PERMITTED BY LAW, IN NO EVENT SHALL ANY OF THE MSCI PARTIES HAVE ANY LIABILITY
+REGARDING ANY OF THE INFORMATION FOR ANY DIRECT, INDIRECT, SPECIAL, PUNITIVE, CONSEQUENTIAL (INCLUDING LOST PROFITS) OR ANY OTHER DAMAGES EVEN IF NOTIFIED OF THE POSSIBILITY
+OF SUCH DAMAGES. The foregoing shall not exclude or limit any liability that may not by applicable law be excluded or limited.
+
+© 2022 MSCI Inc. All rights reserved.
+
+
+
+                                                                                                                                                                  MSCI Taiwan Index (USD) | msci.com
+
