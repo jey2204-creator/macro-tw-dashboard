@@ -11,6 +11,7 @@ import { writeIcs } from './writeIcs';
 import { writeFactsetEps } from './writeFactsetEps';
 import { writeForeignChips } from './writeForeignChips';
 import { lastBreadth, writeMarginStress } from './writeMarginStress';
+import { writeMsciTw } from './writeMsciTw';
 import { runPipeline } from './pipeline';
 
 function arg(name: string): string | undefined {
@@ -72,6 +73,14 @@ async function main() {
     console.log(`[factset-eps] ${fe ? `${fe.posts.length} 篇，最新 ${last?.date} 預估本益比 ${last?.fwdPe}` : '無資料'}`);
   } catch (e) {
     console.warn('[factset-eps] 略過：', e instanceof Error ? e.message : e);
+  }
+  // MSCI 台灣 factsheet（預估本益比等月底估值）失敗不影響資料更新
+  try {
+    const mt = await writeMsciTw(outDir);
+    const last = mt?.records.at(-1);
+    console.log(`[msci-tw] ${mt ? `${mt.records.length} 期，最新 ${last?.asOf} 預估本益比 ${last?.fwdPe}` : '無資料'}`);
+  } catch (e) {
+    console.warn('[msci-tw] 略過：', e instanceof Error ? e.message : e);
   }
   // 外資籌碼對照失敗不影響資料更新
   try {

@@ -55,6 +55,12 @@ export const TW_GOV_DATASETS: Record<TwGovSymbol, DatasetSpec> = {
     pick: (u) => /EF15M01/i.test(safeDecode(u)),
     fallback: 'https://www.cbc.gov.tw/public/data/OpenData/%E7%B6%93%E7%A0%94%E8%99%95/EF15M01.csv',
   },
+  // 資本市場利率（月）：EG43M01；同資料集另有年資料 EG43Y01（2026-10-20 探測）
+  CBC_GOV10Y: {
+    id: TW_GOV_DATASET_ID.CBC_GOV10Y,
+    pick: (u) => /EG43M01/i.test(safeDecode(u)),
+    fallback: 'https://www.cbc.gov.tw/public/data/OpenData/%E7%B6%93%E7%A0%94%E8%99%95/EG43M01.csv',
+  },
 };
 
 function safeDecode(u: string): string {
@@ -242,6 +248,21 @@ export function parseCbcMoney(text: string): { gap: Bar[]; m1b: Bar[]; m2: Bar[]
   return { gap, m1b, m2 };
 }
 
+/** 央行 EG43M01（資本市場利率，月）：「十年期政府公債次級市場利率(%)」；期間「2026M08」，無資料為「-」 */
+export function parseCbcGov10y(text: string): Bar[] {
+  const rows = lines(text).map(csvLine);
+  const head = (rows[0] ?? []).map((h) => h.replace(/\s/g, ''));
+  const i10 = head.findIndex((h) => h.includes('十年期政府公債次級市場利率'));
+  if (i10 < 0) throw new Error(`央行資本市場利率表頭不符：${head.slice(-3).join(',')}`);
+  const out: Bar[] = [];
+  for (const r of rows.slice(1)) {
+    const m = /^(\d{4})M(\d{2})$/.exec(r[0] ?? '');
+    const v = num(r[i10]);
+    if (m && Number.isFinite(v) && v > 0) out.push(bar(monthDate(Number(m[1]), Number(m[2])), v));
+  }
+  return out;
+}
+
 // ── 經濟部統計處新聞稿（補開放資料尚未收錄的最新月份） ──────────
 
 export const MOEA_BULLETIN_LIST = 'https://www.moea.gov.tw/Mns/dos/bulletin/Bulletin.aspx?kind=5&html=1&menu_id=6724';
@@ -350,6 +371,9 @@ export async function fetchTwGov(symbol: TwGovSymbol, http: HttpOptions): Promis
       break;
     case 'CBC_M1B_M2':
       bars = parseCbcMoney(utf8(buf)).gap;
+      break;
+    case 'CBC_GOV10Y':
+      bars = parseCbcGov10y(utf8(buf));
       break;
   }
   if (bars.length < 24) throw new Error(`${symbol} 只解析到 ${bars.length} 筆，格式可能改變`);

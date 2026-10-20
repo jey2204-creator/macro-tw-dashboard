@@ -1099,6 +1099,29 @@ th {
   height: 6px;
   border-radius: 50%;
 }
+/* 台股估值：河流圖（對數軸）、本益比、淨值比、股債利差四窗格 */
+.tv-host {
+  height: max(560px, 76vh);
+}
+.wide .tv-host {
+  height: 660px;
+}
+.tv .ma-chip[aria-disabled='true'] {
+  cursor: default;
+}
+.tv .swatch.tv-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.bt-table tr.grp td {
+  padding-top: 6px;
+  color: var(--text-2);
+  font-weight: 700;
+}
+.bt-table td.nowrap {
+  white-space: nowrap;
+}
 /* 跨市場對照：公布日標記統計與圖例 */
 .cm-stats {
   margin: 0 0 6px;
