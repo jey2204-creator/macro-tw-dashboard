@@ -46,10 +46,12 @@ const PANE_STRETCH = [0.6, 0.4] as const;
 const EXTRA_LINES = [
   { id: 'cpi', label: '整體 CPI', key: 'pi-cpi', def: '1' },
   { id: 'core_pce', label: '核心 PCE', key: 'pi-pce', def: '0' },
+  { id: 'us2y', label: '美債 2Y', key: 'pi-2y', def: '1' },
 ] as const;
+const EXTRA_COLOR: Record<ExtraId, string> = { cpi: 'var(--ma60)', core_pce: 'var(--ma240)', us2y: 'var(--ma120)' };
 type ExtraId = (typeof EXTRA_LINES)[number]['id'];
 
-const IDS = ['fed', 'fed_target_legacy', 'core_cpi', 'cpi', 'core_pce'];
+const IDS = ['fed', 'fed_target_legacy', 'core_cpi', 'cpi', 'core_pce', 'us2y'];
 
 const f2 = (v: number | null | undefined) => (v === null || v === undefined || !Number.isFinite(v) ? '—' : v.toFixed(2));
 const f1 = (v: number | null | undefined) => (v === null || v === undefined || !Number.isFinite(v) ? '—' : v.toFixed(1));
@@ -95,13 +97,14 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
   const [extras, setExtras] = useState<Record<ExtraId, boolean>>(() => ({
     cpi: loadPref('pi-cpi', ['1', '0'] as const, '1') === '1',
     core_pce: loadPref('pi-pce', ['1', '0'] as const, '0') === '1',
+    us2y: loadPref('pi-2y', ['1', '0'] as const, '1') === '1',
   }));
   const [resetKey, setResetKey] = useState(0);
   const [hoverTime, setHoverTime] = useState<string | null>(null);
   const [chartGen, setChartGen] = useState(0);
 
   const files = useSeriesMap(near ? IDS : [], version);
-  const { fed, coreCpi, cpi, corePce } = useMemo(() => {
+  const { fed, coreCpi, cpi, corePce, us2y } = useMemo(() => {
     const ready = (id: string) => (files[id]?.status === 'ready' ? files[id]!.data.data : null);
     const upper = ready('fed');
     return {
@@ -109,6 +112,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       coreCpi: ready('core_cpi') ? yoyPoints(ready('core_cpi')!) : ([] as Point[]),
       cpi: ready('cpi') ? yoyPoints(ready('cpi')!) : ([] as Point[]),
       corePce: ready('core_pce') ? yoyPoints(ready('core_pce')!) : ([] as Point[]),
+      us2y: (ready('us2y') ?? []).map((b) => [b[0], b[4]] as Point),
     };
   }, [files]);
   const real = useMemo<RealRateRow[]>(() => realRateSeries(fed, coreCpi), [fed, coreCpi]);
@@ -196,6 +200,15 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       );
       s.setData(toData(corePce));
     }
+    // 美債 2Y：市場對未來一年 Fed 利率的押注，跑在 Fed 階梯前面
+    if (extras.us2y && us2y.length > 0) {
+      const s = chart.addSeries(
+        LineSeries,
+        { color: cssVar('--ma120'), lineWidth: 1, priceFormat: pct, lastValueVisible: false, priceLineVisible: false },
+        0,
+      );
+      s.setData(toData(us2y));
+    }
 
     // 下窗格：實質政策利率，0 以上緊縮方向、以下寬鬆方向
     const realS = chart.addSeries(
@@ -238,7 +251,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       chart.remove();
       chartRef.current = null;
     };
-  }, [loaded, fed, coreCpi, cpi, corePce, real, extras, themeKey]);
+  }, [loaded, fed, coreCpi, cpi, corePce, us2y, real, extras, themeKey]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -263,6 +276,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
     const at = (pts: readonly Point[]) => (pts.length ? valueAtOrBefore(pts, date) : null);
     const fedV = at(fed);
     const coreV = at(coreCpi);
+    const y2 = extras.us2y ? at(us2y) : null;
     return {
       date,
       fed: fedV,
@@ -270,8 +284,13 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       cpi: extras.cpi ? at(cpi) : null,
       pce: extras.core_pce ? at(corePce) : null,
       real: fedV !== null && coreV !== null ? fedV - coreV : null,
+      us2y: y2,
+      spread2y: y2 !== null && fedV !== null ? y2 - fedV : null,
     };
-  }, [loaded, hoverTime, fed, coreCpi, cpi, corePce, extras]);
+  }, [loaded, hoverTime, fed, coreCpi, cpi, corePce, us2y, extras]);
+  // 2Y − Fed：低於 −0.25pp 市場押降息、高於 +0.25pp 押升息（約一碼）
+  const spreadText = (v: number | null) =>
+    v === null ? '' : v <= -0.25 ? '市場押降息' : v >= 0.25 ? '市場押升息' : '市場押不變';
 
   const failed = IDS.flatMap((id) => (files[id]?.status === 'error' ? [`${id}：${(files[id] as { error: string }).error}`] : []));
 
@@ -305,6 +324,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
         看 Fed 跟通膨的距離，不看方向：實質政策利率（Fed − 核心CPI）小於 0 是寬鬆，Fed 歷來不會在這裡停止升息；大於 +1pp 才算緊縮，才有降息空間。
         2000、2006、2019、2023 幾次升息頂點都出現在實質利率翻正之後，但翻正不等於馬上降息（2023 翻正後又撐了一年）。
         核心 CPI 是落後指標；整體 CPI 用來解釋油價飆時 Fed 為什麼不動，核心 PCE 是 Fed 正式目標但晚兩週。
+        美債 2Y 是市場對未來一年 Fed 利率的押注，通常跑在 Fed 階梯前面：2Y 低於 Fed 一碼以上＝押降息、高於一碼以上＝押升息；它比 CPI 早反應，但押錯也常見（2024 上半年押六次降息，實際三次）。
         這張圖與「Fed 120 天」「核心CPI ±0.2pp」規則重疊，只用來解釋 FOMC 為什麼那樣做，不計分。2008 年前 Fed 為單一目標利率。
       </p>
       </PanelNote>
@@ -316,7 +336,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
         </span>
         {EXTRA_LINES.map((e) => (
           <button key={e.id} type="button" className="ma-chip" aria-pressed={extras[e.id]} onClick={() => toggleExtra(e.id)}>
-            <i className="swatch" style={{ background: e.id === 'cpi' ? 'var(--ma60)' : 'var(--ma240)' }} />
+            <i className="swatch" style={{ background: EXTRA_COLOR[e.id] }} />
             {e.label}
           </button>
         ))}
@@ -352,6 +372,12 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
                 實質 <b>{fpp(legend.real)}</b>
                 {legend.real !== null && <span className="muted"> ｜ {REAL_RATE_STATE_TEXT[legend.real < 0 ? 'loose' : legend.real >= REAL_RATE_TIGHT ? 'tight' : 'mid']}</span>}
               </div>
+              {legend.us2y !== null && (
+                <div>
+                  美債2Y <b>{f2(legend.us2y)}%</b> ｜ 2Y−Fed <b>{fpp(legend.spread2y)}</b>
+                  <span className="muted"> ｜ {spreadText(legend.spread2y)}</span>
+                </div>
+              )}
             </div>
           )}
           <div ref={hostRef} className="chart-host pi-host" />
