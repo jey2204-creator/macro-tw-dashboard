@@ -103,7 +103,7 @@ describe('政策利率 vs 通膨面板', () => {
     expect(state).toMatch(/距 2% 目標 \+1\.00pp/);
     await waitFor(() =>
       expect(chartLog.watermarks).toEqual([
-        'Fed 利率 vs 通膨年增（%）｜虛線 2% 目標｜2Y＝市場押的 Fed 路徑',
+        'Fed 利率 vs 通膨年增（%）｜虛線 2% 目標',
         '實質＝Fed − 核心CPI（pp）｜虛線 +1 緊縮、0 中性',
       ]),
     );

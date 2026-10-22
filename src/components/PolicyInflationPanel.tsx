@@ -238,7 +238,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       const pane = chart.panes()[paneIndex];
       if (pane) createTextWatermark(pane, { horzAlign: 'left', vertAlign: 'top', lines: [{ text, color: textColor, fontSize: 12, fontFamily, fontStyle: '' }] });
     };
-    wm(0, `Fed 利率 vs 通膨年增（%）｜虛線 2% 目標${extras.us2y ? '｜2Y＝市場押的 Fed 路徑' : ''}`);
+    wm(0, `Fed 利率 vs 通膨年增（%）｜虛線 2% 目標`);
     wm(1, `實質＝Fed − 核心CPI（pp）｜虛線 +${REAL_RATE_TIGHT} 緊縮、0 中性`);
 
     const handler = (param: MouseEventParams<Time>) => setHoverTime(typeof param.time === 'string' ? param.time : null);
