@@ -74,6 +74,7 @@ const FILES: Record<string, SeriesFile> = {
   core_cpi: series('core_cpi', months(0, 21, (i) => 100 * 1.03 ** (i / 12))),
   cpi: series('cpi', months(0, 21, (i) => 100 * 1.04 ** (i / 12))),
   core_pce: series('core_pce', months(0, 21, (i) => 100 * 1.028 ** (i / 12))),
+  us2y: series('us2y', [flat('2025-10-14', 3.9), flat('2025-10-15', 3.7)]),
 };
 
 beforeEach(() => {
@@ -102,12 +103,13 @@ describe('政策利率 vs 通膨面板', () => {
     expect(state).toMatch(/距 2% 目標 \+1\.00pp/);
     await waitFor(() =>
       expect(chartLog.watermarks).toEqual([
-        'Fed 利率 vs 通膨年增（%）｜虛線 2% 目標',
+        'Fed 利率 vs 通膨年增（%）｜虛線 2% 目標｜2Y＝市場押的 Fed 路徑',
         '實質＝Fed − 核心CPI（pp）｜虛線 +1 緊縮、0 中性',
       ]),
     );
     // 圖內不畫名稱方框、軸上不放最新值標籤（短區間會壓住刻度）；參考線也不佔軸標籤
     expect(chartLog.series).toEqual([
+      { pane: 0, title: undefined, label: false },
       { pane: 0, title: undefined, label: false },
       { pane: 0, title: undefined, label: false },
       { pane: 0, title: undefined, label: false },
@@ -120,14 +122,26 @@ describe('政策利率 vs 通膨面板', () => {
     ]);
     expect(screen.getByRole('button', { name: '整體 CPI' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('button', { name: '核心 PCE' }).getAttribute('aria-pressed')).toBe('false');
+    // 美債 2Y 預設開：圖例顯示 2Y 與 2Y−Fed（3.70 − 4.10 = −0.40pp → 市場押降息）
+    expect(screen.getByRole('button', { name: '美債 2Y' }).getAttribute('aria-pressed')).toBe('true');
+    expect(document.querySelector('.cm-legend')!.textContent).toMatch(/美債2Y 3\.70% ｜ 2Y−Fed -0\.40pp ｜ 市場押降息/);
+  });
+
+  it('關掉美債 2Y 會移除序列與圖例列', async () => {
+    render(<PolicyInflationPanel version="v1" themeKey="auto-false-tw" />);
+    await waitFor(() => expect(chartLog.series.length).toBe(5));
+    fireEvent.click(screen.getByRole('button', { name: '美債 2Y' }));
+    await waitFor(() => expect(chartLog.series.length).toBe(9));
+    expect(window.localStorage.getItem('pi-2y')).toBe('0');
+    expect(document.querySelector('.cm-legend')!.textContent).not.toMatch(/美債2Y/);
   });
 
   it('切換核心 PCE 會加序列並記住；區間預設 5 年', async () => {
     render(<PolicyInflationPanel version="v1" themeKey="auto-false-tw" />);
-    await waitFor(() => expect(chartLog.series.length).toBe(4));
+    await waitFor(() => expect(chartLog.series.length).toBe(5));
     fireEvent.click(screen.getByRole('button', { name: '核心 PCE' }));
-    // 重建圖表：第一次 4 條，加 PCE 後 5 條
-    await waitFor(() => expect(chartLog.series.length).toBe(9));
+    // 重建圖表：第一次 5 條（含 2Y），加 PCE 後 6 條
+    await waitFor(() => expect(chartLog.series.length).toBe(11));
     expect(chartLog.series.every((s) => s.title === undefined)).toBe(true);
     expect(window.localStorage.getItem('pi-pce')).toBe('1');
     expect(screen.getByRole('button', { name: '5年' }).getAttribute('aria-pressed')).toBe('true');
