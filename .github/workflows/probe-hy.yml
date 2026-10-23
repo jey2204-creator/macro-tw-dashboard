@@ -1,0 +1,19 @@
+name: 探測 HY 利差全史（暫時）
+on:
+  push:
+    branches: [cut-regime]
+jobs:
+  probe:
+    if: contains(github.event.head_commit.message, '[probe]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - shell: bash
+        run: |
+          ME="macro-tw-dashboard/0.1 (+https://github.com/jey2204-creator/macro-tw-dashboard)"
+          p(){ n=$1; u=$2; curl -s -A "$ME" -m 40 -o /tmp/o -w "code=%{http_code} size=%{size_download}" "$u" > /tmp/w; echo "::notice title=$n::$(cat /tmp/w) lines=$(wc -l < /tmp/o) first=$(sed -n 2p /tmp/o) last=$(tail -n 1 /tmp/o) head=$(head -c 60 /tmp/o | tr '\n' ' ')"; }
+          p plain "https://fred.stlouisfed.org/graph/fredgraph.csv?id=BAMLH0A0HYM2"
+          p cosd "https://fred.stlouisfed.org/graph/fredgraph.csv?id=BAMLH0A0HYM2&cosd=1990-01-01"
+          p cosd-coed "https://fred.stlouisfed.org/graph/fredgraph.csv?id=BAMLH0A0HYM2&cosd=1996-12-31&coed=2026-12-31"
+          p datatxt "https://fred.stlouisfed.org/data/BAMLH0A0HYM2.txt"
+          p dgs2plain "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS2"
