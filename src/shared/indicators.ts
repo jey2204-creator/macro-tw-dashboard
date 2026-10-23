@@ -7,7 +7,8 @@ import type { Category, Frequency } from './types';
 
 export type SourceSpec =
   | { provider: 'yahoo'; symbol: string }
-  | { provider: 'fred'; symbol: string }
+  /** start：fredgraph.csv 對某些序列（ICE BofA 利差）預設只給 3 年，需指定起始日才拿到全史 */
+  | { provider: 'fred'; symbol: string; start?: string }
   | { provider: 'tpex'; symbol: 'TPEX_INDEX' }
   | { provider: 'twse'; symbol: 'TAIEX' }
   | { provider: 'taifex'; symbol: 'TXF_FOREIGN_OI' | 'MXF_RETAIL_OI' | 'TXO_FOREIGN_NET' | 'TX_TOP10_SPECIFIC' }
@@ -282,7 +283,7 @@ export const INDICATORS: IndicatorDef[] = [
   {
     id: 'hy_oas', name: '美國高收益債利差（ICE BofA HY OAS）', short: 'HY利差', category: 'rates', frequency: 'daily',
     subtitle: '高收益債利差｜信用壓力',
-    unit: '%', decimals: 2, sources: [{ provider: 'fred', symbol: 'BAMLH0A0HYM2' }], transform: 'none',
+    unit: '%', decimals: 2, sources: [{ provider: 'fred', symbol: 'BAMLH0A0HYM2', start: '1990-01-01' }], transform: 'none',
     market: false, changeInBp: true, rule: { kind: 'info' }, weight: 0, maxAgeDays: 10, hidden: true,
     note: '高收益公司債相對公債的利差：≥ 4pp 警戒、≥ 6pp 衰退定價（2011、2016、2022 到過 6～9pp 但沒衰退，單獨看太吵）。降息性質判定用，不計分',
   },
