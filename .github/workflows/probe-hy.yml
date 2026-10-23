@@ -12,8 +12,7 @@ jobs:
         run: |
           ME="macro-tw-dashboard/0.1 (+https://github.com/jey2204-creator/macro-tw-dashboard)"
           p(){ n=$1; u=$2; curl -s -A "$ME" -m 40 -o /tmp/o -w "code=%{http_code} size=%{size_download}" "$u" > /tmp/w; echo "::notice title=$n::$(cat /tmp/w) lines=$(wc -l < /tmp/o) first=$(sed -n 2p /tmp/o) last=$(tail -n 1 /tmp/o) head=$(head -c 60 /tmp/o | tr '\n' ' ')"; }
-          curl -s -L -A "$ME" -m 40 -o /tmp/o "https://fred.stlouisfed.org/data/BAMLH0A0HYM2.txt"
-          echo "::notice title=table-html::size=$(wc -c < /tmp/o) dates=$(grep -oE '(19|20)[0-9]{2}-[0-9]{2}-[0-9]{2}' /tmp/o | wc -l) first=$(grep -oE '(19|20)[0-9]{2}-[0-9]{2}-[0-9]{2}' /tmp/o | head -1) ctx=$(grep -m1 -oE '.{0,120}1996-12-31.{0,160}' /tmp/o | tr '\n' ' ' | tr '<>' '[]')"
-          echo "::notice title=table-html-2::$(grep -m3 -oE '.{0,80}2026-10-2[0-9].{0,120}' /tmp/o | tr '\n' ' ' | tr '<>' '[]')"
-          curl -s -L -A "$ME" -m 40 -o /tmp/o2 "https://fred.stlouisfed.org/data/BAMLH0A0HYM2"
-          echo "::notice title=data-noext::size=$(wc -c < /tmp/o2) dates=$(grep -oE '(19|20)[0-9]{2}-[0-9]{2}-[0-9]{2}' /tmp/o2 | wc -l) first=$(grep -oE '(19|20)[0-9]{2}-[0-9]{2}-[0-9]{2}' /tmp/o2 | head -1)"
+          p baa10y "https://fred.stlouisfed.org/graph/fredgraph.csv?id=BAA10Y"
+          p dbaa "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DBAA"
+          p aaa10y "https://fred.stlouisfed.org/graph/fredgraph.csv?id=AAA10Y"
+          p ig "https://fred.stlouisfed.org/graph/fredgraph.csv?id=BAMLC0A0CM"
