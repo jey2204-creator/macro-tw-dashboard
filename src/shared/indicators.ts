@@ -278,6 +278,22 @@ export const INDICATORS: IndicatorDef[] = [
     market: true, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true,
     note: '美債價格代理：殖利率升則跌，與 10Y 走勢相關約 0.9；可比 FRED 早 1–2 天看到昨晚美債實際走勢。跨市場對照面板用，不計分',
   },
+  // 信用利差：Moody's Baa 公司債 − 美債 10Y（1986 起全史）；ICE BofA 高收益債利差 FRED 只提供近 3 年（2026-10 探測：cosd、ALFRED、表格頁皆只回 3 年），
+  // 所以規則用 Baa−10Y，HY 利差只當近期參考。兩者只給政策利率面板「降息性質判定」用
+  {
+    id: 'baa10y', name: '信用利差（Moody\'s Baa 公司債 − 美債 10Y）', short: 'Baa−10Y', category: 'rates', frequency: 'daily',
+    subtitle: '信用利差｜Baa − 10Y',
+    unit: 'pp', decimals: 2, sources: [{ provider: 'fred', symbol: 'BAA10Y' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 10, hidden: true,
+    note: 'Baa 級公司債殖利率減美債 10Y：≥ 2.5pp 警戒、≥ 3.5pp 衰退定價（2011、2016 到過 3.4pp 沒衰退，單獨看太吵）。降息性質判定用，不計分',
+  },
+  {
+    id: 'hy_oas', name: '美國高收益債利差（ICE BofA HY OAS，近 3 年）', short: 'HY利差', category: 'rates', frequency: 'daily',
+    subtitle: '高收益債利差｜近 3 年',
+    unit: '%', decimals: 2, sources: [{ provider: 'fred', symbol: 'BAMLH0A0HYM2' }], transform: 'none',
+    market: false, changeInBp: true, rule: { kind: 'info' }, weight: 0, maxAgeDays: 10, hidden: true,
+    note: 'FRED 只提供近 3 年，無法回測，只在降息性質判定顯示目前讀數（≥ 400bp 警戒、≥ 600bp 衰退定價）。不計分',
+  },
   {
     id: 'vix', name: 'VIX 恐慌指數', short: 'VIX', category: 'us_equity', frequency: 'daily',
     subtitle: 'S&P500 隱含波動率｜市場為風險付的保費',

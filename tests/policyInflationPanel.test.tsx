@@ -82,6 +82,8 @@ const FILES: Record<string, SeriesFile> = {
   sox: series('sox', [flat('2025-09-17', 6000), flat('2025-09-18', 6050), flat('2025-10-15', 6300)]),
   taiex: series('taiex', [flat('2025-09-17', 25000), flat('2025-09-18', 25100), flat('2025-10-15', 26000)]),
   unrate: series('unrate', months(0, 21, () => 4.2)),
+  baa10y: series('baa10y', [flat('2025-10-10', 1.5), flat('2025-10-14', 1.6)]),
+  hy_oas: series('hy_oas', [flat('2025-10-10', 3.2), flat('2025-10-14', 3.3)]),
 };
 
 beforeEach(() => {
@@ -136,11 +138,21 @@ describe('政策利率 vs 通膨面板', () => {
     expect(document.querySelector('.cm-legend')!.textContent).toMatch(/美債2Y 3\.70% ｜ 2Y−Fed -0\.40pp ｜ 市場押降息/);
     // S&P 窗格預設開：圖例顯示 S&P 與階段（2025-09-18 降息 −25bp → 降息期）、階段表與循環表
     expect(document.querySelector('.cm-legend')!.textContent).toMatch(/S&P 500 6,700 ｜ 降息期 ｜ 上次動作 2025-10-15 -15bp（0 個月前）/);
-    expect(document.querySelector('.bt-table tr.hl')!.textContent).toMatch(/降息期/);
+    expect(document.querySelector('section > .table-wrap .bt-table tr.hl')!.textContent).toMatch(/降息期/);
     // 四個指數並排：表頭 S&P／NASDAQ／費半／加權，目前指數的表頭標 hl
-    expect([...document.querySelectorAll('.bt-table thead th')].slice(1, 5).map((th) => th.textContent)).toEqual(['S&P', 'NASDAQ', '費半', '加權']);
-    expect(document.querySelector('.bt-table thead th.hl')!.textContent).toBe('S&P');
+    expect([...document.querySelectorAll('section > .table-wrap .bt-table thead th')].slice(1, 5).map((th) => th.textContent)).toEqual(['S&P', 'NASDAQ', '費半', '加權']);
+    expect(document.querySelector('section > .table-wrap .bt-table thead th.hl')!.textContent).toBe('S&P');
     expect(screen.getByRole('button', { name: /歷次循環起點・S&P 500（1）/ })).toBeTruthy();
+    // 降息性質判定：Sahm 0（失業率持平）、Baa−10Y 1.60pp 正常（HY 330bp 只顯示）、核心 CPI 距目標 +1.00pp（不超過 1）→ 預防性
+    const cr = document.querySelector('.cr')!;
+    expect(cr.querySelector('.cr-verdict')!.textContent).toMatch(/Fed 階段：降息期｜這次降息依目前讀數是 ?預防性$/);
+    const crRows = [...cr.querySelectorAll('.cr-table tbody tr')].map((tr) => tr.textContent);
+    expect(crRows[0]).toMatch(/就業.*0\.00pp.*正常/);
+    expect(crRows[1]).toMatch(/信用 Baa−10Y 2025-10-14.*1\.60pp.*正常/);
+    expect(crRows[2]).toMatch(/HY 利差 2025-10-14.*330bp.*正常/);
+    expect(crRows[3]).toMatch(/通膨.*\+1\.00pp.*可降/);
+    expect(crRows[4]).toMatch(/節奏.*上次動作 2025-10-15 -15bp.*-40bp/);
+    expect(screen.getByRole('button', { name: /歷次第一次降息・當時判定（1）/ })).toBeTruthy();
   });
 
   it('第三格切到加權會換線與圖例、記住選擇；「關」移除第三窗格與表格', async () => {
@@ -151,11 +163,13 @@ describe('政策利率 vs 通膨面板', () => {
     expect(window.localStorage.getItem('pi-idx')).toBe('taiex');
     expect(chartLog.watermarks.at(-1)).toBe('加權（對數）｜線色＝Fed 階段（見圖例、下表）');
     expect(document.querySelector('.cm-legend')!.textContent).toMatch(/加權 26,000 ｜ 降息期/);
-    expect(document.querySelector('.bt-table thead th.hl')!.textContent).toBe('加權');
+    expect(document.querySelector('section > .table-wrap .bt-table thead th.hl')!.textContent).toBe('加權');
     fireEvent.click(screen.getByRole('button', { name: '關' }));
     await waitFor(() => expect(chartLog.series.length).toBe(17));
     expect(window.localStorage.getItem('pi-idx')).toBe('off');
-    expect(document.querySelector('.bt-table')).toBeNull();
+    expect(document.querySelector('section > .table-wrap .bt-table')).toBeNull();
+    // 降息性質判定不隨第三格關閉（資料仍在）
+    expect(document.querySelector('.cr .cr-table')).toBeTruthy();
     expect(document.querySelector('.cm-legend')!.textContent).not.toMatch(/降息期/);
   });
 
