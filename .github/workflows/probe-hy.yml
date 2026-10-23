@@ -12,8 +12,11 @@ jobs:
         run: |
           ME="macro-tw-dashboard/0.1 (+https://github.com/jey2204-creator/macro-tw-dashboard)"
           p(){ n=$1; u=$2; curl -s -A "$ME" -m 40 -o /tmp/o -w "code=%{http_code} size=%{size_download}" "$u" > /tmp/w; echo "::notice title=$n::$(cat /tmp/w) lines=$(wc -l < /tmp/o) first=$(sed -n 2p /tmp/o) last=$(tail -n 1 /tmp/o) head=$(head -c 60 /tmp/o | tr '\n' ' ')"; }
-          p plain "https://fred.stlouisfed.org/graph/fredgraph.csv?id=BAMLH0A0HYM2"
-          p cosd "https://fred.stlouisfed.org/graph/fredgraph.csv?id=BAMLH0A0HYM2&cosd=1990-01-01"
-          p cosd-coed "https://fred.stlouisfed.org/graph/fredgraph.csv?id=BAMLH0A0HYM2&cosd=1996-12-31&coed=2026-12-31"
-          p datatxt "https://fred.stlouisfed.org/data/BAMLH0A0HYM2.txt"
-          p dgs2plain "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS2"
+          p datatxtL "https://fred.stlouisfed.org/data/BAMLH0A0HYM2.txt" ; curl -s -L -A "$ME" -m 40 -o /tmp/o "https://fred.stlouisfed.org/data/BAMLH0A0HYM2.txt"; echo "::notice title=datatxt-L::lines=$(wc -l < /tmp/o) head=$(head -c 300 /tmp/o | tr '\n' ' ') tail=$(tail -n 1 /tmp/o)"
+          p downloaddata "https://fred.stlouisfed.org/series/BAMLH0A0HYM2/downloaddata/BAMLH0A0HYM2.csv"
+          p alfred "https://alfred.stlouisfed.org/graph/alfredgraph.csv?id=BAMLH0A0HYM2&cosd=1996-12-31"
+          p fredgraph-png-txt "https://fred.stlouisfed.org/graph/fredgraph.txt?id=BAMLH0A0HYM2"
+          p fredgraph-xls "https://fred.stlouisfed.org/graph/fredgraph.xls?id=BAMLH0A0HYM2&cosd=1996-12-31"
+          p weekly "https://fred.stlouisfed.org/graph/fredgraph.csv?id=BAMLH0A0HYM2&fq=Weekly&cosd=1996-12-31"
+          p monthly "https://fred.stlouisfed.org/graph/fredgraph.csv?id=BAMLH0A0HYM2&fq=Monthly&fam=avg&cosd=1996-12-31"
+          p stlouisfed-api "https://api.stlouisfed.org/fred/series/observations?series_id=BAMLH0A0HYM2&file_type=json"
