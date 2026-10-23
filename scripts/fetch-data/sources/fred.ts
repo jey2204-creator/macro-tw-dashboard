@@ -7,10 +7,8 @@ import type { SourceFetchResult } from './types';
  * 格式：observation_date,SERIES\n2026-10-01,5.24\n ...；缺值為 "." 或空白。
  */
 
-/** start（cosd）：fredgraph 對 ICE BofA 等序列預設只回 3 年，指定起始日才取得全史 */
-export function fredUrl(seriesId: string, start?: string): string {
-  const base = `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${encodeURIComponent(seriesId)}`;
-  return start ? `${base}&cosd=${start}` : base;
+export function fredUrl(seriesId: string): string {
+  return `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${encodeURIComponent(seriesId)}`;
 }
 
 export function parseFredCsv(text: string, seriesId: string): Bar[] {
@@ -32,7 +30,7 @@ export function parseFredCsv(text: string, seriesId: string): Bar[] {
   return bars;
 }
 
-export async function fetchFred(seriesId: string, http: HttpOptions, start?: string): Promise<SourceFetchResult> {
-  const text = await getText(fredUrl(seriesId, start), http);
+export async function fetchFred(seriesId: string, http: HttpOptions): Promise<SourceFetchResult> {
+  const text = await getText(fredUrl(seriesId), http);
   return { bars: parseFredCsv(text, seriesId), closeOnly: true, partial: false, incremental: false };
 }

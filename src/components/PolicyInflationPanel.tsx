@@ -81,7 +81,7 @@ type IndexId = (typeof INDICES)[number]['id'];
 type IndexPick = IndexId | 'off';
 const INDEX_PICKS: readonly IndexPick[] = ['spx', 'nasdaq', 'sox', 'taiex', 'off'];
 
-const IDS = ['fed', 'fed_target_legacy', 'core_cpi', 'cpi', 'core_pce', 'us2y', 'unrate', 'hy_oas', ...INDICES.map((i) => i.id)];
+const IDS = ['fed', 'fed_target_legacy', 'core_cpi', 'cpi', 'core_pce', 'us2y', 'unrate', 'baa10y', 'hy_oas', ...INDICES.map((i) => i.id)];
 
 const NO_BARS: Bar[] = [];
 
@@ -145,7 +145,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
   const [chartGen, setChartGen] = useState(0);
 
   const files = useSeriesMap(near ? IDS : [], version);
-  const { fed, coreCpi, cpi, corePce, us2y, unrate, hy, indexBars } = useMemo(() => {
+  const { fed, coreCpi, cpi, corePce, us2y, unrate, credit, hy, indexBars } = useMemo(() => {
     const ready = (id: string) => (files[id]?.status === 'ready' ? files[id]!.data.data : null);
     const upper = ready('fed');
     return {
@@ -155,6 +155,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       corePce: ready('core_pce') ? yoyPoints(ready('core_pce')!) : ([] as Point[]),
       us2y: (ready('us2y') ?? []).map((b) => [b[0], b[4]] as Point),
       unrate: (ready('unrate') ?? []).map((b) => [b[0], b[4]] as Point),
+      credit: (ready('baa10y') ?? []).map((b) => [b[0], b[4]] as Point),
       hy: (ready('hy_oas') ?? []).map((b) => [b[0], b[4]] as Point),
       indexBars: Object.fromEntries(INDICES.map((i) => [i.id, ready(i.id) ?? []])) as Record<IndexId, Bar[]>,
     };
@@ -170,10 +171,10 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
   const cutRegime = useMemo(() => {
     const spxBars = indexBars.spx;
     if (!fed.length || !unrate.length || !spxBars.length) return null;
-    const inp = { fed, unrate, hy, coreCpi };
+    const inp = { fed, unrate, credit, hy, coreCpi };
     const rows = assessCuts(inp, spxBars, indexBars.taiex);
     return { now: readingsAt(inp, spxBars.at(-1)![0]), rows, stats: verdictStats(rows), hasTaiex: indexBars.taiex.length > 0 };
-  }, [fed, unrate, hy, coreCpi, indexBars]);
+  }, [fed, unrate, credit, hy, coreCpi, indexBars]);
   const indexId: IndexId | null = indexPick === 'off' ? null : indexPick;
   const equity = indexId && equities ? equities[indexId] : null;
   const spx = indexId ? indexBars[indexId] : NO_BARS;
@@ -422,7 +423,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
         核心 CPI 是落後指標；整體 CPI 用來解釋油價飆時 Fed 為什麼不動，核心 PCE 是 Fed 正式目標但晚兩週。
         美債 2Y 是市場對未來一年 Fed 利率的押注，通常跑在 Fed 階梯前面：2Y 低於 Fed 一碼以上＝押降息、高於一碼以上＝押升息；它比 CPI 早反應，但押錯也常見（2024 上半年押六次降息，實際三次）。
         第三格指數（S&P 500／NASDAQ／費半／加權，一次看一個）的線色是 Fed 階段（升息期／高原／降息期／谷底；超過 6 個月沒動作算暫停）。1982 年起四個階段 S&P 年化都是正的，階段本身不是方向訊號；差別在「為什麼降息」：降息後一年內失業率觸發 Sahm 規則的衰退式降息（2001、2007）之後一年 S&P 是負的，保險式降息（1995、1998、2019、2024）則續漲——分類器是失業率和 2Y−Fed，不是 Fed 動作本身。
-        「降息性質判定」用降息當天看得到的資料判：就業（Sahm 值 ≥ 0.5）與信用（高收益債利差 ≥ 600bp）兩個都到才叫衰退式、只到一個是衰退警訊（2001 只有信用到、2024 只有就業到），通膨（核心 CPI 距 2% 超過 1pp）另外標「未解」＝停滯型風險；門檻事先定、不依結果調整，利差單獨看太吵（2011、2016、2022 到過 6～9pp 沒衰退）。
+        「降息性質判定」用降息當天看得到的資料判：就業（Sahm 值 ≥ 0.5）與信用（Baa 公司債 − 美債 10Y ≥ 3.5pp）兩個都到才叫衰退式、只到一個是衰退警訊（例如 2024-09 只有就業到），通膨（核心 CPI 距 2% 超過 1pp）另外標「未解」＝停滯型風險；門檻事先定、不依結果調整，利差單獨看太吵（2011、2016 到過 3.4pp 沒衰退）。高收益債利差 FRED 只給近 3 年，只顯示不進規則。
         四個指數高度連動（費半對加權 ρ60 約 0.66），四欄同向不是四個證據；費半 1994、加權 1997 起，循環次數只有 S&P 的一半，加權對 Fed 的傳導還隔著台幣與外資。
         這張圖與「Fed 120 天」「核心CPI ±0.2pp」規則重疊，只用來解釋 FOMC 為什麼那樣做，不計分。2008 年前 Fed 為單一目標利率。
       </p>

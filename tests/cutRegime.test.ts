@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assessCuts, hyLevel, readingsAt, sahmLevel, verdictOf, verdictStats } from '../src/shared/cutRegime';
+import { assessCuts, creditLevel, hyLevel, readingsAt, sahmLevel, verdictOf, verdictStats } from '../src/shared/cutRegime';
 import type { Point } from '../src/shared/timeseries';
 import type { Bar } from '../src/shared/types';
 
@@ -17,8 +17,10 @@ describe('門檻分級與判定', () => {
     expect(sahmLevel(0.1)).toBe('normal');
     expect(sahmLevel(0.3)).toBe('watch');
     expect(sahmLevel(0.5)).toBe('recession');
+    expect(creditLevel(2.49)).toBe('normal');
+    expect(creditLevel(2.5)).toBe('watch');
+    expect(creditLevel(3.5)).toBe('recession');
     expect(hyLevel(399)).toBe('normal');
-    expect(hyLevel(400)).toBe('watch');
     expect(hyLevel(600)).toBe('recession');
   });
   it('兩個都到衰退才是衰退式；一個到是衰退警訊；警戒；都正常；無資料不算', () => {
@@ -33,30 +35,34 @@ describe('門檻分級與判定', () => {
 describe('readingsAt：只用判定日看得到的資料', () => {
   // 失業率 2018-01 起 4.0，2020-01 起每月 +0.5 → Sahm 2020-02 起 ≥ 0.5（Sahm 需 15 個月資料，2019-03 起有值）
   const unrate = monthly('2018-01', 30, (i) => (i < 24 ? 4 : 4 + (i - 23) * 0.5));
-  const hy: Point[] = [
-    ['2020-03-01', 5.0],
-    ['2020-03-10', 10.0],
+  const credit: Point[] = [
+    ['2020-03-01', 2.6],
+    ['2020-03-10', 4.3],
   ];
+  const hy: Point[] = [['2020-03-10', 10.0]];
   const coreCpi = monthly('2018-01', 30, () => 2.3);
   const fed: Point[] = [
     ['2019-12-01', 1.75],
     ['2020-03-03', 1.25],
     ['2020-03-16', 0.25],
   ];
-  const inp = { fed, unrate, hy, coreCpi };
+  const inp = { fed, unrate, credit, hy, coreCpi };
   it('月資料加 45 天延遲：3/3 只看得到 1 月失業率（Sahm 尚未觸發）', () => {
     const r = readingsAt(inp, '2020-03-03');
     expect(r.sahmDate).toBe('2020-01-01');
     expect(r.sahmLevel).toBe('normal');
-    expect(r.hyDate).toBe('2020-03-01');
-    expect(r.hy).toBe(500);
+    expect(r.creditDate).toBe('2020-03-01');
+    expect(r.credit).toBe(2.6);
+    expect(r.hy).toBeNull();
     expect(r.verdict).toBe('watch');
     expect(r.paceBp).toBe(-50);
     expect(r.lastMoveBp).toBe(-50);
     expect(r.inflationHot).toBe(false);
   });
-  it('3/16 第二次降息：HY 1000bp 到衰退門檻、2 月失業率要 3/17 才看得到 → 3/16 是衰退警訊；90 天累計 −150bp', () => {
+  it('3/16 第二次降息：Baa−10Y 4.3pp 到衰退門檻、2 月失業率要 3/17 才看得到 → 3/16 是衰退警訊；90 天累計 −150bp', () => {
     const r = readingsAt(inp, '2020-03-16');
+    expect(r.credit).toBe(4.3);
+    expect(r.creditLevel).toBe('recession');
     expect(r.hy).toBe(1000);
     expect(r.hyLevel).toBe('recession');
     expect(r.sahmLevel).toBe('normal');
@@ -78,7 +84,7 @@ describe('readingsAt：只用判定日看得到的資料', () => {
 
 describe('assessCuts：當時判定 vs 事後，含「幾個月後轉衰退式」', () => {
   const unrate = monthly('2018-01', 40, (i) => (i < 24 ? 4 : 4 + (i - 23) * 0.5));
-  const hy = monthly('2018-01', 40, (i) => (i < 26 ? 3.5 : 8));
+  const credit = monthly('2018-01', 40, (i) => (i < 26 ? 2 : 4));
   const coreCpi = monthly('2018-01', 40, () => 2.2);
   const fed: Point[] = [
     ['2018-01-01', 2.5],
@@ -89,14 +95,14 @@ describe('assessCuts：當時判定 vs 事後，含「幾個月後轉衰退式�
     const d = new Date(Date.UTC(2018, 0, 1 + i)).toISOString().slice(0, 10);
     return flat(d, 100 + i / 10);
   });
-  const rows = assessCuts({ fed, unrate, hy, coreCpi }, spx, []);
+  const rows = assessCuts({ fed, unrate, credit, coreCpi }, spx, []);
   it('第一次降息當時判預防性，事後觸發 Sahm，規則在幾個月後轉衰退式', () => {
     expect(rows).toHaveLength(1);
     const r = rows[0]!;
     expect(r.event.date).toBe('2019-12-01');
     expect(r.at.verdict).toBe('insurance');
     expect(r.recession).toBe(true);
-    // HY 2020-03 起 8%（3/2 可見）、Sahm 2020-02 月資料 3/17 可見 → 4 月檢查點轉衰退式（3/1 檢查點兩者都還看不到）
+    // Baa−10Y 2020-03 起 4pp（3/2 可見）、Sahm 2020-02 月資料 3/17 可見 → 4 月檢查點轉衰退式（3/1 檢查點兩者都還看不到）
     expect(r.recessionBy).toBe('2020-04-01');
     expect(r.event.ret12m).not.toBeNull();
     expect(r.taiex12m).toBeNull();

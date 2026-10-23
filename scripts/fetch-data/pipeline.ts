@@ -86,7 +86,7 @@ async function fetchFromSource(
       // 增量：回抓 14 天以覆蓋修正值與假期
       return fetchYahoo(spec.symbol, cacheLast ? addDays(cacheLast, -14) : null, http, now);
     case 'fred':
-      return fetchFred(spec.symbol, http, spec.start);
+      return fetchFred(spec.symbol, http);
     case 'tpex':
       return fetchTpex(cacheLast, today, http, fast ? 0 : 300);
     case 'twse':

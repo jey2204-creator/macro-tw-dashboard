@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { pctCell } from '../lib/stressFormat';
 import {
+  CREDIT_RECESSION_PP,
+  CREDIT_WATCH_PP,
   HY_RECESSION_BP,
   HY_WATCH_BP,
   INFLATION_HOT_PP,
@@ -75,20 +77,33 @@ export function CutRegimeCard({ now, phase, rows, stats, hasTaiex }: Props) {
             </tr>
             <tr>
               <td>
-                信用 <span className="muted small">HY 利差 {now.hyDate ?? '—'}</span>
+                信用 <span className="muted small">Baa−10Y {now.creditDate ?? '—'}</span>
               </td>
               <td className="r">
-                {now.hy === null ? '—' : `${now.hy}bp`}
-                {now.hyChg60 !== null && <span className="muted small"> 60日 {fbp(now.hyChg60)}</span>}
+                {now.credit === null ? '—' : `${now.credit.toFixed(2)}pp`}
+                {now.creditChg60 !== null && <span className="muted small"> 60日 {fpp(now.creditChg60)}</span>}
               </td>
               <td>
-                <Lamp color={LEVEL_COLOR[now.hyLevel]} />
-                {LEVEL_TEXT[now.hyLevel]}
+                <Lamp color={LEVEL_COLOR[now.creditLevel]} />
+                {LEVEL_TEXT[now.creditLevel]}
               </td>
               <td className="muted small">
-                ≥ {HY_RECESSION_BP} 衰退、≥ {HY_WATCH_BP} 警戒
+                ≥ {CREDIT_RECESSION_PP} 衰退、≥ {CREDIT_WATCH_PP} 警戒
               </td>
             </tr>
+            {now.hy !== null && (
+              <tr>
+                <td>
+                  <span className="muted small">↳ HY 利差 {now.hyDate}（近 3 年）</span>
+                </td>
+                <td className="r muted">{now.hy}bp</td>
+                <td className="muted">
+                  <Lamp color={LEVEL_COLOR[now.hyLevel]} />
+                  {LEVEL_TEXT[now.hyLevel]}
+                </td>
+                <td className="muted small">≥ {HY_RECESSION_BP} 衰退、≥ {HY_WATCH_BP} 警戒；只顯示不計入</td>
+              </tr>
+            )}
             <tr>
               <td>
                 通膨 <span className="muted small">核心CPI − 2% {ym(now.coreDate)}</span>
@@ -164,7 +179,7 @@ export function CutRegimeCard({ now, phase, rows, stats, hasTaiex }: Props) {
                 <th>日期</th>
                 <th>當時判定</th>
                 <th className="r">Sahm</th>
-                <th className="r">HY</th>
+                <th className="r">Baa−10Y</th>
                 <th className="r">核心−2%</th>
                 <th>事後</th>
                 <th className="r">S&P 12月</th>
@@ -191,7 +206,7 @@ export function CutRegimeCard({ now, phase, rows, stats, hasTaiex }: Props) {
                     )}
                   </td>
                   <td className="r">{r.at.sahm === null ? '—' : r.at.sahm.toFixed(2)}</td>
-                  <td className="r">{r.at.hy ?? '—'}</td>
+                  <td className="r">{r.at.credit === null ? '—' : r.at.credit.toFixed(2)}</td>
                   <td className="r">{fpp(r.at.coreGap)}</td>
                   <td>{r.recession === null ? '未滿 12 月' : r.recession ? <span className="warn">衰退</span> : <span className="muted">無</span>}</td>
                   <td className="r">

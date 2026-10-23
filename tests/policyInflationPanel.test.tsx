@@ -82,6 +82,7 @@ const FILES: Record<string, SeriesFile> = {
   sox: series('sox', [flat('2025-09-17', 6000), flat('2025-09-18', 6050), flat('2025-10-15', 6300)]),
   taiex: series('taiex', [flat('2025-09-17', 25000), flat('2025-09-18', 25100), flat('2025-10-15', 26000)]),
   unrate: series('unrate', months(0, 21, () => 4.2)),
+  baa10y: series('baa10y', [flat('2025-10-10', 1.5), flat('2025-10-14', 1.6)]),
   hy_oas: series('hy_oas', [flat('2025-10-10', 3.2), flat('2025-10-14', 3.3)]),
 };
 
@@ -142,14 +143,15 @@ describe('政策利率 vs 通膨面板', () => {
     expect([...document.querySelectorAll('section > .table-wrap .bt-table thead th')].slice(1, 5).map((th) => th.textContent)).toEqual(['S&P', 'NASDAQ', '費半', '加權']);
     expect(document.querySelector('section > .table-wrap .bt-table thead th.hl')!.textContent).toBe('S&P');
     expect(screen.getByRole('button', { name: /歷次循環起點・S&P 500（1）/ })).toBeTruthy();
-    // 降息性質判定：Sahm 0（失業率持平）、HY 330bp 正常、核心 CPI 距目標 +1.00pp（不超過 1）→ 預防性
+    // 降息性質判定：Sahm 0（失業率持平）、Baa−10Y 1.60pp 正常（HY 330bp 只顯示）、核心 CPI 距目標 +1.00pp（不超過 1）→ 預防性
     const cr = document.querySelector('.cr')!;
     expect(cr.querySelector('.cr-verdict')!.textContent).toMatch(/Fed 階段：降息期｜這次降息依目前讀數是 ?預防性$/);
     const crRows = [...cr.querySelectorAll('.cr-table tbody tr')].map((tr) => tr.textContent);
     expect(crRows[0]).toMatch(/就業.*0\.00pp.*正常/);
-    expect(crRows[1]).toMatch(/信用 HY 利差 2025-10-14330bp.*正常/);
-    expect(crRows[2]).toMatch(/通膨.*\+1\.00pp.*可降/);
-    expect(crRows[3]).toMatch(/節奏.*-40bp.*上次動作 2025-10-15 -15bp/);
+    expect(crRows[1]).toMatch(/信用 Baa−10Y 2025-10-141\.60pp.*正常/);
+    expect(crRows[2]).toMatch(/HY 利差 2025-10-14（近 3 年）330bp.*正常/);
+    expect(crRows[3]).toMatch(/通膨.*\+1\.00pp.*可降/);
+    expect(crRows[4]).toMatch(/節奏.*-40bp.*上次動作 2025-10-15 -15bp/);
     expect(screen.getByRole('button', { name: /歷次第一次降息・當時判定（1）/ })).toBeTruthy();
   });
 
