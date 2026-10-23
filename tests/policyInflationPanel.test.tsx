@@ -41,6 +41,7 @@ vi.mock('lightweight-charts', () => {
     CrosshairMode: { Normal: 0 },
     LineStyle: { Dashed: 2 },
     LineType: { WithSteps: 1 },
+    PriceScaleMode: { Normal: 0, Logarithmic: 1 },
   };
 });
 
@@ -75,6 +76,9 @@ const FILES: Record<string, SeriesFile> = {
   cpi: series('cpi', months(0, 21, (i) => 100 * 1.04 ** (i / 12))),
   core_pce: series('core_pce', months(0, 21, (i) => 100 * 1.028 ** (i / 12))),
   us2y: series('us2y', [flat('2025-10-14', 3.9), flat('2025-10-15', 3.7)]),
+  // S&P：Fed 2025-09-18 降息前後各一天
+  spx: series('spx', [flat('2025-09-17', 6600), flat('2025-09-18', 6620), flat('2025-10-15', 6700)]),
+  unrate: series('unrate', months(0, 21, () => 4.2)),
 };
 
 beforeEach(() => {
@@ -105,6 +109,7 @@ describe('政策利率 vs 通膨面板', () => {
       expect(chartLog.watermarks).toEqual([
         'Fed 利率 vs 通膨年增（%）｜虛線 2% 目標',
         '實質＝Fed − 核心CPI（pp）｜虛線 +1 緊縮、0 中性',
+        'S&P 500（對數）｜線色＝Fed 階段（見圖例、下表）',
       ]),
     );
     // 圖內不畫名稱方框、軸上不放最新值標籤（短區間會壓住刻度）；參考線也不佔軸標籤
@@ -114,6 +119,7 @@ describe('政策利率 vs 通膨面板', () => {
       { pane: 0, title: undefined, label: false },
       { pane: 0, title: undefined, label: false },
       { pane: 1, title: undefined, label: false },
+      { pane: 2, title: undefined, label: false },
     ]);
     expect(chartLog.priceLines).toEqual([
       { price: 2, title: undefined, axis: false },
@@ -125,23 +131,37 @@ describe('政策利率 vs 通膨面板', () => {
     // 美債 2Y 預設開：圖例顯示 2Y 與 2Y−Fed（3.70 − 4.10 = −0.40pp → 市場押降息）
     expect(screen.getByRole('button', { name: '美債 2Y' }).getAttribute('aria-pressed')).toBe('true');
     expect(document.querySelector('.cm-legend')!.textContent).toMatch(/美債2Y 3\.70% ｜ 2Y−Fed -0\.40pp ｜ 市場押降息/);
+    // S&P 窗格預設開：圖例顯示 S&P 與階段（2025-09-18 降息 −25bp → 降息期）、階段表與循環表
+    expect(document.querySelector('.cm-legend')!.textContent).toMatch(/S&P500 6,700 ｜ 降息期 ｜ 上次動作 2025-10-15 -15bp（0 個月前）/);
+    expect(document.querySelector('.bt-table tr.hl')!.textContent).toMatch(/降息期/);
+    expect(screen.getByRole('button', { name: /歷次循環起點（2）/ })).toBeTruthy();
+  });
+
+  it('關掉 S&P 500 會移除第三窗格與表格', async () => {
+    render(<PolicyInflationPanel version="v1" themeKey="auto-false-tw" />);
+    await waitFor(() => expect(chartLog.series.length).toBe(6));
+    fireEvent.click(screen.getByRole('button', { name: 'S&P 500' }));
+    await waitFor(() => expect(chartLog.series.length).toBe(11));
+    expect(window.localStorage.getItem('pi-spx')).toBe('0');
+    expect(document.querySelector('.bt-table')).toBeNull();
+    expect(document.querySelector('.cm-legend')!.textContent).not.toMatch(/S&P500/);
   });
 
   it('關掉美債 2Y 會移除序列與圖例列', async () => {
     render(<PolicyInflationPanel version="v1" themeKey="auto-false-tw" />);
-    await waitFor(() => expect(chartLog.series.length).toBe(5));
+    await waitFor(() => expect(chartLog.series.length).toBe(6));
     fireEvent.click(screen.getByRole('button', { name: '美債 2Y' }));
-    await waitFor(() => expect(chartLog.series.length).toBe(9));
+    await waitFor(() => expect(chartLog.series.length).toBe(11));
     expect(window.localStorage.getItem('pi-2y')).toBe('0');
     expect(document.querySelector('.cm-legend')!.textContent).not.toMatch(/美債2Y/);
   });
 
   it('切換核心 PCE 會加序列並記住；區間預設 5 年', async () => {
     render(<PolicyInflationPanel version="v1" themeKey="auto-false-tw" />);
-    await waitFor(() => expect(chartLog.series.length).toBe(5));
+    await waitFor(() => expect(chartLog.series.length).toBe(6));
     fireEvent.click(screen.getByRole('button', { name: '核心 PCE' }));
-    // 重建圖表：第一次 5 條（含 2Y），加 PCE 後 6 條
-    await waitFor(() => expect(chartLog.series.length).toBe(11));
+    // 重建圖表：第一次 6 條（含 2Y、S&P），加 PCE 後 7 條
+    await waitFor(() => expect(chartLog.series.length).toBe(13));
     expect(chartLog.series.every((s) => s.title === undefined)).toBe(true);
     expect(window.localStorage.getItem('pi-pce')).toBe('1');
     expect(screen.getByRole('button', { name: '5年' }).getAttribute('aria-pressed')).toBe('true');
