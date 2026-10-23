@@ -857,6 +857,9 @@ th {
 .bt-table th {
   padding: 3px 6px;
 }
+.bt-table th.hl {
+  color: var(--accent);
+}
 .bt-table tr.hl td {
   background: color-mix(in srgb, var(--accent) 14%, transparent);
   font-weight: 700;

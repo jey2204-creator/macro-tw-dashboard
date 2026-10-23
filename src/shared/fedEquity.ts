@@ -220,7 +220,8 @@ export function cycleEvents(fed: readonly Point[], spx: readonly Bar[], unrate: 
   const spxPts = spx.map((b) => [b[0], b[4]] as Point);
   const out: CycleEvent[] = [];
   for (const m of moves) {
-    // 事件日當天或之後第一個交易日
+    // 指數資料開始之前的事件不算（費半 1994、加權 1997 起）；事件日當天或之後第一個交易日
+    if (m.date < (spx[0]?.[0] ?? '9999')) continue;
     const i0 = spx.findIndex((b) => b[0] >= m.date);
     if (i0 < 0) continue;
     const base = spx[i0]![4];

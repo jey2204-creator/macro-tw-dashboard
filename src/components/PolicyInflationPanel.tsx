@@ -45,6 +45,7 @@ import {
   type RealRateRow,
 } from '../shared/policyInflation';
 import { rangeStart, type Point, type RangeKey } from '../shared/timeseries';
+import type { Bar } from '../shared/types';
 
 const RANGES: { k: RangeKey; label: string }[] = [
   { k: '3M', label: '3個月' },
@@ -63,12 +64,31 @@ const EXTRA_LINES = [
   { id: 'cpi', label: '整體 CPI', key: 'pi-cpi', def: '1' },
   { id: 'core_pce', label: '核心 PCE', key: 'pi-pce', def: '0' },
   { id: 'us2y', label: '美債 2Y', key: 'pi-2y', def: '1' },
-  { id: 'spx', label: 'S&P 500', key: 'pi-spx', def: '1' },
 ] as const;
-const EXTRA_COLOR: Record<ExtraId, string> = { cpi: 'var(--ma60)', core_pce: 'var(--ma240)', us2y: 'var(--ma120)', spx: 'var(--text-1)' };
+const EXTRA_COLOR: Record<ExtraId, string> = { cpi: 'var(--ma60)', core_pce: 'var(--ma240)', us2y: 'var(--ma120)' };
 type ExtraId = (typeof EXTRA_LINES)[number]['id'];
 
-const IDS = ['fed', 'fed_target_legacy', 'core_cpi', 'cpi', 'core_pce', 'us2y', 'spx', 'unrate'];
+/** 第三格可選指數（一次一個；表格四個並排）。費半 1994、加權 1997 起，樣本比 S&P 少 */
+const INDICES = [
+  { id: 'spx', label: 'S&P 500', short: 'S&P' },
+  { id: 'nasdaq', label: 'NASDAQ', short: 'NASDAQ' },
+  { id: 'sox', label: '費半', short: '費半' },
+  { id: 'taiex', label: '加權', short: '加權' },
+] as const;
+type IndexId = (typeof INDICES)[number]['id'];
+type IndexPick = IndexId | 'off';
+const INDEX_PICKS: readonly IndexPick[] = ['spx', 'nasdaq', 'sox', 'taiex', 'off'];
+
+const IDS = ['fed', 'fed_target_legacy', 'core_cpi', 'cpi', 'core_pce', 'us2y', 'unrate', ...INDICES.map((i) => i.id)];
+
+const NO_BARS: Bar[] = [];
+
+function buildEquity(fed: readonly Point[], bars: readonly Bar[], unrate: readonly Point[]) {
+  const segments = phaseSegments(fed, bars.map((b) => b[0]));
+  const rows = phaseRows(segments, bars);
+  const events = cycleEvents(fed, bars, unrate);
+  return { segments, rows, stats: phaseStats(rows), events, eventStats: eventStats(events) };
+}
 
 const f2 = (v: number | null | undefined) => (v === null || v === undefined || !Number.isFinite(v) ? '—' : v.toFixed(2));
 const f1 = (v: number | null | undefined) => (v === null || v === undefined || !Number.isFinite(v) ? '—' : v.toFixed(1));
@@ -115,15 +135,15 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
     cpi: loadPref('pi-cpi', ['1', '0'] as const, '1') === '1',
     core_pce: loadPref('pi-pce', ['1', '0'] as const, '0') === '1',
     us2y: loadPref('pi-2y', ['1', '0'] as const, '1') === '1',
-    spx: loadPref('pi-spx', ['1', '0'] as const, '1') === '1',
   }));
+  const [indexPick, setIndexPick] = useState<IndexPick>(() => loadPref<IndexPick>('pi-idx', INDEX_PICKS, 'spx'));
   const [showEvents, setShowEvents] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const [hoverTime, setHoverTime] = useState<string | null>(null);
   const [chartGen, setChartGen] = useState(0);
 
   const files = useSeriesMap(near ? IDS : [], version);
-  const { fed, coreCpi, cpi, corePce, us2y, spx, unrate } = useMemo(() => {
+  const { fed, coreCpi, cpi, corePce, us2y, unrate, indexBars } = useMemo(() => {
     const ready = (id: string) => (files[id]?.status === 'ready' ? files[id]!.data.data : null);
     const upper = ready('fed');
     return {
@@ -132,20 +152,22 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       cpi: ready('cpi') ? yoyPoints(ready('cpi')!) : ([] as Point[]),
       corePce: ready('core_pce') ? yoyPoints(ready('core_pce')!) : ([] as Point[]),
       us2y: (ready('us2y') ?? []).map((b) => [b[0], b[4]] as Point),
-      spx: ready('spx') ?? [],
       unrate: (ready('unrate') ?? []).map((b) => [b[0], b[4]] as Point),
+      indexBars: Object.fromEntries(INDICES.map((i) => [i.id, ready(i.id) ?? []])) as Record<IndexId, Bar[]>,
     };
   }, [files]);
-  // Fed 階段 vs S&P：階段區段、各段漲跌、循環第一次動作之後的表現
-  const equity = useMemo(() => {
-    if (!spx.length || !fed.length) return null;
-    const segments = phaseSegments(fed, spx.map((b) => b[0]));
-    const rows = phaseRows(segments, spx);
-    const events = cycleEvents(fed, spx, unrate);
-    const lastMove = fedMoves(fed).filter((m) => m.trend).at(-1) ?? null;
-    return { segments, rows, stats: phaseStats(rows), events, eventStats: eventStats(events), lastMove };
-  }, [fed, spx, unrate]);
-  const showSpx = extras.spx && equity !== null;
+  // Fed 階段 vs 四個指數：階段區段、各段漲跌、循環第一次動作之後的表現（每個指數各算一份，表格並排）
+  const equities = useMemo(() => {
+    if (!fed.length) return null;
+    const out = {} as Record<IndexId, ReturnType<typeof buildEquity> | null>;
+    for (const i of INDICES) out[i.id] = indexBars[i.id].length ? buildEquity(fed, indexBars[i.id], unrate) : null;
+    return out;
+  }, [fed, indexBars, unrate]);
+  const indexId: IndexId | null = indexPick === 'off' ? null : indexPick;
+  const equity = indexId && equities ? equities[indexId] : null;
+  const spx = indexId ? indexBars[indexId] : NO_BARS;
+  const showSpx = equity !== null;
+  const indexLabel = indexId ? INDICES.find((i) => i.id === indexId)!.label : '';
   const real = useMemo<RealRateRow[]>(() => realRateSeries(fed, coreCpi), [fed, coreCpi]);
   const summary = useMemo(() => summarize(fed, coreCpi), [fed, coreCpi]);
   const flip = useMemo(() => lastSignFlip(real), [real]);
@@ -153,6 +175,10 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
   const pickRange = (r: RangeKey) => {
     setRange(r);
     savePref('pi-range', r);
+  };
+  const pickIndex = (p: IndexPick) => {
+    setIndexPick(p);
+    savePref('pi-idx', p);
   };
   const toggleExtra = (id: ExtraId) => {
     const next = { ...extras, [id]: !extras[id] };
@@ -289,7 +315,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
     };
     wm(0, `Fed 利率 vs 通膨年增（%）｜虛線 2% 目標`);
     wm(1, `實質＝Fed − 核心CPI（pp）｜虛線 +${REAL_RATE_TIGHT} 緊縮、0 中性`);
-    if (showSpx) wm(2, 'S&P 500（對數）｜線色＝Fed 階段（見圖例、下表）');
+    if (showSpx) wm(2, `${indexLabel}（對數）｜線色＝Fed 階段（見圖例、下表）`);
 
     const handler = (param: MouseEventParams<Time>) => setHoverTime(typeof param.time === 'string' ? param.time : null);
     chart.subscribeCrosshairMove(handler);
@@ -301,7 +327,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       chart.remove();
       chartRef.current = null;
     };
-  }, [loaded, fed, coreCpi, cpi, corePce, us2y, spx, equity, showSpx, real, extras, themeKey]);
+  }, [loaded, fed, coreCpi, cpi, corePce, us2y, spx, equity, showSpx, indexLabel, real, extras, themeKey]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -384,7 +410,8 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
         2000、2006、2019、2023 幾次升息頂點都出現在實質利率翻正之後，但翻正不等於馬上降息（2023 翻正後又撐了一年）。
         核心 CPI 是落後指標；整體 CPI 用來解釋油價飆時 Fed 為什麼不動，核心 PCE 是 Fed 正式目標但晚兩週。
         美債 2Y 是市場對未來一年 Fed 利率的押注，通常跑在 Fed 階梯前面：2Y 低於 Fed 一碼以上＝押降息、高於一碼以上＝押升息；它比 CPI 早反應，但押錯也常見（2024 上半年押六次降息，實際三次）。
-        第三格 S&P 500 的線色是 Fed 階段（升息期／高原／降息期／谷底；超過 6 個月沒動作算暫停）。1982 年起四個階段 S&P 年化都是正的，階段本身不是方向訊號；差別在「為什麼降息」：降息後一年內失業率觸發 Sahm 規則的衰退式降息（2001、2007）之後一年 S&P 是負的，保險式降息（1995、1998、2019、2024）則續漲——分類器是失業率和 2Y−Fed，不是 Fed 動作本身。
+        第三格指數（S&P 500／NASDAQ／費半／加權，一次看一個）的線色是 Fed 階段（升息期／高原／降息期／谷底；超過 6 個月沒動作算暫停）。1982 年起四個階段 S&P 年化都是正的，階段本身不是方向訊號；差別在「為什麼降息」：降息後一年內失業率觸發 Sahm 規則的衰退式降息（2001、2007）之後一年 S&P 是負的，保險式降息（1995、1998、2019、2024）則續漲——分類器是失業率和 2Y−Fed，不是 Fed 動作本身。
+        四個指數高度連動（費半對加權 ρ60 約 0.66），四欄同向不是四個證據；費半 1994、加權 1997 起，循環次數只有 S&P 的一半，加權對 Fed 的傳導還隔著台幣與外資。
         這張圖與「Fed 120 天」「核心CPI ±0.2pp」規則重疊，只用來解釋 FOMC 為什麼那樣做，不計分。2008 年前 Fed 為單一目標利率。
       </p>
       </PanelNote>
@@ -400,6 +427,17 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
             {e.label}
           </button>
         ))}
+      </div>
+      <div className="cp-mas" role="group" aria-label="第三格指數">
+        <span className="small muted">第三格</span>
+        {INDICES.map((i) => (
+          <button key={i.id} type="button" className="ma-chip" aria-pressed={indexPick === i.id} onClick={() => pickIndex(i.id)}>
+            {i.label}
+          </button>
+        ))}
+        <button type="button" className="ma-chip" aria-pressed={indexPick === 'off'} onClick={() => pickIndex('off')}>
+          關
+        </button>
       </div>
 
       <div className="seg" role="group" aria-label="時間區間">
@@ -440,7 +478,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
               )}
               {legend.spx !== null && (
                 <div>
-                  S&P500 <b>{legend.spx.toLocaleString('en-US', { maximumFractionDigits: 0 })}</b>
+                  {indexLabel} <b>{legend.spx.toLocaleString('en-US', { maximumFractionDigits: 0 })}</b>
                   {legend.phase && (
                     <>
                       {' '}｜ <i className="lamp" style={{ background: `var(${PHASE_COLOR[legend.phase]})` }} aria-hidden="true" />
@@ -460,33 +498,39 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
         </div>
       )}
 
-      {showSpx && equity && (
+      {showSpx && equity && equities && (
         <>
           <div className="table-wrap">
             <table className="bt-table num">
               <caption className="small muted">
-                Fed 階段 vs S&P 500（{equity.segments[0]?.from.slice(0, 4)} 年起）。年化＝各段年化報酬平均，不足 3 個月的段不算
+                Fed 階段 vs 指數：各段年化報酬平均（段為正的比例）；不足 3 個月的段不算。資料起點
+                {INDICES.map((i) => ` ${i.short} ${equities[i.id]?.segments[0]?.from.slice(0, 4) ?? '—'}`).join('、')}
               </caption>
               <thead>
                 <tr>
                   <th>階段</th>
-                  <th className="r">段數</th>
-                  <th className="r">時間占比</th>
-                  <th className="r">年化</th>
-                  <th className="r">段為正</th>
+                  {INDICES.map((i) => (
+                    <th key={i.id} className={`r${i.id === indexId ? ' hl' : ''}`}>{i.short}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {equity.stats.map((st) => (
+                {equity.stats.map((st, k) => (
                   <tr key={st.phase} className={st.phase === currentPhase ? 'hl' : ''}>
                     <td>
                       <i className="lamp" style={{ background: `var(${PHASE_COLOR[st.phase]})` }} aria-hidden="true" />
                       {PHASE_TEXT[st.phase]}
                     </td>
-                    <td className="r">{st.segments}</td>
-                    <td className="r">{st.share.toFixed(0)}%</td>
-                    <td className="r">{pctCell(st.avgAnnualized)}</td>
-                    <td className="r">{st.upShare === null ? '—' : `${st.upShare.toFixed(0)}%`}</td>
+                    {INDICES.map((i) => {
+                      const x = equities[i.id]?.stats[k];
+                      return (
+                        <td key={i.id} className="r">
+                          {pctCell(x?.avgAnnualized ?? null)}
+                          <br />
+                          <span className="small muted">{x?.upShare === null || x?.upShare === undefined ? '—' : `${x.upShare.toFixed(0)}%`}</span>
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>
@@ -494,33 +538,40 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
           </div>
           <div className="table-wrap">
             <table className="bt-table num">
-              <caption className="small muted">循環第一次降息／升息之後 S&P 500。衰退式＝降息後 12 個月內失業率觸發 Sahm 規則（≥ {SAHM_TRIGGER}pp），保險式＝未觸發</caption>
+              <caption className="small muted">
+                循環第一次降息／升息之後 12 個月報酬（12 個月內最大跌幅・次數）。衰退式＝降息後 12 個月內失業率觸發 Sahm 規則（≥ {SAHM_TRIGGER}pp），保險式＝未觸發
+              </caption>
               <thead>
                 <tr>
                   <th>事件</th>
-                  <th className="r">次數</th>
-                  <th className="r">3月</th>
-                  <th className="r">12月</th>
-                  <th className="r">12月上漲</th>
-                  <th className="r">12月內最大跌幅</th>
+                  {INDICES.map((i) => (
+                    <th key={i.id} className={`r${i.id === indexId ? ' hl' : ''}`}>{i.short}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {equity.eventStats.map((st) => (
+                {equity.eventStats.map((st, k) => (
                   <tr key={st.label}>
                     <td>{st.label}</td>
-                    <td className="r">{st.n}</td>
-                    <td className="r">{pctCell(st.avg3m)}</td>
-                    <td className="r">{pctCell(st.avg12m)}</td>
-                    <td className="r">{st.up12m === null ? '—' : `${st.up12m.toFixed(0)}%`}</td>
-                    <td className="r">{pctCell(st.avgDrawdown)}</td>
+                    {INDICES.map((i) => {
+                      const x = equities[i.id]?.eventStats[k];
+                      return (
+                        <td key={i.id} className="r">
+                          {pctCell(x?.avg12m ?? null)}
+                          <br />
+                          <span className="small muted" style={{ whiteSpace: 'nowrap' }}>
+                            {pctCell(x?.avgDrawdown ?? null)}・{x?.n ?? 0}
+                          </span>
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
           <button type="button" className="linkbtn small" onClick={() => setShowEvents(!showEvents)} aria-expanded={showEvents}>
-            {showEvents ? '收起' : '展開'}歷次循環起點（{equity.events.length}）
+            {showEvents ? '收起' : '展開'}歷次循環起點・{indexLabel}（{equity.events.length}）
           </button>
           {showEvents && (
             <div className="table-wrap">

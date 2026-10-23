@@ -78,6 +78,9 @@ const FILES: Record<string, SeriesFile> = {
   us2y: series('us2y', [flat('2025-10-14', 3.9), flat('2025-10-15', 3.7)]),
   // S&P：Fed 2025-09-18 降息前後各一天
   spx: series('spx', [flat('2025-09-17', 6600), flat('2025-09-18', 6620), flat('2025-10-15', 6700)]),
+  nasdaq: series('nasdaq', [flat('2025-09-17', 22000), flat('2025-09-18', 22100), flat('2025-10-15', 22500)]),
+  sox: series('sox', [flat('2025-09-17', 6000), flat('2025-09-18', 6050), flat('2025-10-15', 6300)]),
+  taiex: series('taiex', [flat('2025-09-17', 25000), flat('2025-09-18', 25100), flat('2025-10-15', 26000)]),
   unrate: series('unrate', months(0, 21, () => 4.2)),
 };
 
@@ -132,19 +135,28 @@ describe('政策利率 vs 通膨面板', () => {
     expect(screen.getByRole('button', { name: '美債 2Y' }).getAttribute('aria-pressed')).toBe('true');
     expect(document.querySelector('.cm-legend')!.textContent).toMatch(/美債2Y 3\.70% ｜ 2Y−Fed -0\.40pp ｜ 市場押降息/);
     // S&P 窗格預設開：圖例顯示 S&P 與階段（2025-09-18 降息 −25bp → 降息期）、階段表與循環表
-    expect(document.querySelector('.cm-legend')!.textContent).toMatch(/S&P500 6,700 ｜ 降息期 ｜ 上次動作 2025-10-15 -15bp（0 個月前）/);
+    expect(document.querySelector('.cm-legend')!.textContent).toMatch(/S&P 500 6,700 ｜ 降息期 ｜ 上次動作 2025-10-15 -15bp（0 個月前）/);
     expect(document.querySelector('.bt-table tr.hl')!.textContent).toMatch(/降息期/);
-    expect(screen.getByRole('button', { name: /歷次循環起點（2）/ })).toBeTruthy();
+    // 四個指數並排：表頭 S&P／NASDAQ／費半／加權，目前指數的表頭標 hl
+    expect([...document.querySelectorAll('.bt-table thead th')].slice(1, 5).map((th) => th.textContent)).toEqual(['S&P', 'NASDAQ', '費半', '加權']);
+    expect(document.querySelector('.bt-table thead th.hl')!.textContent).toBe('S&P');
+    expect(screen.getByRole('button', { name: /歷次循環起點・S&P 500（1）/ })).toBeTruthy();
   });
 
-  it('關掉 S&P 500 會移除第三窗格與表格', async () => {
+  it('第三格切到加權會換線與圖例、記住選擇；「關」移除第三窗格與表格', async () => {
     render(<PolicyInflationPanel version="v1" themeKey="auto-false-tw" />);
     await waitFor(() => expect(chartLog.series.length).toBe(6));
-    fireEvent.click(screen.getByRole('button', { name: 'S&P 500' }));
-    await waitFor(() => expect(chartLog.series.length).toBe(11));
-    expect(window.localStorage.getItem('pi-spx')).toBe('0');
+    fireEvent.click(screen.getByRole('button', { name: '加權' }));
+    await waitFor(() => expect(chartLog.series.length).toBe(12));
+    expect(window.localStorage.getItem('pi-idx')).toBe('taiex');
+    expect(chartLog.watermarks.at(-1)).toBe('加權（對數）｜線色＝Fed 階段（見圖例、下表）');
+    expect(document.querySelector('.cm-legend')!.textContent).toMatch(/加權 26,000 ｜ 降息期/);
+    expect(document.querySelector('.bt-table thead th.hl')!.textContent).toBe('加權');
+    fireEvent.click(screen.getByRole('button', { name: '關' }));
+    await waitFor(() => expect(chartLog.series.length).toBe(17));
+    expect(window.localStorage.getItem('pi-idx')).toBe('off');
     expect(document.querySelector('.bt-table')).toBeNull();
-    expect(document.querySelector('.cm-legend')!.textContent).not.toMatch(/S&P500/);
+    expect(document.querySelector('.cm-legend')!.textContent).not.toMatch(/降息期/);
   });
 
   it('關掉美債 2Y 會移除序列與圖例列', async () => {

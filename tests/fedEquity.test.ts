@@ -94,4 +94,13 @@ describe('Sahm 與循環起點', () => {
     expect(st[0]!.n).toBe(1);
     expect(st[1]!.n).toBe(0);
   });
+  it('指數資料開始之前的循環起點不算', () => {
+    const fed: Point[] = [
+      ['2019-01-01', 2.5],
+      ['2019-07-01', 2.25],
+      ['2021-01-01', 2.5],
+    ];
+    const spx = monthly('2020-01', 24, (i) => 100 + i);
+    expect(cycleEvents(fed, spx, []).map((e) => e.date)).toEqual(['2021-01-01']);
+  });
 });
