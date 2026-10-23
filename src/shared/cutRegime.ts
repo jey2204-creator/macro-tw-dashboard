@@ -163,7 +163,7 @@ export function readingsAt(inp: Inputs, date: string, sahm: readonly Point[] = s
   const { verdict, hits } = verdictOf(sahmL, creditL);
   return {
     date,
-    sahm: s ? s[1] : null,
+    sahm: s ? Math.round(s[1] * 100) / 100 : null,
     sahmDate: s ? s[0] : null,
     sahmLevel: sahmL,
     credit: cr ? cr[1] : null,
@@ -184,12 +184,14 @@ export function readingsAt(inp: Inputs, date: string, sahm: readonly Point[] = s
   };
 }
 
+const SEVERITY: Record<Verdict, number> = { insurance: 0, watch: 1, alert: 2, recession: 3 };
+
 export interface CutAssessment {
   event: CycleEvent;
   /** 降息當天的判定 */
   at: Readings;
-  /** 降息後 12 個月內規則最早判「衰退式」的日期（沒有為 null） */
-  recessionBy: string | null;
+  /** 降息後 12 個月內規則到過的最壞判定與首次到達的月份（逐月檢查；比當時判定更壞才有，否則 null） */
+  worst: { verdict: Verdict; date: string } | null;
   /** 事後：降息後 12 個月內觸發 Sahm（來自 cycleEvents） */
   recession: boolean | null;
   /** 加權指數之後 12 個月報酬（1997 起才有） */
@@ -213,16 +215,17 @@ export function assessCuts(inp: Inputs, spx: readonly Bar[], taiex: readonly Bar
   const events = cycleEvents(inp.fed, spx, inp.unrate).filter((e) => e.kind === 'cut');
   return events.map((event) => {
     const at = readingsAt(inp, event.date, sahm);
-    // 之後 12 個月逐月檢查（以月為步，資料本身是月／日）
-    let recessionBy: string | null = null;
+    // 之後 12 個月逐月檢查（以月為步，資料本身是月／日），記下比當時更壞的判定
+    let worst: CutAssessment['worst'] = null;
     const end = addMonths(event.date, 12);
     const lastKnown = Math.min(...[inp.credit.at(-1)?.[0], sahm.at(-1)?.[0]].filter((d): d is string => !!d).map((d) => Date.parse(d)));
-    for (let k = 0; k <= 12 && recessionBy === null; k++) {
+    for (let k = 1; k <= 12; k++) {
       const d = addMonths(event.date, k);
       if (d > end || Date.parse(d) > lastKnown + 86_400_000 * 60) break;
-      if (readingsAt(inp, d, sahm).verdict === 'recession') recessionBy = d;
+      const v = readingsAt(inp, d, sahm).verdict;
+      if (SEVERITY[v] > SEVERITY[worst?.verdict ?? at.verdict]) worst = { verdict: v, date: d };
     }
-    return { event, at, recessionBy, recession: event.recession, taiex12m: ret12m(taiex, event.date) };
+    return { event, at, worst, recession: event.recession, taiex12m: ret12m(taiex, event.date) };
   });
 }
 

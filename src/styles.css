@@ -1243,6 +1243,6 @@ th {
 .cr-verdict {
   margin: 0 0 4px;
 }
-.cr-table td:first-child {
+.cr .bt-table td.nw {
   white-space: nowrap;
 }

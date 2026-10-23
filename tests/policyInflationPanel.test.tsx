@@ -148,10 +148,10 @@ describe('政策利率 vs 通膨面板', () => {
     expect(cr.querySelector('.cr-verdict')!.textContent).toMatch(/Fed 階段：降息期｜這次降息依目前讀數是 ?預防性$/);
     const crRows = [...cr.querySelectorAll('.cr-table tbody tr')].map((tr) => tr.textContent);
     expect(crRows[0]).toMatch(/就業.*0\.00pp.*正常/);
-    expect(crRows[1]).toMatch(/信用 Baa−10Y 2025-10-141\.60pp.*正常/);
-    expect(crRows[2]).toMatch(/HY 利差 2025-10-14（近 3 年）330bp.*正常/);
+    expect(crRows[1]).toMatch(/信用 Baa−10Y 2025-10-14.*1\.60pp.*正常/);
+    expect(crRows[2]).toMatch(/HY 利差 2025-10-14.*330bp.*正常/);
     expect(crRows[3]).toMatch(/通膨.*\+1\.00pp.*可降/);
-    expect(crRows[4]).toMatch(/節奏.*-40bp.*上次動作 2025-10-15 -15bp/);
+    expect(crRows[4]).toMatch(/節奏.*上次動作 2025-10-15 -15bp.*-40bp/);
     expect(screen.getByRole('button', { name: /歷次第一次降息・當時判定（1）/ })).toBeTruthy();
   });
 

@@ -82,7 +82,7 @@ describe('readingsAt：只用判定日看得到的資料', () => {
   });
 });
 
-describe('assessCuts：當時判定 vs 事後，含「幾個月後轉衰退式」', () => {
+describe('assessCuts：當時判定 vs 事後，含「幾個月後轉更壞」', () => {
   const unrate = monthly('2018-01', 40, (i) => (i < 24 ? 4 : 4 + (i - 23) * 0.5));
   const credit = monthly('2018-01', 40, (i) => (i < 26 ? 2 : 4));
   const coreCpi = monthly('2018-01', 40, () => 2.2);
@@ -103,7 +103,7 @@ describe('assessCuts：當時判定 vs 事後，含「幾個月後轉衰退式�
     expect(r.at.verdict).toBe('insurance');
     expect(r.recession).toBe(true);
     // Baa−10Y 2020-03 起 4pp（3/2 可見）、Sahm 2020-02 月資料 3/17 可見 → 4 月檢查點轉衰退式（3/1 檢查點兩者都還看不到）
-    expect(r.recessionBy).toBe('2020-04-01');
+    expect(r.worst).toEqual({ verdict: 'recession', date: '2020-04-01' });
     expect(r.event.ret12m).not.toBeNull();
     expect(r.taiex12m).toBeNull();
   });

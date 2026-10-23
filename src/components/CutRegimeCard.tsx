@@ -55,75 +55,78 @@ export function CutRegimeCard({ now, phase, rows, stats, hasTaiex }: Props) {
         <table className="bt-table num cr-table">
           <thead>
             <tr>
-              <th>訊號</th>
+              <th>訊號（門檻）</th>
               <th className="r">讀數</th>
               <th>判定</th>
-              <th>門檻</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td>
                 就業 <span className="muted small">Sahm 值 {ym(now.sahmDate)}</span>
+                <br />
+                <span className="muted small">≥ {SAHM_TRIGGER} 衰退、≥ {SAHM_WATCH} 警戒</span>
               </td>
               <td className="r">{now.sahm === null ? '—' : `${now.sahm.toFixed(2)}pp`}</td>
-              <td>
+              <td className="nw">
                 <Lamp color={LEVEL_COLOR[now.sahmLevel]} />
                 {LEVEL_TEXT[now.sahmLevel]}
-              </td>
-              <td className="muted small">
-                ≥ {SAHM_TRIGGER} 衰退、≥ {SAHM_WATCH} 警戒
               </td>
             </tr>
             <tr>
               <td>
                 信用 <span className="muted small">Baa−10Y {now.creditDate ?? '—'}</span>
+                <br />
+                <span className="muted small">≥ {CREDIT_RECESSION_PP} 衰退、≥ {CREDIT_WATCH_PP} 警戒</span>
               </td>
               <td className="r">
                 {now.credit === null ? '—' : `${now.credit.toFixed(2)}pp`}
-                {now.creditChg60 !== null && <span className="muted small"> 60日 {fpp(now.creditChg60)}</span>}
+                {now.creditChg60 !== null && (
+                  <>
+                    <br />
+                    <span className="muted small">60日 {fpp(now.creditChg60)}</span>
+                  </>
+                )}
               </td>
-              <td>
+              <td className="nw">
                 <Lamp color={LEVEL_COLOR[now.creditLevel]} />
                 {LEVEL_TEXT[now.creditLevel]}
-              </td>
-              <td className="muted small">
-                ≥ {CREDIT_RECESSION_PP} 衰退、≥ {CREDIT_WATCH_PP} 警戒
               </td>
             </tr>
             {now.hy !== null && (
               <tr>
                 <td>
-                  <span className="muted small">↳ HY 利差 {now.hyDate}（近 3 年）</span>
+                  <span className="muted small">↳ HY 利差 {now.hyDate}（FRED 只給近 3 年，只顯示）</span>
+                  <br />
+                  <span className="muted small">≥ {HY_RECESSION_BP} 衰退、≥ {HY_WATCH_BP} 警戒</span>
                 </td>
                 <td className="r muted">{now.hy}bp</td>
-                <td className="muted">
+                <td className="nw muted">
                   <Lamp color={LEVEL_COLOR[now.hyLevel]} />
                   {LEVEL_TEXT[now.hyLevel]}
                 </td>
-                <td className="muted small">≥ {HY_RECESSION_BP} 衰退、≥ {HY_WATCH_BP} 警戒；只顯示不計入</td>
               </tr>
             )}
             <tr>
               <td>
                 通膨 <span className="muted small">核心CPI − 2% {ym(now.coreDate)}</span>
+                <br />
+                <span className="muted small">&gt; {INFLATION_HOT_PP}pp 降息＝停滯型風險</span>
               </td>
               <td className="r">{fpp(now.coreGap)}</td>
-              <td>
+              <td className="nw">
                 <Lamp color={now.inflationHot ? '--lamp-yellowred' : '--lamp-blue'} />
                 {now.inflationHot ? '未解' : '可降'}
               </td>
-              <td className="muted small">&gt; {INFLATION_HOT_PP}pp 降息＝停滯型風險</td>
             </tr>
             <tr>
               <td>
                 節奏 <span className="muted small">90 天累計降息</span>
+                <br />
+                <span className="muted small">{now.lastMoveDate ? `上次動作 ${now.lastMoveDate} ${fbp(now.lastMoveBp)}` : '—'}</span>
               </td>
               <td className="r">{now.paceBp === 0 ? '0bp' : `${now.paceBp}bp`}</td>
-              <td className="muted small" colSpan={2}>
-                {now.lastMoveDate ? `上次動作 ${now.lastMoveDate} ${fbp(now.lastMoveBp)}` : '—'}
-                ｜兩碼起跳或 90 天 ≥ 100bp 多為衰退式（僅顯示，不計入判定）
-              </td>
+              <td className="muted small">兩碼起跳或 90 天 ≥ 100bp 多為衰退式（只顯示）</td>
             </tr>
           </tbody>
         </table>
@@ -146,7 +149,7 @@ export function CutRegimeCard({ now, phase, rows, stats, hasTaiex }: Props) {
           <tbody>
             {stats.map((s) => (
               <tr key={s.verdict} className={s.verdict === now.verdict ? 'hl' : ''}>
-                <td>
+                <td className="nw">
                   <Lamp color={VERDICT_COLOR[s.verdict]} />
                   {VERDICT_SHORT[s.verdict]}
                 </td>
@@ -189,19 +192,24 @@ export function CutRegimeCard({ now, phase, rows, stats, hasTaiex }: Props) {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.event.date}>
-                  <td>
+                  <td className="nw">
                     {r.event.date}
                     <br />
                     <span className="small muted">{r.event.bp}bp</span>
                   </td>
-                  <td>
+                  <td className="nw">
                     <Lamp color={VERDICT_COLOR[r.at.verdict]} />
                     {VERDICT_SHORT[r.at.verdict]}
-                    {r.at.inflationHot && <span className="warn small">・通膨未解</span>}
-                    {r.at.verdict !== 'recession' && r.recessionBy && (
+                    {r.at.inflationHot && (
                       <>
                         <br />
-                        <span className="small muted">{ym(r.recessionBy)} 轉衰退式</span>
+                        <span className="warn small">通膨未解</span>
+                      </>
+                    )}
+                    {r.worst && (
+                      <>
+                        <br />
+                        <span className="small muted">{ym(r.worst.date)} 轉{VERDICT_SHORT[r.worst.verdict]}</span>
                       </>
                     )}
                   </td>
