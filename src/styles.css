@@ -1234,3 +1234,15 @@ th {
 .cp-mas.ma-row .ma-chip {
   flex-shrink: 0;
 }
+/* 政策利率面板：降息性質判定子區塊 */
+.cr {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border);
+}
+.cr-verdict {
+  margin: 0 0 4px;
+}
+.cr-table td:first-child {
+  white-space: nowrap;
+}

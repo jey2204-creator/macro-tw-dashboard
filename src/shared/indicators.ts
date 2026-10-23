@@ -278,6 +278,14 @@ export const INDICATORS: IndicatorDef[] = [
     market: true, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true,
     note: '美債價格代理：殖利率升則跌，與 10Y 走勢相關約 0.9；可比 FRED 早 1–2 天看到昨晚美債實際走勢。跨市場對照面板用，不計分',
   },
+  // 高收益債利差：信用市場對衰退的定價（1996-12 起）；只給政策利率面板「降息性質判定」用
+  {
+    id: 'hy_oas', name: '美國高收益債利差（ICE BofA HY OAS）', short: 'HY利差', category: 'rates', frequency: 'daily',
+    subtitle: '高收益債利差｜信用壓力',
+    unit: '%', decimals: 2, sources: [{ provider: 'fred', symbol: 'BAMLH0A0HYM2' }], transform: 'none',
+    market: false, changeInBp: true, rule: { kind: 'info' }, weight: 0, maxAgeDays: 10, hidden: true,
+    note: '高收益公司債相對公債的利差：≥ 4pp 警戒、≥ 6pp 衰退定價（2011、2016、2022 到過 6～9pp 但沒衰退，單獨看太吵）。降息性質判定用，不計分',
+  },
   {
     id: 'vix', name: 'VIX 恐慌指數', short: 'VIX', category: 'us_equity', frequency: 'daily',
     subtitle: 'S&P500 隱含波動率｜市場為風險付的保費',
