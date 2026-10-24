@@ -6,6 +6,7 @@ import { BreadthPanel } from './components/BreadthPanel';
 import { CrossMarketPanel } from './components/CrossMarketPanel';
 import { EventsBar } from './components/EventsBar';
 import { ForeignChipsPanel } from './components/ForeignChipsPanel';
+import { JpValuationPanel } from './components/JpValuationPanel';
 import { MarginStressPanel } from './components/MarginStressPanel';
 import { PolicyInflationPanel } from './components/PolicyInflationPanel';
 import { RegimePanel } from './components/RegimePanel';
@@ -204,6 +205,7 @@ export default function App() {
             <PolicyInflationPanel version={summary.generatedAt} themeKey={themeKey} />
             <TwValuationPanel version={summary.generatedAt} themeKey={themeKey} />
             <UsValuationPanel version={summary.generatedAt} themeKey={themeKey} />
+            <JpValuationPanel version={summary.generatedAt} themeKey={themeKey} />
             <ForeignChipsPanel data={foreignChips} themeKey={themeKey} />
             <MarginStressPanel data={marginStress} themeKey={themeKey} />
             <BreadthPanel data={breadthStress} themeKey={themeKey} />

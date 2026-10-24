@@ -11,6 +11,7 @@ import { fetchFred } from './sources/fred';
 import { fetchMsciTaiwan } from './sources/msciFactsheet';
 import { fetchMultpl } from './sources/multpl';
 import { fetchNaverKrForeign } from './sources/naverKr';
+import { fetchNikkei } from './sources/nikkei';
 import { fetchTaifex } from './sources/taifex';
 import { fetchTpex, fetchTwse } from './sources/twExchanges';
 import { fetchTwGov } from './sources/twGov';
@@ -112,6 +113,9 @@ async function fetchFromSource(
     case 'msci_tw':
       // 沒有快取時抓現行 factsheet＋Wayback 存檔；之後只在缺上個月底時抓
       return fetchMsciTaiwan(spec.symbol, cacheLast ? cached!.data : null, today, http, fast);
+    case 'nikkei':
+      // 沒有快取時從 2004-09 逐月回補；之後只抓快取最後一天所在月到當月
+      return fetchNikkei(spec.symbol, cacheLast ? cached!.data : null, today, http, fast);
   }
 }
 
