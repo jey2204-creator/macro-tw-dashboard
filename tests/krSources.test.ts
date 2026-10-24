@@ -109,11 +109,18 @@ describe('KOSIS（코스피 PBR）', () => {
 
   it('fetchKosis：POST 表單、整批取代（不增量）', async () => {
     let posted = '';
+    let cookie = '';
     const http: HttpOptions = {
       retries: 0,
       retryDelayMs: 0,
-      fetchImpl: async (_url, init) => {
-        posted = String(init?.body ?? '');
+      fetchImpl: async (url, init) => {
+        if (!init?.body) {
+          // 統計表頁 GET → Cookie
+          expect(url).toBe('https://kosis.kr/statHtml/statHtml.do?orgId=343&tblId=DT_343_2010_S0034');
+          return new Response('<html>', { status: 200, headers: { 'set-cookie': 'JSESSIONID=abc; Path=/; HttpOnly' } });
+        }
+        posted = String(init.body);
+        cookie = String((init.headers as Record<string, string>).Cookie ?? '');
         // 回 36 個月（通過最少 24 月的檢查）
         const heads = Array.from({ length: 36 }, (_, i) => {
           const y = 2024 + Math.floor(i / 12);
@@ -131,5 +138,6 @@ describe('KOSIS（코스피 PBR）', () => {
     expect(res.bars[0]![0]).toBe('2024-01-01');
     expect(posted).toContain('tblId=DT_343_2010_S0034');
     expect(posted).toContain('200401%2C%40');
+    expect(cookie).toBe('JSESSIONID=abc');
   });
 });

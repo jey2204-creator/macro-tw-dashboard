@@ -103,7 +103,7 @@ export function parseKosis(json: string, rowTitle: string): Bar[] {
   try {
     j = JSON.parse(json) as { result?: string[]; errMsg?: string };
   } catch (e) {
-    throw new Error(`KOSIS 回應不是 JSON（前 80 字：${json.slice(0, 80)}）`, { cause: e });
+    throw new Error(`KOSIS 回應不是 JSON（前 300 字：${json.replace(/\s+/g, ' ').slice(0, 300)}）`, { cause: e });
   }
   if (j.errMsg && !j.result?.length) throw new Error(`KOSIS 回傳錯誤：${j.errMsg}`);
   const html = j.result?.[0] ?? '';
@@ -121,15 +121,47 @@ export function parseKosis(json: string, rowTitle: string): Bar[] {
   return out.sort((a, b) => (a[0] < b[0] ? -1 : 1));
 }
 
+/** 統計表頁（先 GET 一次拿 Cookie；2026-10-24 GitHub 實測：直接 POST 會回一頁只有 script 的 HTML） */
+export const kosisPageUrl = (t: KosisTable) => `https://kosis.kr/statHtml/statHtml.do?orgId=${t.orgId}&tblId=${t.tblId}`;
+/** 與瀏覽器從統計表頁送出查詢時相同的標頭 */
+const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
+
+/** GET 統計表頁，回傳 Cookie 標頭值（沒有 Set-Cookie 時為空字串） */
+export async function kosisSession(t: KosisTable, http: HttpOptions): Promise<string> {
+  const res = await http.fetchImpl(kosisPageUrl(t), {
+    headers: { 'User-Agent': BROWSER_UA, Accept: 'text/html,*/*;q=0.8', 'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.5' },
+    signal: AbortSignal.timeout(http.timeoutMs ?? 20_000),
+  });
+  const raw = typeof res.headers.getSetCookie === 'function' ? res.headers.getSetCookie() : [res.headers.get('set-cookie') ?? ''];
+  return raw
+    .map((c) => c.split(';')[0]!.trim())
+    .filter(Boolean)
+    .join('; ');
+}
+
 export async function fetchKosis(symbol: KosisSymbol, today: string, http: HttpOptions): Promise<SourceFetchResult> {
   const t = KOSIS_TABLE[symbol];
   const months = kosisMonths(KOSIS_FIRST_MONTH, today);
   const body = new URLSearchParams();
   for (const [k, v] of kosisForm(t, months)) body.append(k, v);
+  let cookie = '';
+  try {
+    cookie = await kosisSession(t, http);
+  } catch (e) {
+    console.warn(`  [kosis] 統計表頁 GET 失敗，直接 POST：${e instanceof Error ? e.message : String(e)}`);
+  }
   const text = await getText(KOSIS_URL, http, {
     method: 'POST',
     formBody: body.toString(),
-    headers: { Accept: 'application/json, text/javascript, */*; q=0.01' },
+    headers: {
+      'User-Agent': BROWSER_UA,
+      Accept: 'application/json, text/javascript, */*; q=0.01',
+      'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.5',
+      Origin: 'https://kosis.kr',
+      Referer: kosisPageUrl(t),
+      'X-Requested-With': 'XMLHttpRequest',
+      ...(cookie ? { Cookie: cookie } : {}),
+    },
   });
   const bars = parseKosis(text, t.rowTitle);
   if (bars.length < 24) throw new Error(`KOSIS ${t.tblId} 只解析到 ${bars.length} 個月`);
