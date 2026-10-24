@@ -31,7 +31,7 @@ function useActiveSection(): string | null {
   return active;
 }
 
-/** 頁首下方一排跳轉按鈕（單行，放不下可左右滑） */
+/** 頁首下方一排跳轉按鈕（桌機單行可左右滑；手機換行全部露出） */
 export function JumpNav() {
   const active = useActiveSection();
   return (
