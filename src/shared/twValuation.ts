@@ -271,7 +271,7 @@ interface Obs {
   r3: number | null;
 }
 
-function observations(peM: readonly Point[], pbM: readonly Point[], taiex: readonly Point[], tw10y: readonly Point[]): Obs[] {
+function observations(peM: readonly Point[], pbM: readonly Point[], taiex: readonly Point[], tw10y: readonly Point[], lagDays: number): Obs[] {
   const pbBy = new Map(pbM.map((p) => [monthKey(p[0]), p[1]]));
   // 當月台債 10Y 平均：月底時市場上已看得到這個利率水準（央行月資料晚公布，但不是未來資訊）
   const y10By = new Map(tw10y.map((p) => [monthKey(p[0]), p[1]]));
@@ -292,7 +292,7 @@ function observations(peM: readonly Point[], pbM: readonly Point[], taiex: reado
     const nextMonth = addMonths(`${key}-01`, 1);
     const me = lowerBound(nextMonth) - 1; // 當月最後一個交易日
     if (me < 0 || monthKey(dates[me]!) !== key) continue;
-    const s = lowerBound(addDays(dates[me]!, PUBLISH_LAG_DAYS));
+    const s = lowerBound(addDays(dates[me]!, lagDays));
     const p0 = taiex[s]?.[1];
     const r1 = p0 && s + Y1 < taiex.length ? (taiex[s + Y1]![1] / p0 - 1) * 100 : null;
     const r3 = p0 && s + Y3 < taiex.length ? ((taiex[s + Y3]![1] / p0) ** (1 / 3) - 1) * 100 : null;
@@ -304,11 +304,11 @@ function observations(peM: readonly Point[], pbM: readonly Point[], taiex: reado
 
 const mean = (xs: readonly number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 
-function bucket(label: string, lo: number, hi: number, obs: readonly Obs[]): ValBucket {
+function bucket(label: string, lo: number, hi: number, obs: readonly Obs[], split: string): ValBucket {
   const r1 = obs.flatMap((o) => (o.r1 === null ? [] : [o.r1]));
   const r3 = obs.flatMap((o) => (o.r3 === null ? [] : [o.r3]));
   const part = (early: boolean) =>
-    mean(obs.filter((o) => o.r1 !== null && (o.month < BACKTEST_SPLIT) === early).map((o) => o.r1!));
+    mean(obs.filter((o) => o.r1 !== null && (o.month < split) === early).map((o) => o.r1!));
   return {
     label,
     lo,
@@ -324,24 +324,40 @@ function bucket(label: string, lo: number, hi: number, obs: readonly Obs[]): Val
   };
 }
 
+/** 回測設定（預設＝台股；日股估值面板另給自己的分組與分界） */
+export interface ValBacktestOptions {
+  pe?: readonly [number, number, string][];
+  pb?: readonly [number, number, string][];
+  spread?: readonly [number, number, string][];
+  /** 前後段分界（YYYY-MM） */
+  split?: string;
+  /** 月底後幾天起算報酬（月報公布延遲；日資料為 0） */
+  lagDays?: number;
+}
+
 export function valuationBacktest(
   peM: readonly Point[],
   pbM: readonly Point[],
   taiex: readonly Point[],
   tw10y: readonly Point[] = [],
+  opts: ValBacktestOptions = {},
 ): ValBacktest | null {
-  const obs = observations(peM, pbM, taiex, tw10y);
+  const split = opts.split ?? BACKTEST_SPLIT;
+  const obs = observations(peM, pbM, taiex, tw10y, opts.lagDays ?? PUBLISH_LAG_DAYS);
   if (obs.length < 24) return null;
   const inRange = (v: number | null, lo: number, hi: number) => v !== null && v >= lo && v < hi;
+  const pe = opts.pe ?? PE_BUCKETS;
+  const pb = opts.pb ?? PB_BUCKETS;
+  const sp = opts.spread ?? SPREAD_BUCKETS;
   return {
     start: obs[0]!.month,
     end: obs.at(-1)!.month,
-    split: BACKTEST_SPLIT,
-    base: bucket('全部（基準）', -Infinity, Infinity, obs),
-    pe: PE_BUCKETS.map(([lo, hi, label]) => bucket(label, lo, hi, obs.filter((o) => inRange(o.pe, lo, hi)))),
-    pb: PB_BUCKETS.map(([lo, hi, label]) => bucket(label, lo, hi, obs.filter((o) => inRange(o.pb, lo, hi)))),
+    split,
+    base: bucket('全部（基準）', -Infinity, Infinity, obs, split),
+    pe: pe.map(([lo, hi, label]) => bucket(label, lo, hi, obs.filter((o) => inRange(o.pe, lo, hi)), split)),
+    pb: pb.map(([lo, hi, label]) => bucket(label, lo, hi, obs.filter((o) => inRange(o.pb, lo, hi)), split)),
     spread: obs.some((o) => o.spread !== null)
-      ? SPREAD_BUCKETS.map(([lo, hi, label]) => bucket(label, lo, hi, obs.filter((o) => inRange(o.spread, lo, hi))))
+      ? sp.map(([lo, hi, label]) => bucket(label, lo, hi, obs.filter((o) => inRange(o.spread, lo, hi)), split))
       : [],
   };
 }

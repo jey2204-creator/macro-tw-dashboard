@@ -22,6 +22,8 @@ export type SourceSpec =
   | { provider: 'multpl'; symbol: 'SP500_PE' | 'SP500_PRICE' | 'SHILLER_PE' }
   /** FactSet Insight 週報的 S&P 500 預估本益比（scripts/fetch-data/sources/factset.ts） */
   | { provider: 'factset'; symbol: 'SP500_FWD_PE' }
+  /** 日經平均プロフィル的日次投資指標：預估 PER、PBR、殖利率（加重平均／指數基準；scripts/fetch-data/sources/nikkei.ts） */
+  | { provider: 'nikkei'; symbol: 'PER_INDEX' | 'PER_WEIGHTED' | 'PBR_INDEX' | 'PBR_WEIGHTED' | 'DY_INDEX' }
   | {
       provider: 'twse_chips';
       symbol:
@@ -198,6 +200,13 @@ export const INDICATORS: IndicatorDef[] = [
     unit: '%', decimals: 2, sources: [{ provider: 'tw_gov', symbol: 'CBC_GOV10Y' }], transform: 'none',
     market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 110, hidden: true,
     note: '央行資本市場利率：十年期政府公債次級市場利率（月）。台股估值面板的股債利差用，不計分',
+  },
+  // 日本 10 年期公債殖利率（OECD 月資料，FRED 轉載）：日股估值面板的股債利差用，不單獨顯示
+  {
+    id: 'jp10y', name: '日本 10 年期公債殖利率（月均）', short: '日債10Y', category: 'rates', frequency: 'monthly',
+    unit: '%', decimals: 2, sources: [{ provider: 'fred', symbol: 'IRLTLT01JPM156N' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 110, hidden: true,
+    note: '日本 10 年期公債殖利率月平均（OECD／FRED）。日股估值面板的股債利差用，不計分',
   },
   {
     id: 'spread', name: '10Y−2Y 利差', short: '10Y-2Y', category: 'rates', frequency: 'daily',
@@ -496,6 +505,70 @@ export const INDICATORS: IndicatorDef[] = [
     unit: 'pt', decimals: 2, sources: [{ provider: 'yahoo', symbol: '^KS11' }], transform: 'none',
     market: true, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true,
     note: '三星、SK 海力士占比高，產業結構與台股最接近且同時段交易；跨市場對照面板用，不計分',
+  },
+  // ── 日股估值（僅供參考，權重 0；「日股估值」面板用）──
+  // 日經平均プロフィル日次投資指標（2004-09 起、日資料）。PER 用日經的「今期預估利益」→ 本來就是預估本益比；
+  // 本決算公布日翌日起逐家切換到下一年度預估，所以每年 4 月底～5 月中 EPS 會整批換年度、本益比跳一格
+  {
+    id: 'jp_fwd_pe', name: '日經 225 預估本益比（指數基準，日經預估 EPS）', short: '日經預估本益比', category: 'asia_equity', frequency: 'daily',
+    subtitle: '日股估值｜日經225÷今期預估EPS',
+    unit: '倍', decimals: 2, sources: [{ provider: 'nikkei', symbol: 'PER_INDEX' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 7, chart: 'line',
+    // 區間＝「日股估值」面板河流圖的倍數線（2010 起月底值：25 分位 16.8、中位數 18.8、75 分位 21.1、90 分位 23.8）
+    zones: [
+      { max: 14, label: '便宜', color: '--lamp-blue' },
+      { max: 17, label: '偏低', color: '--lamp-yellowblue' },
+      { max: 20, label: '合理', color: '--lamp-green' },
+      { max: 23, label: '偏高', color: '--lamp-yellowred' },
+      { max: Infinity, label: '昂貴', color: '--lamp-red' },
+    ],
+    refLines: [
+      { value: 23, label: '23倍' },
+      { value: 20, label: '20倍' },
+      { value: 17, label: '17倍' },
+      { value: 14, label: '14倍' },
+    ],
+    zoneStreak: true, rowReason: true,
+    infoRule: '僅供參考，不判多空、不計分（待回測；估值用來決定部位大小）',
+    note: '日經 225 ÷ 日經平均 EPS（225 檔今期預估 EPS × 株価換算係数 ÷ 除数），日經指數官網每日公布（2004 年 9 月起）。這是預估值：本決算公布日翌日起逐家切換到下一年度預估，每年 4 月底～5 月中會整批換年度、本益比跳一格，不是估值變了。日經 225 是價格加權，Fast Retailing、Advantest、軟銀、東京威力科創占比高，指數基準本益比會被少數權值股帶著走（2026 年比加重平均高 4～5 倍）；加重平均（日經新聞刊登值）另列在面板讀數。2009 年獲利崩跌時曾到 45 倍以上。僅供參考不計分',
+  },
+  {
+    id: 'jp_fwd_pe_w', name: '日經 225 預估本益比（加重平均：總市值 ÷ 預估利益總額）', short: '日經加重本益比', category: 'asia_equity', frequency: 'daily',
+    unit: '倍', decimals: 2, sources: [{ provider: 'nikkei', symbol: 'PER_WEIGHTED' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 7, hidden: true,
+    note: '225 檔總市值 ÷ 今期預估利益總額（日經新聞朝刊刊登的日經平均 PER）。不受價格加權影響，2010 起中位數約 15 倍。日股估值面板讀數用，不計分',
+  },
+  {
+    id: 'jp_pb', name: '日經 225 股價淨值比（指數基準，最近決算實績）', short: '日經淨值比', category: 'asia_equity', frequency: 'daily',
+    subtitle: '日股估值｜日經225÷每股淨值',
+    unit: '倍', decimals: 2, sources: [{ provider: 'nikkei', symbol: 'PBR_INDEX' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 7, chart: 'line',
+    zones: [
+      { max: 1.2, label: '便宜', color: '--lamp-blue' },
+      { max: 1.6, label: '合理', color: '--lamp-green' },
+      { max: 2.0, label: '偏高', color: '--lamp-yellowred' },
+      { max: Infinity, label: '昂貴', color: '--lamp-red' },
+    ],
+    refLines: [
+      { value: 2, label: '2倍' },
+      { value: 1.6, label: '1.6倍' },
+      { value: 1.2, label: '1.2倍' },
+    ],
+    zoneStreak: true, rowReason: true,
+    infoRule: '僅供參考，不判多空、不計分（待回測）',
+    note: '日經 225 ÷ 日經平均 BPS（最近決算含季報的實績每股淨值），日資料、2004 年 9 月起。2012 年底 1.1 倍（安倍經濟學起點）、2020 年 3 月 1.0 倍；東證 2023 年起要求 PBR 1 倍以下公司改善。僅供參考不計分',
+  },
+  {
+    id: 'jp_pb_w', name: '日經 225 股價淨值比（加重平均）', short: '日經加重淨值比', category: 'asia_equity', frequency: 'daily',
+    unit: '倍', decimals: 2, sources: [{ provider: 'nikkei', symbol: 'PBR_WEIGHTED' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 7, hidden: true,
+    note: '225 檔總市值 ÷ 自己資本合計。日股估值面板讀數用，不計分',
+  },
+  {
+    id: 'jp_dy', name: '日經 225 殖利率（指數基準，預估股利）', short: '日經殖利率', category: 'asia_equity', frequency: 'daily',
+    unit: '%', decimals: 2, sources: [{ provider: 'nikkei', symbol: 'DY_INDEX' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 7, hidden: true,
+    note: '日經平均 DPS（今期預估股利）÷ 日經 225。日股估值面板讀數用，不計分',
   },
   // 外資撤出亞洲的直接證據（匯率只是結果）；KRX 官方平台需登入，改用 Naver（資料源自韓國交易所）
   {
@@ -838,7 +911,18 @@ export function sourceUrl(spec: SourceSpec): string {
       return 'https://www.twse.com.tw/zh/trading/statistics/index02.html';
     case 'msci_tw':
       return 'https://www.msci.com/indexes/index/915800';
+    case 'nikkei':
+      return `https://indexes.nikkei.co.jp/nkave/archives/data?list=${NIKKEI_LIST[spec.symbol]}`;
   }
+}
+
+/** 日經平均プロフィル ヒストリカルデータ的清單名稱 */
+export const NIKKEI_LIST: Record<Extract<SourceSpec, { provider: 'nikkei' }>['symbol'], string> = {
+  PER_INDEX: 'per',
+  PER_WEIGHTED: 'per',
+  PBR_INDEX: 'pbr',
+  PBR_WEIGHTED: 'pbr',
+  DY_INDEX: 'dividend',
 }
 
 /** multpl.com 頁面路徑（抓取時加 /table/by-month） */
@@ -871,4 +955,5 @@ export const PROVIDER_LABEL: Record<SourceSpec['provider'], string> = {
   factset: 'FactSet Insight（Earnings Insight 週報）',
   twse_val: '臺灣證交所 TWSE（證券市場統計概要月報）',
   msci_tw: 'MSCI（台灣指數 factsheet）',
+  nikkei: '日經平均プロフィル（日經指數官網日次投資指標）',
 };
