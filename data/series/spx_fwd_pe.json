@@ -1,0 +1,1 @@
+{"id":"spx_fwd_pe","source":{"provider":"factset","symbol":"SP500_FWD_PE","url":"https://insight.factset.com/topic/earnings"},"status":"ok","fetchedAt":"2026-10-24T06:01:15.166Z","lastSuccessAt":"2026-10-24T06:01:15.166Z","lastDate":"2026-10-23","closeOnly":true,"partial":false,"errors":[],"data":[["2026-10-16",19,19,19,19],["2026-10-23",18.7,18.7,18.7,18.7]]}
