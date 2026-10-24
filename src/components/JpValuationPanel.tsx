@@ -200,12 +200,13 @@ export function JpValuationPanel({ version, themeKey }: Props) {
       1,
     );
     peWS.setData(rows.map((r, i) => (r.peW === null ? { time: times[i]! } : { time: times[i]!, value: r.peW })));
+    // 只畫箭頭不標字（十年內有幾十次，標字會疊在一起）；幅度在圖例列看
     const markers: SeriesMarker<Time>[] = jumps.map((j) => ({
       time: j.date as Time,
       position: j.pct > 0 ? 'belowBar' : 'aboveBar',
       shape: j.pct > 0 ? 'arrowUp' : 'arrowDown',
       color: j.pct > 0 ? cssVar('--lamp-blue') : cssVar('--lamp-red'),
-      text: `EPS ${j.pct > 0 ? '+' : ''}${j.pct.toFixed(0)}%`,
+      size: 0.7,
     }));
     if (markers.length > 0) createSeriesMarkers(peS, markers);
 
@@ -244,7 +245,7 @@ export function JpValuationPanel({ version, themeKey }: Props) {
       if (pane) createTextWatermark(pane, { horzAlign: 'left', vertAlign: 'top', lines: [{ text, color: textColor, fontSize: 12, fontFamily, fontStyle: '' }] });
     };
     wm(0, `河流圖｜預估 EPS × ${JP_RIVER_MULTIPLES.join('／')}倍（對數軸）`);
-    wm(1, `預估本益比（倍）｜點線＝加重平均｜虛線 ${BASE_YEAR} 起中位數 ${f1(summary.peStats?.median)}｜▲▼ 單日 EPS 變動 ≥${EPS_JUMP_PCT}%`);
+    wm(1, `預估本益比｜點線 加重平均｜虛線 ${BASE_YEAR} 起中位數 ${f1(summary.peStats?.median)}`);
     wm(2, `淨值比（倍）｜虛線 ${BASE_YEAR} 起中位數 ${f2(summary.pbStats?.median)}`);
     wm(3, '股債利差（pp）＝預估盈餘殖利率 − 日債10Y');
 
@@ -276,6 +277,8 @@ export function JpValuationPanel({ version, themeKey }: Props) {
     return () => cancelAnimationFrame(raf);
   }, [chartGen, range, resetKey, rows]);
 
+  const jumpByDate = useMemo(() => new Map(jumps.map((j) => [j.date, j])), [jumps]);
+  const jumpOn = (d: string) => jumpByDate.get(d) ?? null;
   const legend = useMemo<JpRow | null>(() => {
     if (!loaded) return null;
     return jpRowAtOrBefore(rows, hoverTime ?? rows.at(-1)!.date);
@@ -387,6 +390,9 @@ export function JpValuationPanel({ version, themeKey }: Props) {
             {c.label}
           </span>
         ))}
+        <span className="ma-chip" role="listitem" aria-pressed="true" aria-disabled="true">
+          ▲▼ 單日預估 EPS 變動 ≥{EPS_JUMP_PCT}%
+        </span>
       </div>
 
       <div className="seg" role="group" aria-label="時間區間">
@@ -417,7 +423,8 @@ export function JpValuationPanel({ version, themeKey }: Props) {
                 <b>{fpp(legend.spread)}</b>
               </div>
               <div className="muted">
-                預估 EPS {fInt(legend.eps)}｜河道 {JP_RIVER_MULTIPLES.map((m) => `${m}倍 ${fInt(legend.eps * m)}`).join('｜')}
+                預估 EPS {fInt(legend.eps)}
+                {jumpOn(legend.date) && <b className={jumpOn(legend.date)!.pct > 0 ? '' : 'warn'}> {fpct(jumpOn(legend.date)!.pct, 0)}</b>}｜河道 {JP_RIVER_MULTIPLES.map((m) => `${m}倍 ${fInt(legend.eps * m)}`).join('｜')}
               </div>
             </div>
           )}

@@ -75,11 +75,11 @@ describe('日股估值：日經收盤與當日 PER 配對', () => {
 });
 
 describe('日股估值：換年度標記與摘要', () => {
-  it('單日 EPS 變動 ≥3% 標記，連續幾天只標第一天', () => {
+  it('單日 EPS 變動 ≥5% 標記，連續幾天只標第一天', () => {
     const dates = ['05-11', '05-12', '05-13', '05-14', '05-15', '05-18'].map((d) => `2026-${d}`);
     const price = dates.map(() => 40000);
-    // PER 從 20 → 19.2（EPS +4.2%）→ 18.5（+3.8%）→ 18.4（+0.5%）→ 18.4 → 19.0（−3.2%）
-    const per = [20, 19.2, 18.5, 18.4, 18.4, 19.0];
+    // PER 從 20 → 18.8（EPS +6.4%）→ 17.8（+5.6%）→ 17.7（+0.6%）→ 17.7 → 18.8（−5.9%）
+    const per = [20, 18.8, 17.8, 17.7, 17.7, 18.8];
     const rows = jpRiverRows(
       dates.map((d, i) => [d, price[i]!]),
       dates.map((d, i) => [d, per[i]!]),
@@ -89,8 +89,8 @@ describe('日股估值：換年度標記與摘要', () => {
     );
     const jumps = epsJumps(rows);
     expect(jumps.map((j) => j.date)).toEqual(['2026-05-12', '2026-05-18']);
-    expect(jumps[0]!.pct).toBeGreaterThan(3);
-    expect(jumps[1]!.pct).toBeLessThan(-3);
+    expect(jumps[0]!.pct).toBeGreaterThan(5);
+    expect(jumps[1]!.pct).toBeLessThan(-5);
   });
 
   it('摘要：區間、河道位置、加重平均差距、近 20 日 EPS 變動', () => {

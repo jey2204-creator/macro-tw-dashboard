@@ -20,7 +20,7 @@ export const JP_RIVER_MULTIPLES = [11, 14, 17, 20, 23, 26] as const;
 /** 百分位、中位數基期（與美股相同：2010 起） */
 export const JP_BASE_START = '2010-01-01';
 /** 單日預估 EPS 變動超過此比例 → 視為換年度或大幅修正 */
-export const EPS_JUMP_PCT = 3;
+export const EPS_JUMP_PCT = 5;
 /** 日債 10Y 月資料最多落後幾天仍採用（OECD 約晚 1～2 個月） */
 const Y10_MAX_LAG_DAYS = 100;
 

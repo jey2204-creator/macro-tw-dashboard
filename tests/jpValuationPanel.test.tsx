@@ -146,7 +146,7 @@ describe('日股估值面板', () => {
     render(<JpValuationPanel version="v1" themeKey="auto-false-tw" />);
     await waitFor(() => expect(chartLog.watermarks.length).toBe(4));
     expect(chartLog.watermarks[0]).toBe('河流圖｜預估 EPS × 11／14／17／20／23／26倍（對數軸）');
-    expect(chartLog.watermarks[1]).toMatch(/^預估本益比（倍）｜點線＝加重平均｜虛線 2010 起中位數 \d+\.\d｜▲▼ 單日 EPS 變動 ≥3%$/);
+    expect(chartLog.watermarks[1]).toMatch(/^預估本益比｜點線 加重平均｜虛線 2010 起中位數 \d+\.\d$/);
     expect(chartLog.watermarks[3]).toBe('股債利差（pp）＝預估盈餘殖利率 − 日債10Y');
     expect(chartLog.series.map((s) => `${s.pane}:${s.type}`)).toEqual([
       '0:Line', '0:Line', '0:Line', '0:Line', '0:Line', '0:Line', '0:Line', '1:Line', '1:Line', '2:Line', '3:Baseline',
@@ -159,11 +159,11 @@ describe('日股估值面板', () => {
       { pane: 2, mode: 0 },
       { pane: 3, mode: 0 },
     ]);
-    // 每年 5/15 一個 ▼（−5%）、5/16 一個 ▲（回到原值 +5.3%）→ 22 年約 44 個標記
+    // 每年 5/15 一個 ▲（PER −5% → EPS +5.3%）、5/16 一個 ▼（回到原值）→ 22 年約 44 個標記，不標字
     expect(chartLog.markers.length).toBeGreaterThanOrEqual(40);
-    expect(chartLog.markers.every((m) => /^EPS [+-]\d+%$/.test(m.text ?? ''))).toBe(true);
+    expect(chartLog.markers.every((m) => m.text === undefined)).toBe(true);
     expect(screen.getAllByRole('listitem').map((e) => e.textContent)).toEqual([
-      '11–14倍 便宜', '14–17倍 偏低', '17–20倍 合理', '20–23倍 偏高', '23–26倍 昂貴',
+      '11–14倍 便宜', '14–17倍 偏低', '17–20倍 合理', '20–23倍 偏高', '23–26倍 昂貴', '▲▼ 單日預估 EPS 變動 ≥5%',
     ]);
     expect(screen.getByRole('button', { name: '10年' }).getAttribute('aria-pressed')).toBe('true');
     fireEvent.click(screen.getByRole('button', { name: '5年' }));
