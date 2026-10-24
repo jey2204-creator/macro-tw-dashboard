@@ -1182,6 +1182,17 @@ th {
   border-color: var(--accent);
   color: #fff;
 }
+/* 手機：換行全部露出（11 個按鈕約 2 行），不必左右滑才知道有哪些面板 */
+@media (max-width: 600px) {
+  .jumpnav {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    row-gap: 4px;
+  }
+  .jumpnav button {
+    padding: 2px 7px;
+  }
+}
 .to-top {
   position: fixed;
   right: max(12px, env(safe-area-inset-right));
