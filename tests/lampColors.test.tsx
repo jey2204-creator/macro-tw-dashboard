@@ -102,7 +102,7 @@ describe('景氣燈號分區與顏色', () => {
     ]);
     // 有顏色分區的只有估值（S&P 本益比、日經預估本益比與淨值比、台股本益比、淨值比與預估本益比：便宜→昂貴，與燈號同一套冷→熱色）與景氣燈號；
     // 其他台灣指標（成長／衰退等）不上色
-    expect(INDICATORS.filter((d) => coloredZones(d)).map((d) => d.id)).toEqual(['spx_pe', 'jp_fwd_pe', 'jp_pb', 'tw_pe', 'tw_pb', 'tw_fwd_pe', 'tw_signal']);
+    expect(INDICATORS.filter((d) => coloredZones(d)).map((d) => d.id)).toEqual(['spx_pe', 'jp_fwd_pe', 'jp_pb', 'kr_pb', 'kr_pe', 'kr_fwd_pe', 'tw_pe', 'tw_pb', 'tw_fwd_pe', 'tw_signal']);
   });
 
   it('色帶：相鄰區間首尾相接，最上與最下延伸到圖邊', () => {

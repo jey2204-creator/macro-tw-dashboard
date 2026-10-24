@@ -8,10 +8,12 @@ import type { Bar, SeriesFile, SourceRef, SummaryEntry, SummaryFile } from '../.
 import type { FetchLike, HttpOptions } from './http';
 import { fetchFactsetForwardPe } from './sources/factset';
 import { fetchFred } from './sources/fred';
-import { fetchMsciTaiwan } from './sources/msciFactsheet';
+import { fetchMsciKorea, fetchMsciTaiwan } from './sources/msciFactsheet';
 import { fetchMultpl } from './sources/multpl';
 import { fetchNaverKrForeign } from './sources/naverKr';
 import { fetchNikkei } from './sources/nikkei';
+import { fetchEcos } from './sources/ecos';
+import { fetchKosis } from './sources/kosis';
 import { fetchTaifex } from './sources/taifex';
 import { fetchTpex, fetchTwse } from './sources/twExchanges';
 import { fetchTwGov } from './sources/twGov';
@@ -116,6 +118,15 @@ async function fetchFromSource(
     case 'nikkei':
       // 沒有快取時從 2004-09 逐月回補；之後只抓快取最後一天所在月到當月
       return fetchNikkei(spec.symbol, cacheLast ? cached!.data : null, today, http, fast);
+    case 'ecos':
+      // 沒有快取時從統計起始月逐段回補（sample 金鑰一次 10 期）；之後只抓最後一月前 2 個月到當月
+      return fetchEcos(spec.symbol, cacheLast ? cached!.data : null, today, http, fast);
+    case 'kosis':
+      // 每次整批重抓 2004-01 起（一次 POST、約 600 KB）
+      return fetchKosis(spec.symbol, today, http);
+    case 'msci_kr':
+      // 與 msci_tw 相同：快取已有上個月底就不抓；沒有快取時抓現行 factsheet＋Wayback 存檔
+      return fetchMsciKorea(spec.symbol, cacheLast ? cached!.data : null, today, http, fast);
   }
 }
 

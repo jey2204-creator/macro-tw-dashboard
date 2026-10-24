@@ -14,6 +14,8 @@ export interface RequestOptions {
   method?: 'GET' | 'POST';
   /** POST 表單內容 */
   form?: Record<string, string>;
+  /** 已編碼的 POST 表單字串（有重複欄位名時用；與 form 擇一） */
+  formBody?: string;
   /** 回應編碼（期交所 CSV 為 big5） */
   encoding?: string;
 }
@@ -61,10 +63,10 @@ async function getArrayBuffer(url: string, opts: HttpOptions, req: RequestOption
         headers: {
           'User-Agent': USER_AGENT,
           Accept: '*/*',
-          ...(req.form ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}),
+          ...(req.form || req.formBody !== undefined ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}),
           ...req.headers,
         },
-        body: req.form ? new URLSearchParams(req.form).toString() : undefined,
+        body: req.formBody ?? (req.form ? new URLSearchParams(req.form).toString() : undefined),
       });
       if (!res.ok) {
         // 4xx（429 除外）不重試

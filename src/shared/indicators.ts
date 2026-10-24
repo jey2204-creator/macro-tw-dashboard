@@ -24,6 +24,12 @@ export type SourceSpec =
   | { provider: 'factset'; symbol: 'SP500_FWD_PE' }
   /** 日經平均プロフィル的日次投資指標：預估 PER、PBR、殖利率（加重平均／指數基準；scripts/fetch-data/sources/nikkei.ts） */
   | { provider: 'nikkei'; symbol: 'PER_INDEX' | 'PER_WEIGHTED' | 'PBR_INDEX' | 'PBR_WEIGHTED' | 'DY_INDEX' }
+  /** 韓國銀行 ECOS Open API：KOSPI 本益比、殖利率（KRX 月底值）、韓國 10 年期公債（月均）（scripts/fetch-data/sources/ecos.ts） */
+  | { provider: 'ecos'; symbol: 'KOSPI_PER' | 'KOSPI_DY' | 'KTB10Y' }
+  /** KOSIS 國家統計入口網轉載的 KRX「코스피 주가순자산비율」月資料（scripts/fetch-data/sources/kosis.ts） */
+  | { provider: 'kosis'; symbol: 'KOSPI_PBR' }
+  /** MSCI 韓國指數 factsheet 的預估本益比、近 12 月本益比、淨值比（與 msci_tw 同一個解析器） */
+  | { provider: 'msci_kr'; symbol: 'FWD_PE' | 'PE' | 'PBV' }
   | {
       provider: 'twse_chips';
       symbol:
@@ -207,6 +213,13 @@ export const INDICATORS: IndicatorDef[] = [
     unit: '%', decimals: 2, sources: [{ provider: 'fred', symbol: 'IRLTLT01JPM156N' }], transform: 'none',
     market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 110, hidden: true,
     note: '日本 10 年期公債殖利率月平均（OECD／FRED）。日股估值面板的股債利差用，不計分',
+  },
+  // 韓國 10 年期公債殖利率（韓國銀行 ECOS 市場利率月平均）：韓股估值面板的股債利差用，不單獨顯示
+  {
+    id: 'kr10y', name: '韓國 10 年期公債殖利率（月均）', short: '韓債10Y', category: 'rates', frequency: 'monthly',
+    unit: '%', decimals: 2, sources: [{ provider: 'ecos', symbol: 'KTB10Y' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 75, hidden: true,
+    note: '韓國 10 年期國庫債券殖利率月平均（韓國銀行 ECOS，2000 年 10 月起）。韓股估值面板的股債利差用，不計分',
   },
   {
     id: 'spread', name: '10Y−2Y 利差', short: '10Y-2Y', category: 'rates', frequency: 'daily',
@@ -578,6 +591,95 @@ export const INDICATORS: IndicatorDef[] = [
     market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true, flow: true, chart: 'histogram',
     note: '外國人在韓國 KOSPI 的每日淨買賣（億韓元，Naver Pay 證券；2010 年起）。跨市場對照面板換算成億美元與台灣外資並列，不計分',
   },
+  // ── 韓股估值（僅供參考，權重 0；「韓股估值」面板用）──
+  // KRX 月底值（ECOS／KOSIS 轉載，2004-01 起）。KRX 的本益比用「最近一期年度（含半年報）實績純益」：
+  // 財報併入時整批換分母（2026-09 從 18.6 倍跳到 11.4 倍），獲利循環大的韓股本益比會在獲利高峰時最低、谷底時飆高 → 主角是淨值比
+  {
+    id: 'kr_pb', name: 'KOSPI 股價淨值比（KRX 月底值）', short: 'KOSPI淨值比', category: 'asia_equity', frequency: 'monthly',
+    subtitle: '韓股估值｜KOSPI總市值÷淨值',
+    unit: '倍', decimals: 2, sources: [{ provider: 'kosis', symbol: 'KOSPI_PBR' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 75, chart: 'line',
+    // 區間＝「韓股估值」面板河流圖的倍數線（2004 起月底值：25 分位 0.98、中位數 1.13、75 分位 1.28、90 分位 1.46；
+    // 2008-11 0.90、2020-03 0.71、2022-09 0.83 是谷底，2007-10 1.90 是 2025 年以前的高點）；2026 年 2 倍以上是史無前例
+    zones: [
+      { max: 0.9, label: '便宜', color: '--lamp-blue' },
+      { max: 1.1, label: '偏低', color: '--lamp-yellowblue' },
+      { max: 1.3, label: '合理', color: '--lamp-green' },
+      { max: 1.6, label: '偏高', color: '--lamp-yellowred' },
+      { max: Infinity, label: '昂貴', color: '--lamp-red' },
+    ],
+    refLines: [
+      { value: 1.6, label: '1.6倍' },
+      { value: 1.3, label: '1.3倍' },
+      { value: 1.1, label: '1.1倍' },
+      { value: 0.9, label: '0.9倍' },
+    ],
+    zoneStreak: true, rowReason: true,
+    infoRule: '僅供參考，不判多空、不計分（待回測；韓股估值以淨值比為主）',
+    note: '韓國交易所 KOSPI 總市值 ÷ 淨值總額，月底值（2004 年 1 月起；KOSIS 轉載）。韓國在地「PBR 1 倍」是著名的底部參考：2008 年 10 月 0.8、2020 年 3 月 0.9、2022 年 9 月 0.85；2026 年記憶體超級循環把淨值比推到 2 倍以上（史上第一次），分母是帳面淨值、不受單年獲利起伏影響，比本益比更適合判斷韓股高低基期。僅供參考不計分',
+  },
+  {
+    id: 'kr_pe', name: 'KOSPI 本益比（KRX 月底值，最近一期年度實績純益）', short: 'KOSPI本益比', category: 'asia_equity', frequency: 'monthly',
+    subtitle: '韓股估值｜KOSPI總市值÷最近年度純益',
+    unit: '倍', decimals: 2, sources: [{ provider: 'ecos', symbol: 'KOSPI_PER' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 75, chart: 'line',
+    // 2004 起月底值：25 分位 11.7、中位數 14.1、75 分位 16.6、90 分位 21；2005-04 7.4、2008-11 8.6、2022-09 9.3 是谷底
+    zones: [
+      { max: 9, label: '便宜', color: '--lamp-blue' },
+      { max: 12, label: '偏低', color: '--lamp-yellowblue' },
+      { max: 15, label: '合理', color: '--lamp-green' },
+      { max: 18, label: '偏高', color: '--lamp-yellowred' },
+      { max: Infinity, label: '昂貴', color: '--lamp-red' },
+    ],
+    refLines: [
+      { value: 18, label: '18倍' },
+      { value: 15, label: '15倍' },
+      { value: 12, label: '12倍' },
+      { value: 9, label: '9倍' },
+    ],
+    zoneStreak: true, rowReason: true,
+    infoRule: '僅供參考，不判多空、不計分（循環股市場：獲利高峰時本益比最低，單看會給反向訊號）',
+    note: '韓國交易所 KOSPI 總市值 ÷ 最近一期年度（含半年報）實績純益總額，月底值（2004 年 1 月起；韓國銀行 ECOS）。不是近四季滾動：年報、半年報併入時整批換分母（2026 年 9 月從 18.6 倍跳到 11.4 倍），獲利崩跌時本益比飆高（2009 年、2019 年、2023 年都在 20 倍以上）、獲利高峰時最低。韓股是三星、海力士主導的循環股市場，本益比要搭配淨值比看。僅供參考不計分',
+  },
+  {
+    id: 'kr_fwd_pe', name: 'KOSPI 預估本益比（MSCI 韓國，未來 12 月預估 EPS）', short: '韓股預估本益比', category: 'asia_equity', frequency: 'monthly',
+    subtitle: '韓股估值｜MSCI韓國÷未來12月預估EPS',
+    unit: '倍', decimals: 2, sources: [{ provider: 'msci_kr', symbol: 'FWD_PE' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 75, chart: 'line',
+    zones: [
+      { max: 7, label: '便宜', color: '--lamp-blue' },
+      { max: 9, label: '偏低', color: '--lamp-yellowblue' },
+      { max: 12, label: '合理', color: '--lamp-green' },
+      { max: 14, label: '偏高', color: '--lamp-yellowred' },
+      { max: Infinity, label: '昂貴', color: '--lamp-red' },
+    ],
+    refLines: [
+      { value: 12, label: '12倍' },
+      { value: 9, label: '9倍' },
+      { value: 7, label: '7倍' },
+    ],
+    zoneStreak: true, rowReason: true,
+    infoRule: '僅供參考，不判多空、不計分（Wayback 存檔月份有限，無法回測；循環高峰時預估本益比極低是常態，不是便宜）',
+    note: 'MSCI 韓國指數（約 90 檔大中型股，三星、SK 海力士占比高）÷ 分析師未來 12 個月預估 EPS，月底值，每月初更新（MSCI 官方 factsheet）。2026 年 9 月底 4.95 倍、近 12 月 10.25 倍：市場押注獲利再翻倍，是記憶體超級循環的典型「高峰本益比」——循環股在獲利高峰時預估本益比最低，不代表便宜。僅供參考不計分',
+  },
+  {
+    id: 'kr_msci_pe', name: 'MSCI 韓國近 12 月本益比', short: 'MSCI韓國本益比', category: 'asia_equity', frequency: 'monthly',
+    unit: '倍', decimals: 2, sources: [{ provider: 'msci_kr', symbol: 'PE' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 75, hidden: true,
+    note: 'MSCI 韓國指數 ÷ 近 12 月實績 EPS（factsheet）。韓股估值面板用來算預估本益比隱含的 EPS 成長，不計分',
+  },
+  {
+    id: 'kr_msci_pb', name: 'MSCI 韓國股價淨值比', short: 'MSCI韓國淨值比', category: 'asia_equity', frequency: 'monthly',
+    unit: '倍', decimals: 2, sources: [{ provider: 'msci_kr', symbol: 'PBV' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 75, hidden: true,
+    note: 'MSCI 韓國指數的股價淨值比（factsheet）。韓股估值面板讀數用，與 KRX 全市場值對照，不計分',
+  },
+  {
+    id: 'kr_dy', name: 'KOSPI 殖利率（KRX 月底值）', short: 'KOSPI殖利率', category: 'asia_equity', frequency: 'monthly',
+    unit: '%', decimals: 2, sources: [{ provider: 'ecos', symbol: 'KOSPI_DY' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 75, hidden: true,
+    note: '韓國交易所 KOSPI 股利總額 ÷ 總市值，月底值（2004 年 1 月起；韓國銀行 ECOS）。韓股估值面板讀數用，不計分',
+  },
   // ── 台股 ──────────────────────────────────
   {
     id: 'taiex', name: '台灣加權指數', short: '加權指數', category: 'tw_equity', frequency: 'daily',
@@ -913,6 +1015,12 @@ export function sourceUrl(spec: SourceSpec): string {
       return 'https://www.msci.com/indexes/index/915800';
     case 'nikkei':
       return `https://indexes.nikkei.co.jp/nkave/archives/data?list=${NIKKEI_LIST[spec.symbol]}`;
+    case 'ecos':
+      return 'https://ecos.bok.or.kr/';
+    case 'kosis':
+      return 'https://kosis.kr/statHtml/statHtml.do?orgId=343&tblId=DT_343_2010_S0034';
+    case 'msci_kr':
+      return 'https://www.msci.com/documents/10199/255599/msci-korea-index.pdf';
   }
 }
 
@@ -956,4 +1064,7 @@ export const PROVIDER_LABEL: Record<SourceSpec['provider'], string> = {
   twse_val: '臺灣證交所 TWSE（證券市場統計概要月報）',
   msci_tw: 'MSCI（台灣指數 factsheet）',
   nikkei: '日經平均プロフィル（日經指數官網日次投資指標）',
+  ecos: '韓國銀行 ECOS 經濟統計系統（KRX 月底值）',
+  kosis: 'KOSIS 國家統計入口網（韓國交易所資料）',
+  msci_kr: 'MSCI（韓國指數 factsheet）',
 };
