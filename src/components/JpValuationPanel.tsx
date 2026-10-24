@@ -47,6 +47,8 @@ const RANGES: { k: RangeKey; label: string }[] = [
   { k: 'ALL', label: '全部' },
 ];
 const PANE_STRETCH = [0.46, 0.18, 0.18, 0.18] as const;
+/** 本益比窗格 Y 軸固定範圍（倍）：正常年份 13～26，2009／2020 的 45～80 倍截掉 */
+const PE_AXIS = [8, 35] as const;
 const IDS = ['nikkei', 'jp_fwd_pe', 'jp_fwd_pe_w', 'jp_pb', 'jp_dy', 'jp10y', 'us10y'];
 const PE_ZONES = INDICATOR_MAP['jp_fwd_pe']!.zones ?? [];
 const PB_ZONES = INDICATOR_MAP['jp_pb']!.zones ?? [];
@@ -189,14 +191,20 @@ export function JpValuationPanel({ version, themeKey }: Props) {
     priceS.attachPrimitive(new RiverBands(bands));
 
     // 第二格：預估本益比（指數基準，依區間上色）；灰色點線＝加重平均；虛線＝基期中位數；▲／▼＝換年度或大幅修正
-    const peS = chart.addSeries(LineSeries, { color: peColor(summary.pe), lineWidth: 2, priceFormat: x1Fmt, lastValueVisible: false }, 1);
+    // Y 軸鎖在 PE_AXIS 範圍：2009、2020 獲利崩跌時本益比飆到 45～80 倍以上會把正常年份壓扁（真實值仍在圖例列）
+    const clampPe = () => ({ priceRange: { minValue: PE_AXIS[0], maxValue: PE_AXIS[1] } });
+    const peS = chart.addSeries(
+      LineSeries,
+      { color: peColor(summary.pe), lineWidth: 2, priceFormat: x1Fmt, lastValueVisible: false, autoscaleInfoProvider: clampPe },
+      1,
+    );
     peS.setData(rows.map((r, i) => ({ time: times[i]!, value: r.pe, color: peColor(r.pe) })));
     if (summary.peStats) {
       peS.createPriceLine({ price: summary.peStats.median, color: textColor, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false });
     }
     const peWS = chart.addSeries(
       LineSeries,
-      { color: textColor, lineWidth: 1, lineStyle: LineStyle.Dotted, priceFormat: x1Fmt, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false },
+      { color: textColor, lineWidth: 1, priceFormat: x1Fmt, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false, autoscaleInfoProvider: clampPe },
       1,
     );
     peWS.setData(rows.map((r, i) => (r.peW === null ? { time: times[i]! } : { time: times[i]!, value: r.peW })));
@@ -245,7 +253,7 @@ export function JpValuationPanel({ version, themeKey }: Props) {
       if (pane) createTextWatermark(pane, { horzAlign: 'left', vertAlign: 'top', lines: [{ text, color: textColor, fontSize: 12, fontFamily, fontStyle: '' }] });
     };
     wm(0, `河流圖｜預估 EPS × ${JP_RIVER_MULTIPLES.join('／')}倍（對數軸）`);
-    wm(1, `預估本益比｜點線 加重平均｜虛線 ${BASE_YEAR} 起中位數 ${f1(summary.peStats?.median)}`);
+    wm(1, `預估本益比｜灰細線 加重平均｜虛線 ${BASE_YEAR} 起中位數 ${f1(summary.peStats?.median)}｜軸 ${PE_AXIS[0]}～${PE_AXIS[1]} 倍，超過截斷`);
     wm(2, `淨值比（倍）｜虛線 ${BASE_YEAR} 起中位數 ${f2(summary.pbStats?.median)}`);
     wm(3, '股債利差（pp）＝預估盈餘殖利率 − 日債10Y');
 
@@ -375,10 +383,10 @@ export function JpValuationPanel({ version, themeKey }: Props) {
           <b>換年度</b>：日本多數公司 3 月結算，本決算公布日翌日起逐家切換到下一年度預估，所以每年 4 月底～5 月中 EPS 會整批上移、本益比跳一格，
           那是分母換了，不是估值變了；中窗格 ▲▼ 標出單日 EPS 變動 ≥{EPS_JUMP_PCT}% 的日子（4～6 月多為換年度，其他月份是大幅修正或成分股更換）。
           <b>價格加權</b>：日經 225 不是市值加權，Fast Retailing、Advantest、軟銀、東京威力科創幾檔占比極高，指數基準本益比會被它們帶著走；
-          點線「加重平均」（225 檔總市值 ÷ 預估利益總額，日經新聞刊登值）不受此影響，{BASE_YEAR} 起中位數約 15 倍，兩者差距越大＝估值越集中在少數權值股。
+          灰細線「加重平均」（225 檔總市值 ÷ 預估利益總額，日經新聞刊登值）不受此影響，{BASE_YEAR} 起中位數約 15 倍，兩者差距越大＝估值越集中在少數權值股。
           淨值比用最近決算（含季報）實績每股淨值，不受預估影響；2012 年底 1.1 倍、2020 年 3 月 1.0 倍是兩次谷底。
           股債利差＝預估盈餘殖利率 − 日本 10 年期公債（OECD 月均）；日債長期接近 0，利差幾乎等於盈餘殖利率，2024 年起日債升到 1% 以上才開始有意義。
-          2009 年獲利崩跌時本益比曾到 45 倍以上（分母變小），和台股一樣：獲利谷底時本益比偏高、高峰時看起來便宜。
+          2009 年獲利崩跌時本益比曾到 45 倍以上、2020 年疫情時 80 倍以上（分母變小），和台股一樣：獲利谷底時本益比偏高、高峰時看起來便宜；本益比窗格 Y 軸固定 8～35 倍，超過的截在頂端，游標移過去圖例列仍顯示真實值。
           資料：日經平均プロフィル日次投資指標（2004 年 9 月起）、Yahoo ^N225、FRED IRLTLT01JPM156N 與 DGS10。參考、不計分。
         </p>
       </PanelNote>

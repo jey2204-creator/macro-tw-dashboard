@@ -146,7 +146,7 @@ describe('日股估值面板', () => {
     render(<JpValuationPanel version="v1" themeKey="auto-false-tw" />);
     await waitFor(() => expect(chartLog.watermarks.length).toBe(4));
     expect(chartLog.watermarks[0]).toBe('河流圖｜預估 EPS × 11／14／17／20／23／26倍（對數軸）');
-    expect(chartLog.watermarks[1]).toMatch(/^預估本益比｜點線 加重平均｜虛線 2010 起中位數 \d+\.\d$/);
+    expect(chartLog.watermarks[1]).toMatch(/^預估本益比｜灰細線 加重平均｜虛線 2010 起中位數 \d+\.\d｜軸 8～35 倍，超過截斷$/);
     expect(chartLog.watermarks[3]).toBe('股債利差（pp）＝預估盈餘殖利率 − 日債10Y');
     expect(chartLog.series.map((s) => `${s.pane}:${s.type}`)).toEqual([
       '0:Line', '0:Line', '0:Line', '0:Line', '0:Line', '0:Line', '0:Line', '1:Line', '1:Line', '2:Line', '3:Baseline',
