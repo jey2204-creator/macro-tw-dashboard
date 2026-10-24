@@ -21,17 +21,36 @@ import type { SourceFetchResult } from './types';
  */
 
 export type MsciSymbol = Extract<SourceSpec, { provider: 'msci_tw' }>['symbol'];
+export type MsciKrSymbol = Extract<SourceSpec, { provider: 'msci_kr' }>['symbol'];
 
 /** MSCI Taiwan Index (USD) factsheet（網址固定，每月覆寫） */
 export const MSCI_TW_FACTSHEET = 'https://www.msci.com/documents/10199/6f36d84d-425d-4e1f-8d56-e65c455ebda1';
+/** MSCI Korea Index (USD) factsheet（網址固定，每月覆寫；2026-10-24 WebFetch 確認版面與台灣相同） */
+export const MSCI_KR_FACTSHEET = 'https://www.msci.com/documents/10199/255599/msci-korea-index.pdf';
+
+/** 一個市場的 factsheet 設定：網址、FUNDAMENTALS 表裡該指數那一列的開頭、記錄緩衝 */
+export interface MsciMarket {
+  key: 'tw' | 'kr';
+  url: string;
+  /** 指數列開頭（「MSCI Taiwan 1.23 …」） */
+  row: RegExp;
+  label: string;
+}
+export const MSCI_MARKETS: Record<MsciMarket['key'], MsciMarket> = {
+  tw: { key: 'tw', url: MSCI_TW_FACTSHEET, row: /^MSCI Taiwan -?\d/, label: 'MSCI Taiwan' },
+  kr: { key: 'kr', url: MSCI_KR_FACTSHEET, row: /^MSCI Korea -?\d/, label: 'MSCI Korea' },
+};
 
 export interface MsciFactsheet extends MsciRecord {
   /** 年度報酬表：年份 → MSCI 台灣（%，美元、含息） */
   annual: Record<string, number>;
 }
 
-/** 本次執行解析到的 factsheet（資料日 → 紀錄）；writeMsciTw 寫檔用 */
+/** 本次執行解析到的台灣 factsheet（資料日 → 紀錄）；writeMsciTw 寫檔用 */
 export const parsedFactsheets = new Map<string, MsciFactsheet>();
+/** 本次執行解析到的韓國 factsheet（資料日 → 紀錄） */
+export const parsedKrFactsheets = new Map<string, MsciFactsheet>();
+const parsedOf = (m: MsciMarket) => (m.key === 'kr' ? parsedKrFactsheets : parsedFactsheets);
 
 const MONTHS: Record<string, number> = {
   JAN: 1, FEB: 2, MAR: 3, APR: 4, MAY: 5, JUN: 6, JUL: 7, AUG: 8, SEP: 9, OCT: 10, NOV: 11, DEC: 12,
@@ -80,7 +99,7 @@ function annualTable(lines: readonly PdfLine[], page: number): Record<string, nu
   return out;
 }
 
-export function parseMsciFactsheet(lines: readonly PdfLine[]): MsciFactsheet {
+export function parseMsciFactsheet(lines: readonly PdfLine[], market: MsciMarket = MSCI_MARKETS.tw): MsciFactsheet {
   const dateLine = lines.find((l) => /FUNDAMENTALS/.test(l.text));
   const dm = dateLine && /FUNDAMENTALS \(([A-Z]{3}) (\d{1,2}), (\d{4})\)/.exec(dateLine.text);
   if (!dm || !MONTHS[dm[1]!]) throw new Error('MSCI factsheet 找不到 FUNDAMENTALS 日期（版面可能改變）');
@@ -95,8 +114,8 @@ export function parseMsciFactsheet(lines: readonly PdfLine[]): MsciFactsheet {
   // 欄名下方第一個以指數名稱開頭的列
   const rowOf = (name: RegExp) =>
     lines.filter((l) => l.page === header.page && l.y < header.y && name.test(l.text)).sort((a, b) => b.y - a.y)[0];
-  const tw = rowOf(/^MSCI Taiwan -?\d/);
-  if (!tw) throw new Error('MSCI factsheet 找不到 MSCI Taiwan 列');
+  const tw = rowOf(market.row);
+  if (!tw) throw new Error(`MSCI factsheet 找不到 ${market.label} 列`);
   const acwi = rowOf(/^MSCI ACWI IMI -?\d/);
   const fwdPe = rowValue(tw, col('P/E Fwd'));
   if (fwdPe === null || !(fwdPe > 0)) throw new Error('MSCI factsheet 解析不到預估本益比');
@@ -113,22 +132,23 @@ export function parseMsciFactsheet(lines: readonly PdfLine[]): MsciFactsheet {
   };
 }
 
-export function parseMsciPdf(buf: Uint8Array): MsciFactsheet {
-  return parseMsciFactsheet(pdfLines(buf));
+export function parseMsciPdf(buf: Uint8Array, market: MsciMarket = MSCI_MARKETS.tw): MsciFactsheet {
+  return parseMsciFactsheet(pdfLines(buf), market);
 }
 
 // ── 抓取 ─────────────────────────────────────────────────────
 
-/** 一次執行內共用 */
-let runCache: Promise<MsciFactsheet[]> | null = null;
+/** 一次執行內共用（每個市場一份） */
+const runCache = new Map<MsciMarket['key'], Promise<MsciFactsheet[]>>();
 export function clearMsciCache() {
-  runCache = null;
+  runCache.clear();
   parsedFactsheets.clear();
+  parsedKrFactsheets.clear();
 }
 
 /** Wayback Machine 上同一網址的存檔（時間戳記），只取 HTTP 200、內容不重複者 */
-async function waybackSnapshots(http: HttpOptions): Promise<string[]> {
-  const url = `https://web.archive.org/cdx/search/cdx?url=${encodeURIComponent(MSCI_TW_FACTSHEET.replace(/^https:\/\//, ''))}&output=json&fl=timestamp,statuscode&collapse=digest&limit=500`;
+async function waybackSnapshots(market: MsciMarket, http: HttpOptions): Promise<string[]> {
+  const url = `https://web.archive.org/cdx/search/cdx?url=${encodeURIComponent(market.url.replace(/^https:\/\//, ''))}&output=json&fl=timestamp,statuscode&collapse=digest&limit=500`;
   const rows = await getJson<string[][]>(url, http);
   return rows
     .slice(1)
@@ -136,29 +156,35 @@ async function waybackSnapshots(http: HttpOptions): Promise<string[]> {
     .map((r) => r[0]!);
 }
 
-async function loadAll(backfill: boolean, http: HttpOptions, fast: boolean): Promise<MsciFactsheet[]> {
-  const out: MsciFactsheet[] = [parseMsciPdf(await getBytes(MSCI_TW_FACTSHEET, http))];
+async function loadAll(market: MsciMarket, backfill: boolean, http: HttpOptions, fast: boolean): Promise<MsciFactsheet[]> {
+  const tag = `msci_${market.key}`;
+  const out: MsciFactsheet[] = [parseMsciPdf(await getBytes(market.url, http), market)];
   if (backfill) {
     try {
-      for (const ts of await waybackSnapshots(http)) {
+      for (const ts of await waybackSnapshots(market, http)) {
         if (!fast) await sleep(1500);
         try {
-          out.push(parseMsciPdf(await getBytes(`https://web.archive.org/web/${ts}id_/${MSCI_TW_FACTSHEET}`, http)));
+          out.push(parseMsciPdf(await getBytes(`https://web.archive.org/web/${ts}id_/${market.url}`, http), market));
         } catch (e) {
-          console.warn(`  [msci_tw] Wayback ${ts} 略過：${e instanceof Error ? e.message : String(e)}`);
+          console.warn(`  [${tag}] Wayback ${ts} 略過：${e instanceof Error ? e.message : String(e)}`);
         }
       }
     } catch (e) {
-      console.warn(`  [msci_tw] Wayback 清單無法取得，只用現行 factsheet：${e instanceof Error ? e.message : String(e)}`);
+      console.warn(`  [${tag}] Wayback 清單無法取得，只用現行 factsheet：${e instanceof Error ? e.message : String(e)}`);
     }
   }
-  for (const f of out) parsedFactsheets.set(f.asOf, f);
+  const parsed = parsedOf(market);
+  for (const f of out) parsed.set(f.asOf, f);
   return out;
 }
 
-export function msciBars(list: readonly MsciFactsheet[]): Bar[] {
+/** 欄位 → 月底序列（同一資料日多份取最後解析到的） */
+export function msciBars(list: readonly MsciFactsheet[], field: 'fwdPe' | 'pe' | 'pbv' = 'fwdPe'): Bar[] {
   const byDate = new Map<string, number>();
-  for (const f of list) byDate.set(f.asOf, f.fwdPe);
+  for (const f of list) {
+    const v = f[field];
+    if (v !== null && v > 0) byDate.set(f.asOf, v);
+  }
   return [...byDate.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([d, v]) => [d, v, v, v, v]);
 }
 
@@ -172,21 +198,35 @@ export function prevMonthEndFloor(today: string): string {
   return iso(d);
 }
 
-export async function fetchMsciTaiwan(
-  _symbol: MsciSymbol,
+async function fetchMsci(
+  market: MsciMarket,
+  field: 'fwdPe' | 'pe' | 'pbv',
   cached: Bar[] | null,
   today: string,
   http: HttpOptions,
-  fast = false,
+  fast: boolean,
 ): Promise<SourceFetchResult> {
   const last = cached?.at(-1)?.[0] ?? null;
   // 上個月底已在快取 → 下一份要到下個月才出，不必再抓
   if (cached && cached.length > 0 && last && last >= prevMonthEndFloor(today)) {
     return { bars: cached, closeOnly: true, partial: false, incremental: true };
   }
-  if (!runCache) {
-    runCache = loadAll(!cached || cached.length === 0, http, fast);
-    runCache.catch(() => (runCache = null));
+  let p = runCache.get(market.key);
+  if (!p) {
+    p = loadAll(market, !cached || cached.length === 0, http, fast);
+    runCache.set(market.key, p);
+    p.catch(() => runCache.delete(market.key));
   }
-  return { bars: msciBars(await runCache), closeOnly: true, partial: false, incremental: true };
+  return { bars: msciBars(await p, field), closeOnly: true, partial: false, incremental: true };
+}
+
+export function fetchMsciTaiwan(_symbol: MsciSymbol, cached: Bar[] | null, today: string, http: HttpOptions, fast = false) {
+  return fetchMsci(MSCI_MARKETS.tw, 'fwdPe', cached, today, http, fast);
+}
+
+const KR_FIELD: Record<MsciKrSymbol, 'fwdPe' | 'pe' | 'pbv'> = { FWD_PE: 'fwdPe', PE: 'pe', PBV: 'pbv' };
+
+/** MSCI 韓國：預估本益比／近 12 月本益比／淨值比（同一份 factsheet，一次執行只下載一次） */
+export function fetchMsciKorea(symbol: MsciKrSymbol, cached: Bar[] | null, today: string, http: HttpOptions, fast = false) {
+  return fetchMsci(MSCI_MARKETS.kr, KR_FIELD[symbol], cached, today, http, fast);
 }
