@@ -1,7 +1,7 @@
 import { addMonths, monthKey } from '../../../src/shared/dates';
 import type { SourceSpec } from '../../../src/shared/indicators';
 import type { Bar } from '../../../src/shared/types';
-import { getText, sleep, type HttpOptions } from '../http';
+import { getText, HttpError, sleep, type HttpOptions } from '../http';
 import type { SourceFetchResult } from './types';
 
 /**
@@ -26,6 +26,16 @@ export type NikkeiSymbol = Extract<SourceSpec, { provider: 'nikkei' }>['symbol']
 
 export const NIKKEI_FIRST_MONTH = '2004-09-01';
 const MIN_INTERVAL_MS = 400;
+/** 403／429／5xx 的額外重試次數與起始間隔 */
+const RETRY_403 = 3;
+const RETRY_DELAY_MS = 3000;
+/** 與瀏覽器從 ヒストリカルデータ 頁切換月份時相同的標頭 */
+const HEADERS = {
+  Accept: 'text/html, */*; q=0.01',
+  'Accept-Language': 'ja,zh-TW;q=0.8,en;q=0.6',
+  Referer: 'https://indexes.nikkei.co.jp/nkave/archives/data?list=per',
+  'X-Requested-With': 'XMLHttpRequest',
+};
 
 type NikkeiList = 'per' | 'pbr' | 'dividend';
 
@@ -95,10 +105,20 @@ function loadMonth(list: NikkeiList, ym: string, http: HttpOptions, fast: boolea
   let p = monthCache.get(key);
   if (!p) {
     p = (async () => {
-      await throttle(fast);
-      const html = await getText(nikkeiUrl(list, Number(ym.slice(0, 4)), Number(ym.slice(5, 7))), http);
-      if (!/<table/i.test(html) && !/データはありません/.test(html)) throw new Error(`日經 ${list} ${ym} 回傳不是資料表格`);
-      return parseNikkeiTable(html);
+      const url = nikkeiUrl(list, Number(ym.slice(0, 4)), Number(ym.slice(5, 7)));
+      // 2026-10-24 GitHub Actions 實測：同一網址第一次偶爾回 403（Cloudflare），隔幾秒再試就正常 → 403 也重試
+      for (let attempt = 0; ; attempt++) {
+        await throttle(fast);
+        try {
+          const html = await getText(url, http, { headers: HEADERS });
+          if (!/<table/i.test(html) && !/データはありません/.test(html)) throw new Error(`日經 ${list} ${ym} 回傳不是資料表格`);
+          return parseNikkeiTable(html);
+        } catch (e) {
+          const retryable = e instanceof HttpError && (e.status === 403 || e.status === 429 || (e.status ?? 0) >= 500);
+          if (!retryable || attempt >= RETRY_403) throw e;
+          if (!fast) await sleep(RETRY_DELAY_MS * 2 ** attempt);
+        }
+      }
     })();
     monthCache.set(key, p);
     p.catch(() => monthCache.delete(key));

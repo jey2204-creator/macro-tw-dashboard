@@ -100,3 +100,34 @@ describe('日經平均プロフィル日次投資指標：抓取', () => {
     await expect(fetchNikkei('PER_INDEX', null, '2026-10-24', h, true)).rejects.toThrow(/只解析到/);
   });
 });
+
+describe('日經平均プロフィル日次投資指標：403 重試', () => {
+  beforeEach(() => clearNikkeiCache());
+
+  it('同一個月第一次 403、第二次成功 → 不丟錯', async () => {
+    let n = 0;
+    const h = http((url) => {
+      const { year, month } = parseUrl(url);
+      if (n++ === 0) return null; // 第一次 404 不重試（確認 4xx 其他狀態仍直接失敗）
+      return monthHtml(year, month, 15);
+    });
+    await expect(fetchNikkei('PER_INDEX', null, '2026-10-24', h, true)).rejects.toThrow(/HTTP 404/);
+    clearNikkeiCache();
+    let m = 0;
+    const calls: string[] = [];
+    const h403: HttpOptions = {
+      retries: 0,
+      retryDelayMs: 0,
+      fetchImpl: async (url) => {
+        calls.push(url);
+        const { year, month } = parseUrl(url);
+        if (m++ === 0) return new Response('forbidden', { status: 403 });
+        return new Response(monthHtml(year, month, 15), { status: 200 });
+      },
+    };
+    const r = await fetchNikkei('PER_INDEX', null, '2026-10-24', h403, true);
+    expect(r.bars.length).toBeGreaterThan(1000);
+    // 第一個月多打了一次
+    expect(parseUrl(calls[0]!)).toEqual(parseUrl(calls[1]!));
+  });
+});
