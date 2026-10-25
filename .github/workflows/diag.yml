@@ -22,23 +22,15 @@ jobs:
           mkdir -p /tmp/p && cd /tmp/p
           g(){ n=$1; u=$2; r=$(curl -s -L -c cj -b cj -A "$CH" -o "$n" -w "code=%{http_code} size=%{size_download}" -m 40 "$u"); echo "RESULT $n | $r | $u"; }
           E="https://datacenter-web.eastmoney.com/api/data/v1/get"
-          curl -s -A "$CH" -m 40 "$E?sortColumns=REPORT_DATE&sortTypes=-1&pageSize=500&pageNumber=1&reportName=RPT_INDUSTRY_INDEX&columns=REPORT_DATE,INDICATOR_ID,INDICATOR_NAME,INDICATOR_VALUE&source=WEB&client=WEB" -o em_all.json
-          echo "em_all size $(wc -c < em_all.json)"; head -c 300 em_all.json; echo
-          python3 -c "
-          import json;d=json.load(open('em_all.json'));r=d.get('result') or {};rows=r.get('data') or []
-          print('pages',r.get('pages'),'count',r.get('count'))
-          seen={}
-          for x in rows: seen.setdefault(x.get('INDICATOR_ID'),(x.get('INDICATOR_NAME'),x.get('REPORT_DATE'),x.get('INDICATOR_VALUE')))
-          for k,v in seen.items():
-            n=str(v[0])
-            if any(t in n for t in ['集装箱','运价','SCFI','CCFI','航运','BDI','波罗的海','运费']): print('HIT',k,v)
-          print('distinct',len(seen))
+          for d in 2026-10-23 2026-10-16 2026-10-24 2026-10-22; do
+            for pg in 1 2 3; do
+              curl -s -A "$CH" -m 40 -G "$E" --data-urlencode "reportName=RPT_INDUSTRY_INDEX" --data-urlencode "columns=REPORT_DATE,INDICATOR_ID,INDICATOR_NAME,INDICATOR_VALUE" --data-urlencode "filter=(REPORT_DATE='$d')" --data-urlencode "pageSize=500" --data-urlencode "pageNumber=$pg" --data-urlencode "sortColumns=INDICATOR_ID" --data-urlencode "sortTypes=1" --data-urlencode "source=WEB" --data-urlencode "client=WEB" -o em_$d_$pg.json
+              python3 -c "
+          import json,sys;d=json.load(open('em_$d_$pg.json'));r=d.get('result') or {};rows=r.get('data') or []
+          print('$d p$pg', d.get('message'), 'pages',r.get('pages'),'count',r.get('count'))
+          for x in rows: print('  ',x['INDICATOR_ID'],x['INDICATOR_NAME'],x['INDICATOR_VALUE'])
           "
-          for f in '(INDICATOR_NAME like \"%集装箱%\")' '(INDICATOR_NAME like \"%SCFI%\")'; do
-            curl -s -A "$CH" -m 40 -G "$E" --data-urlencode "reportName=RPT_INDUSTRY_INDEX" --data-urlencode "columns=REPORT_DATE,INDICATOR_ID,INDICATOR_NAME,INDICATOR_VALUE" --data-urlencode "filter=$f" --data-urlencode "pageSize=50" --data-urlencode "sortColumns=REPORT_DATE" --data-urlencode "sortTypes=-1" --data-urlencode "source=WEB" --data-urlencode "client=WEB" | head -c 1500; echo
-          done
-          for id in EMI00107664 EMI00107665 EMI00107667 EMI00107668 EMI00107669 EMI00107670 EMI00107671 EMI00107672 EMI00238133 EMI00238134 EMI00238135; do
-            echo -n "$id -> "; curl -s -A "$CH" -m 40 -G "$E" --data-urlencode "reportName=RPT_INDUSTRY_INDEX" --data-urlencode "columns=REPORT_DATE,INDICATOR_ID,INDICATOR_NAME,INDICATOR_VALUE" --data-urlencode "filter=(INDICATOR_ID=\"$id\")" --data-urlencode "pageSize=1" --data-urlencode "sortColumns=REPORT_DATE" --data-urlencode "sortTypes=-1" --data-urlencode "source=WEB" --data-urlencode "client=WEB" | head -c 300; echo
+            done
           done
       - name: 推送探測結果到 probe-out 分支
         if: always()
