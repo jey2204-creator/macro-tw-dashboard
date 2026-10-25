@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta http-equiv="Cache-Control" content="no-store"/>
+    <meta http-equiv="Pragma" content="no-cache"/>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/images/favicon.ico"/>
+    <title>SCFI运价指数 | Shanghai Shipping Exchange</title>
+    <link href="/styles/fontAT/css/fontAt.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" media="screen"
+          href="/assets/v/82798/main.css"/>
+    <style>
+        #ownlink a {
+            color: #c6cad2;
+        }
+
+        #ownlink a:hover {
+            color: #fff;
+        }
+
+        #up {
+            background-color: #ffffff;
+            height: 90px;
+            border-bottom: solid 1px #DCDCDC;
+        }
+
+        #up div {
+            height: 100%;
+        }
+
+        #up div {
+            background-image: none;
+        }
+
+        #up div a.logo {
+            background-image: url("/images/head-logo.png");
+            width: 355px;
+            margin-top: 30px;
+        }
+
+        #english {
+            margin: 60px 10px 0px 10px;
+            height: 20px;
+            float: left;
+            font-size: 14px;
+            color: #0066CC;
+        }
+
+        #english:hover {
+            color: rgb(253, 151, 1);
+        }
+
+        #up div a.dh {
+            font-family: "SimHei";
+            font-size: 20px;
+            border-left: none;
+            line-height: 20px;
+            padding: 60px 10px 10px 10px;
+            color: #0066CC;
+        }
+
+        #up div a.dh:hover {
+            background: none;
+            color: rgb(253, 151, 1);
+        }
+
+        #up div a.dl {
+            font-family: "SimHei";
+            font-size: 16px;
+            line-height: 16px;
+            padding: 10px 5px 10px 5px;
+            color: #0066CC;
+        }
+
+        #up div a.dl:before {
+            content: '\25AA';
+            width: 5px;
+        }
+
+        #up div a.dl:hover {
+            background: none;
+            color: rgb(253, 151, 1);
+        }
+
+        nav {
+            display: inline-block;
+            border-radius: 0;
+            box-shadow: none;
+            height: 16px;
+            margin-top: 65px;
+            margin-right: 10px;
+            float: right;
+        }
+
+        #up div nav.about a.dl:before {
+            content: '';
+            width: 0;
+        }
+
+        nav ul {
+            height: 16px;
+        }
+
+        #up nav ul li a.dl {
+            font-family: "arial", "Microsoft Yahei";
+            font-size: 16px;
+            height: 16px;
+            line-height: 16px;
+            text-shadow: none;
+            padding: 0;
+            color: #0066CC;
+        }
+
+        #up nav ul li a.dl, #up nav ul li a.dl:hover, #up nav ul li a.dl:visited, #up nav ul li a.dl:active {
+            text-decoration: none;
+        }
+
+        .clear dl {
+            position: absolute;
+            display: block;
+            top: 81px;
+            left: -55px;
+            width: 165px;
+            background: #222222;
+            -moz-border-radius: 5px;
+            -webkit-border-radius: 5px;
+            -webkit-box-shadow: 1px 1px 3px #292929;
+            -moz-box-shadow: 1px 1px 3px #292929;
+            z-index: 100000;
+        }
+
+        .clear li dl dt {
+            display: none;
+            margin-top: -25px;
+            padding-top: 15px;
+            height: 10px;
+        }
+
+        .clear li a {
+            display: block;
+            height: 30px;
+            line-height: 30px;
+            padding: 0 30px;
+            font-size: 14px;
+            color: #fff;
+            text-shadow: 0px -1px 0px #000;
+            text-decoration: none;
+            white-space: nowrap;
+            border-left: 1px solid #999E9F;
+            border-top: 1px solid #999E9F;
+            -moz-border-top-left-radius: 2px;
+            -webkit-border-top-left-radius: 2px;
+            z-index: 100;
+        }
+
+        .clear li:hover dl {
+            top: 30px;
+            display: block;
+            width: 145px;
+            padding: 10px;
+        }
+
+        nav.about {
+            float: left;
+            height: 20px;
+            margin: 0;
+            margin: 60px 15px 10px 15px;
+        }
+
+        nav.about ul {
+            height: 20px;
+        }
+
+        #up nav.about ul li a.dl {
+            font-family: "SimHei";
+            font-size: 20px;
+            line-height: 20px;
+
+        }
+
+        nav.about .clear dl {
+            left: -40px;
+        }
+
+        #end {
+            background-color: rgb(95, 95, 95);
+            border-top: solid 1px #DCDCDC;
+            color: #fff;
+            font-size: 14px;
+            margin-top: 0;
+            padding-top: 15px;
+            height: 100px;
+        }
+
+        #end div:first-child {
+            background-image: url(/images/foot-logo.png);
+            background-repeat: no-repeat;
+        }
+
+        #end a:link, #end a:visited, #end a:hover, #end a:active {
+            color: #fff;
+        }
+
+        #footer-right {
+            width: 190px;
+            float: right;
+        }
+
+        #footer-right a:nth-child(1) {
+            display: inline-block;
+            background-image: url(/images/foot3.png);
+            background-repeat: no-repeat;
+            background-position: top center;
+            width: 60px;
+            height: 8px;
+            padding-top: 68px;
+        }
+
+        #endkd {
+            height: 90px;
+        }
+
+        #endkd select {
+            font-size: 12px;
+            margin-top: 10px;
+            margin-left: 10px;
+        }
+
+        .dropbtn {
+            font-family: "SimHei";
+            border: none;
+            color: #0066CC;
+            padding: 0;
+            margin: 0;
+            font-size: 20px;
+            line-height: 20px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .dropdown:hover {
+            color: rgb(253, 151, 1);
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #f9f9f9;
+            max-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.7);
+            z-index: 100;
+        }
+
+        #up div.dropdown {
+            width: 90px;
+            height: 20px;
+            padding: 60px 10px 10px 10px;
+        }
+
+        .dropdown-content {
+            background-color: #f9f9f9;
+        }
+
+        .dropdown-content a {
+            color: #0066CC;
+            padding: 10px 16px;
+            text-decoration: none;
+            display: block;
+            background-color: #f9f9f9;
+        }
+
+        .dropdown-content a:hover {
+            background-color: #f1f1f1;
+        }
+
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+
+        .dropdown:hover .dropbtn {
+            color: rgb(253, 151, 1);
+        }
+
+        #usermenu div.dropdown-content {
+            height: auto;
+        }
+
+        div.wei1 {
+            margin-bottom: 50px;
+        }
+
+        #changePwd.modal {
+            border-radius: 0;
+            line-height: 18px;
+            padding: 0;
+            font-family: "Lucida Grande", Verdana, sans-serif;
+            width: 400px;
+        }
+
+        #changePwd h3 {
+            margin: 0;
+            padding: 10px;
+            color: #fff;
+            font-size: 14px;
+            background-color: #0066CC;
+        }
+
+        #changePwd.modal p {
+            padding: 10px 50px;
+            border-bottom: 1px solid #ddd;
+            margin: 0;
+            background: -webkit-gradient(linear, left bottom, left top, color-stop(0, #eee), color-stop(1, #fff));
+            overflow: hidden;
+        }
+
+        #changePwd.modal p:last-child {
+            border: none;
+        }
+
+        #changePwd.modal p label {
+            float: left;
+            font-weight: bold;
+            color: #333;
+            font-size: 13px;
+            width: 80px;
+            line-height: 22px;
+        }
+
+        #changePwd.modal p input[type="text"],
+        #changePwd.modal p input[type="password"] {
+            font: normal 12px/18px "Lucida Grande", Verdana;
+            padding: 3px;
+            border: 1px solid #ddd;
+            width: 200px;
+        }
+
+        #changePwd.modal p {
+            text-align: center;
+        }
+
+        #changePwd.modal p input[type="button"] {
+            font-weight: bold;
+            color: #333;
+            font-size: 15px;
+            margin: 0 10px;
+        }
+        #hidden-email:after {
+            content: "@sse.net.cn";
+        }
+
+        @media (min-width: 0px) and (max-width:1170px) {
+            .body{
+                width: 1170px;
+            }
+        }
+
+    </style>
+    
+    
+    <link href="/styles/font-awesome/css/font-awesome.css" rel="stylesheet">
+    <style>
+        a {
+            text-decoration: none;
+        }
+
+        a:link, a:visited, a:hover, a:active {
+            color: #0086b3;
+        }
+
+        div.alert, div.alert-danger, div.alert-dismissable {
+            display: none;
+        }
+
+    </style>
+    <link rel="stylesheet" type="text/css" media="screen" href="/styles/leftMenu.css"/>
+    </head>
+<body class="body"  class="home444">
+<div id="up">
+    <div>
+        <a href="/" class="logo"></a>
+        <a href="http://en.sse.net.cn/" id="english" target="_blank">English</a>
+        <a href="/service" style="margin-left:150px;" class="dh">产品与服务</a>
+        <a href="/datacenter" class="dh">数据中心</a>
+        <div class="dropdown" id="abt">
+            <a class="dropbtn" href="/about" target="_blank">关于我们</a>
+            <div class="dropdown-content">
+                <a href="/about#msg1" target="_blank">简介</a>
+                <a href="/about#msg2" target="_blank">组织机构</a>
+                <a href="/about#msg3" target="_blank">航交所动态</a>
+                <a href="/about#msg4" target="_blank">大事记</a>
+                <a href="/about#msg5" target="_blank">联系我们</a>
+                <a href="/recruitment/JD.jsp" target="_blank">招贤纳士</a>
+                <a href="http://www1.sse.net.cn/cninfo/PartyMasses/index.shtml" target="_blank"
+                   style="padding: 5px 16px"><img src="/images/party_s.png"/></a>
+            </div>
+        </div>
+        <script type="text/javascript">
+            function isModifyPassword()
+            {
+                var isDiaplayChangePwdPanel =null;
+
+                if(isDiaplayChangePwdPanel){
+                    alert("已重置密码或满90天未修改密码，需修改密码！");
+                    showChangePwdDlg(false);
+                }
+            }
+            window.onload=isModifyPassword;
+        </script>
+        <a href="/login" class="dl" style="width: 55px; margin-top: 30px; padding-bottom: 5px">登录</a>
+        <img style="border: solid 0 #CCCCCC; width: 90px; height: 90px; float: right; margin-right: 0px" src="/images/sse_qrcode_129.png">
+    </div>
+</div>
+<div class="container" id="content">
+    <div class="row">
+        
+<div id="center">
+
+    <div id="leftmenu">
+
+    <ul id="accordion" class="accordion">
+        <li>
+            <div class="th2" style="color: #0c0c0c;padding-left: 5px;font-weight: 700;background-color: white">指数简介/公告/版权声明</div>
+        </li>
+        <li class="th"><a style="text-align: left;padding-left: 20px;color: #d9d9d9;line-height: 40px" href="/indexIntro?indexName=bulletins" id="bulletins_i">运价指数公示公告</a></li>
+        <li class="th"><a style="text-align: left;padding-left: 20px;color: #d9d9d9;line-height: 40px" href="/indexIntro?indexName=copyright" id="copyright_i">指数版权声明</a></li>
+        <li>
+            <div class="link" style="padding-left: 20px;background-color: #444359;color: #d9d9d9;font-weight: 400">指数简介<i class="fa fa-chevron-down" style="color: red"></i></div>
+            <ul class="submenu">
+                <li class="subidx"><a href="/indexIntro?indexName=ccfi" id="ccfi_i">中国出口集装箱运价指数</a></li>
+                <li class="subidx"><a href="/indexIntro?indexName=scfi" id="scfi_i">上海出口集装箱运价指数</a></li>
+                <li class="subidx"><a href="/indexIntro?indexName=scfis" id="scfis_i">上海出口集装箱结算运价指数</a></li>
+                <li class="subidx"><a href="/indexIntro?indexName=cicfi" id="cicfi_i">中国进口集装箱运价指数</a></li>
+                <li class="subidx"><a href="/indexIntro?indexName=twfi" id="twfi_i">台湾海峡两岸间集装箱运价指数</a></li>
+                <li class="subidx"><a href="/indexIntro?indexName=seafi" id="seafi_i">东南亚集装箱运价指数</a></li>
+                <li class="subidx"><a href="/indexIntro?indexName=gcspi" id="gcspi_i">全球集装箱班轮准班率</a></li>
+                <li class="subidx"><a href="/indexIntro?indexName=cbfi" id="cbfi_i">中国沿海散货运价指数</a></li>
+                <li class="subidx"><a href="/indexIntro?indexName=cbcfi" id="cbcfi_i">中国沿海煤炭运价指数</a></li>
+                <li class="subidx"><a href="/indexIntro?indexName=cbofi" id="cbofi_i">中国沿海金属矿石运价指数</a></li>
+                <li class="subidx"><a href="/indexIntro?indexName=cbgfi" id="cbgfi_i">中国沿海粮食运价指数</a></li>
+                <li class="subidx"><a href="/indexIntro?indexName=cctfi" id="cctfi_i">中国沿海成品油运价指数</a></li>
+                <li class="subidx"><a href="/indexIntro?indexName=cdi" id="cdi_i">中国沿海散货船舶日租金指数</a></li>
+                <li class="subidx"><a href="/indexIntro?indexName=fdi" id="fdi_i">远东干散货指数</a></li>
+                <li class="subidx"><a href="/indexIntro?indexName=cdfi" id="cdfi_i">中国进口干散货运价指数</a></li>
+                <li class="subidx"><a href="/indexIntro?indexName=ctfi" id="ctfi_i">中国进口原油运价指数</a></li>
+                <li class="subidx"><a href="/indexIntro?indexName=csi" id="csi_i">中国（上海）进口贸易海运指数</a></li>
+                <li class="subidx"><a href="/indexIntro?indexName=brsti" id="brsti_i">“一带一路”航贸指数</a></li>
+                <li class="subidx"><a href="/indexIntro?indexName=ccri" id="ccri_i">中国（上海）国际海员薪酬指数</a></li>
+                </ul>
+        </li>
+        <li>
+            <div class="link" style="padding-left: 5px;font-weight: 700">指数查询<i class="fa fa-chevron-down" style="color: red"></i></div>
+            <ul class="submenu">
+                <li><a href="/index/singleIndex?indexType=ccfi" id="ccfi">中国出口集装箱运价指数</a></li>
+                <li><a href="/index/singleIndex?indexType=scfi" id="scfi">上海出口集装箱运价指数</a></li>
+                <li><a href="/index/singleIndex?indexType=scfis" id="scfis">上海出口集装箱结算运价指数</a></li>
+                <li><a href="/index/singleIndex?indexType=cicfi" id="cicfi">中国进口集装箱运价指数</a></li>
+                <li><a href="/index/singleIndex?indexType=twfi" id="twfi">台湾海峡两岸间集装箱运价指数</a></li>
+                <li><a href="/index/singleIndex?indexType=seafi" id="seafi">东南亚集装箱运价指数</a></li>
+                <li><a href="/index/singleIndex?indexType=gcspi" id="gcsp">全球集装箱班轮准班率</a></li>
+                <li class="subidx"><a href="/index/singleIndex?indexType=gcspi" id="gcspi">主干航线准班率</a></li>
+                <li class="subidx"><a href="/index/singleIndex?indexType=gcspi_ca" id="gcspi_ca">班轮公司及联盟准班率</a></li>
+                <li class="subidx"><a href="/index/singleIndex?indexType=gcspi_port" id="gcspi_port">港口班轮准班率</a></li>
+                <li><a href="/index/singleIndex?indexType=cbfi" id="cbfi">中国沿海散货运价指数</a></li>
+                <li class="subidx"><a href="/index/singleIndex?indexType=cbcfi" id="cbcfi">中国沿海煤炭运价指数</a></li>
+                <li class="subidx"><a href="/index/singleIndex?indexType=cbofi" id="cbofi">中国沿海金属矿石运价指数</a></li>
+                <li class="subidx"><a href="/index/singleIndex?indexType=cbgfi" id="cbgfi">中国沿海粮食运价指数</a></li>
+                <li class="subidx"><a href="/index/singleIndex?indexType=cctfi_coastal" id="cctfi_coastal">中国沿海成品油运价指数</a></li>
+                <li><a href="/index/singleIndex?indexType=cdi" id="cdi">中国沿海散货船舶日租金指数</a></li>
+                <li><a href="/index/singleIndex?indexType=fdi" id="fdi">远东干散货指数</a></li>
+                <li><a href="/index/singleIndex?indexType=cdfi" id="cdfi">中国进口干散货运价指数</a></li>
+                <li><a href="/index/singleIndex?indexType=ctfi" id="ctfi">中国进口原油运价指数</a></li>
+                <li><a href="/index/singleIndex?indexType=csi" id="csi">中国（上海）进口贸易海运指数</a></li>
+                <li><a href="/index/singleIndex?indexType=brsti" id="brsti">“一带一路”航贸指数</a></li>
+                <li class="subidx"><a href="/index/singleIndex?indexType=brtvi" id="brtvi">“一带一路”贸易额指数</a></li>
+                <li class="subidx"><a href="/index/singleIndex?indexType=brcvi" id="brcvi">“一带一路”集装箱海运量指数</a></li>
+                <li class="subidx"><a href="/index/singleIndex?indexType=srfi" id="srfi">“海上丝绸之路”运价指数</a></li>
+                <li><a href="/index/singleIndex?indexType=ccri" id="ccri">中国（上海）国际海员薪酬指数</a></li>
+                </ul>
+        </li>
+    </ul>
+</div><div id="right" style="min-height: 1000px">
+        <div id="zfq1" style="width: 362px">
+            <ul>
+                <li id="fqe1" style="color:#fff;width: 120px; border-right: 1px solid white">单期查询</li>
+                <li id="fqe2" style="color:#333;width: 120px; border-right: 1px solid white; background: url(/images/zfq.png) no-repeat -140px 0px;"><a href="/index/scfilist">多期查询</a></li>
+                <li  style="color:#333;width: 120px; background: url(/images/zfq.png) no-repeat -160px 0px;"><a href="/indexIntro?indexName=scfi&changeNo=4">挂钩合同</a></li>
+            </ul>
+        </div>
+        <div style="margin:20px 0;text-align:center;"><img src="/index/indexImg?name=scfi&type=query"
+                                                           style="border: 1px solid #A5CBF7"></div>
+        <form action="/index/singleIndex?indexType=scfi" method="post">
+            <div style="padding:10px 0 30px;text-align:center;">
+                <font style="color:#333;font-size:16px;">指数查询（请输入指数日期）：&nbsp;</font>
+                <input type="text" name="date" value="" class="grade_text ss1" style="width:300px;"
+                       placeholder="Apr 14, 2024"/>&nbsp;&nbsp;
+                <button class="an1" type="button" onclick="queryscfi(this.form);">查询</button>
+                &nbsp;&nbsp;
+            </div>
+        </form>
+        <div class="title2">上海出口集装箱运价指数SHANGHAI CONTAINERIZED FREIGHT INDEX</div>
+        <table width="880" border="0" cellspacing="0" cellpadding="0" class="lb1">
+            <tbody>
+            <tr class="csx1">
+                <td class="ts1">航线</td>
+                <td>单位<br></td>
+                <td>权重<br></td>
+                <td>上期<br>2024-04-03</td>
+                <td>本期<br>2024-04-12</td>
+                <td>与上期比涨跌</td>
+            </tr>
+            <tr>
+                <td>综合指数 Comprehensive Index</td>
+                <td></td>
+                <td></td>
+                <td align="center">1745.43</td>
+                <td align="center">1757.04</td>
+                <td align="center">11.61</td>
+            </tr>
+            <tr>
+                <td>分航线 (Line Service):</td>
+                <td></td>
+                <td></td>
+                <td align="center"></td>
+                <td align="center"></td>
+                <td align="center"></td>
+            </tr>
+            <tr>
+                <td><p>欧洲（基本港）</p>
+                    <p>Europe (Base port)</p></td>
+                <td>USD/TEU</td>
+                <td>20.0%</td>
+                <td align="center"></td>
+                <td align="center"></td>
+                <td align="center"></td>
+            </tr>
+            <tr>
+                <td><p>地中海（基本港）</p>
+                    <p>Mediterranean (Base port)</p></td>
+                <td>USD/TEU</td>
+                <td>10.0%</td>
+                <td align="center"></td>
+                <td align="center"></td>
+                <td align="center"></td>
+            </tr>
+            <tr>
+                <td><p>美西（基本港）</p>
+                    <p>USWC (Base port)</p></td>
+                <td>USD/FEU</td>
+                <td>20.0%</td>
+                <td align="center"></td>
+                <td align="center"></td>
+                <td align="center"></td>
+            </tr>
+            <tr>
+                <td><p>美东（基本港）</p>
+                    <p>USEC (Base port)</p></td>
+                <td>USD/FEU</td>
+                <td>7.5%</td>
+                <td align="center"></td>
+                <td align="center"></td>
+                <td align="center"></td>
+            </tr>
+            <tr>
+                <td><p>波斯湾（迪拜）</p>
+                    <p>Persian Gulf and Red Sea (Dubai)</p></td>
+                <td>USD/TEU</td>
+                <td>7.5%</td>
+                <td align="center"></td>
+                <td align="center"></td>
+                <td align="center"></td>
+            </tr>
+            <tr>
+                <td><p>澳新（墨尔本）</p>
+                    <p>Australia/New Zealand (Melbourne)</p></td>
+                <td>USD/TEU</td>
+                <td>5.0%</td>
+                <td align="center"></td>
+                <td align="center"></td>
+                <td align="center"></td>
+            </tr>
+            <tr>
+                <td><p>西非（拉各斯）</p>
+                    <p>West Africa (Lagos)</p></td>
+                <td>USD/TEU</td>
+                <td>2.5%</td>
+                <td align="center"></td>
+                <td align="center"></td>
+                <td align="center"></td>
+            </tr>
+            <tr>
+                <td><p>南非（德班）</p>
+                    <p>South Africa (Durban)</p></td>
+                <td>USD/TEU</td>
+                <td>2.5%</td>
+                <td align="center"></td>
+                <td align="center"></td>
+                <td align="center"></td>
+            </tr>
+            <tr>
+                <td><p>南美（桑托斯）</p>
+                    <p>South America (Santos)</p></td>
+                <td>USD/TEU</td>
+                <td>5.0%</td>
+                <td align="center"></td>
+                <td align="center"></td>
+                <td align="center"></td>
+            </tr>
+            <tr>
+                <td><p>日本关西（基本港）</p>
+                    <p>West Japan (Base port)</p></td>
+                <td>USD/TEU</td>
+                <td>5.0%</td>
+                <td align="center"></td>
+                <td align="center"></td>
+                <td align="center"></td>
+            </tr>
+            <tr>
+                <td><p>日本关东（基本港）</p>
+                    <p>East Japan (Base port)</p></td>
+                <td>USD/TEU</td>
+                <td>5.0%</td>
+                <td align="center"></td>
+                <td align="center"></td>
+                <td align="center"></td>
+            </tr>
+            <tr>
+                <td><p>东南亚（新加坡）</p>
+                    <p>Southeast Asia (Singapore)</p></td>
+                <td>USD/TEU</td>
+                <td>7.5%</td>
+                <td align="center"></td>
+                <td align="center"></td>
+                <td align="center"></td>
+            </tr>
+            <tr>
+                <td><p>韩国（釜山）</p>
+                    <p>Korea (Pusan)</p></td>
+                <td>USD/TEU</td>
+                <td>2.5%</td>
+                <td align="center"></td>
+                <td align="center"></td>
+                <td align="center"></td>
+            </tr>
+            </tbody>
+        </table>
+        <div class="wei1">
+            <div style="margin: 20px">上海航运交易所版权所有，未经许可，不得转载或者用于任何形式的商业用途<br>
+                如需订购，请洽：<br>
+                姜先生 021-65151166 - 2356 jiangt@sse.net.cn<br>
+                昝先生 021-65151166 - 2352 zhanj@sse.net.cn<br>
+                <br>
+                <a href="https://www.sse.net.cn/cninfo/about/dynamic/202111/t20211112_1359744.jsp"
+                   target="bank">点击了解更多信息产品</a><br><br>
+                备注：分航线运价包含海运费及海运相关附加费，具体包括下列附加费:<br>
+                Note: The freight rate includes ocean freight and surcharges, i.e.:<br>
+                1、燃油附加费（BAF/FAF/LSS*） 2、紧急燃油附加费（EBS/EBA) 3、币值附加费（CAF/YAS）
+                4、旺季附加费（PSS） 5、战争附加费（WRS） 6、港口拥挤附加费（PCS） 7、运河附加费（SCS/SCF/PTF/PCC）
+                *自2014年末起包含低硫附加费（LSS）<br><br>
+                基本港：选择该航线基本港的运价进行报送，Base Port: Report Freight Rates of Base Ports
+                如: 地中海－巴塞罗那/瓦伦西亚/热那亚/那不勒斯 Mediterranean Sea-Barcelona/Valencia/Genoa/Naples
+                欧洲－汉堡/鹿特丹/安特卫普/弗利克斯托/勒阿弗尔 Europe-Hamburg/Rotterdam/Antwerp/Felixstowe/Le Havre
+                美西－洛杉矶/长滩/奥克兰 USWC-Los Angeles/Long Beach/Oakland
+                美东－纽约/萨凡纳/诺福克/查尔斯顿 USEC-New York/Savannah/Norfolk/Charleston
+                日本关西－大阪/神户；日本关东－东京/横滨 West Japan-Osaka/Kobe East Japan-Tokyo/Yokohama
+            </div>
+
+            <div style="margin: 20px;">
+                上海航运交易所聘请了毕马威对上海出口集装箱运价指数的编制和发布工作的内容控制进行检查，毕马威会计师事务所出具了截止至2010年7月31日的SAS70第一类报告。
+            </div>
+        </div>
+    </div>
+    <script src="/scripts/validate.js"></script>
+    <script language="javascript" type="text/javascript">
+        function queryscfi(form) {
+            var d = $("[name='date']")[0].value;
+            if (!validInputDate(d)) {
+                alert("日期格式错误,格式应为 yyyy-mm-dd");
+                return;
+            }
+            else {
+                form.submit();
+            }
+        }
+    </script>
+</div>
+</div>
+
+<div id="end">
+    <div id="endkd">
+        <div style="width: 980px; display: inline-block">
+            <div style="padding-left: 250px; height: 46px">
+                <span id="ownlink">
+                    <a href="http://www.chineseshipping.com.cn" target="_blank" style="margin: 5px 5px;">中华航运网</a>
+                    <a href="http://www.cn-eship.com" target="_blank" style="margin: 5px 5px;">中华船舶交易网</a>
+                </span>
+                <select>
+                    <option>政府部门网站</option>
+                    <option value="http://www.mot.gov.cn/">中华人民共和国交通运输部</option>
+                    <option value="http://jtw.sh.gov.cn/">上海市交通委员会</option>
+                </select>
+                <select>
+                    <option>友情链接</option>
+                    <option value="">上海航运运价交易有限公司</option>
+                    <option value="http://www.chinaccia.com">中国集装箱行业协会</option>
+                </select>
+            </div>
+            <div id="endfont">
+                <a href="/about#msg5" class="pic1" style="margin-left: 50px;background-image: none">联系方式</a>
+                <span>　电话：021-65151166　传真：021-65152291　邮箱：support<i class="fontAt">&#xA144</i>sse.net.cn</span>　　　　
+                <a href="/sitemap.jsp">网站地图</a>
+
+                </div>
+            <div style="text-align: center;padding-top: 5px;">
+                <a href="https://beian.miit.gov.cn"
+                   target="_blank">沪ICP备：沪B2-20050110-3 </a>
+                <a target="_blank" href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=31022102000187">
+                    <img src="/images/policebeian.png" style="margin: 3px 0px -3px 10px;"/>
+                    <span>沪公网安备 31022102000187号</span>　　
+                </a>
+            </div>
+        </div>
+        <div id="footer-right">
+            <a href="http://bszs.conac.cn/sitename?method=show&id=2801B669B8E679BCE053012819AC793D" target="_blank"></a>
+        </div>
+    </div>
+</div>
+<form action="changePwd" method="post" class="modal" id="changePwd" style="display:none;">
+    <h3>修改密码：</h3>
+    <p><label>输入原密码:</label><input autocomplete="off" type="password" id="orginalPwd"/></p>
+    <p><label>输入新密码:</label><input autocomplete="off" type="password" id="newPwd"/></p>
+    <p><label>确认新密码:</label><input autocomplete="off" type="password" id="confirmedNewPwd"/></p>
+    <p style="text-align: center; line-height: 30px;">
+        <input type="button" value="确认" onclick="javascript:changePwd(this.form);"/>
+        <input type="button" value="重置" onclick="javascript:cancel(this.form);"/>
+    </p>
+    </form>
+<script type="text/javascript" src="/assets/v/82798/main.js"></script>
+<script type="text/javascript" src="../../scripts/autocomplete/js/jquery.modal.js"></script>
+<link rel="stylesheet" type="text/css" href="../../scripts/autocomplete/css/jquery.modal.css"/>
+<script>
+    $(function () {
+        $('#endkd select').on('change', function () {
+            var url = $(this).val();
+            if (url) {
+                window.open(url);
+            }
+            $('option', this).get(0).selected = true;
+            return false;
+        });
+    });
+    function cancel(form) {
+        form.reset();
+    }
+    function changePwd(form) {
+        var originalPwd = $("#orginalPwd").val();
+        var newPwd = $("#newPwd").val();
+        var confirmedNewPwd = $("#confirmedNewPwd").val();
+        if (originalPwd == "" || newPwd == "" || confirmedNewPwd == "") {
+            alert("原密码、新密码或者确认密码都不能为空,请重新输入密码!");
+            return;
+        }
+        if (newPwd != confirmedNewPwd) {
+            alert("两次密码不同,请重新输入密码!");
+            return;
+        }
+        if(!checkStrong(newPwd)){
+            alert("密码格式为：至少8位, 字母大、小写、数字、特殊字符4种情况中的3种！！！");
+            return;
+        }
+
+        $.ajax({
+            url: 'changePwd',
+            type: 'POST',
+            data: {
+                'originalPwd': originalPwd,
+                'newPwd': newPwd,
+                'confirmedNewPwd': confirmedNewPwd
+            },
+            dataType: 'json',
+            success: function (data, textStatus, jqXHR) {
+                if (data.success == true) {
+                    alert(data.message);
+                    $.modal.close();
+                } else {
+                    alert(data.message);
+                }
+
+            },
+            error: function (xhr, textStatus) {
+
+            }
+        })
+    }
+
+    function checkStrong(sValue) {
+        var modes = 0;
+        //正则表达式验证符合要求的
+        if (sValue.length < 1) return modes;
+        if (/\d/.test(sValue)) modes++; //数字
+        if (/[a-z]/.test(sValue)) modes++; //小写
+        if (/[A-Z]/.test(sValue)) modes++; //大写
+        if (/\W/.test(sValue)) modes++; //特殊字符
+
+        switch (modes) {
+            case 1:
+                return false;
+            case 2:
+                return false;
+            case 3:
+            case 4:
+                return sValue.length >= 8 ;
+        }
+    }
+
+    function showChangePwdDlg(closeable){
+        if($("#tips")[0].innerText == "")
+            $("#tips").hide();
+        if (closeable == true)
+            $("#changePwd").modal({
+                escapeClose: false,
+                clickClose: false,
+                showClose: true
+            });
+        else
+            $("#changePwd").modal({
+                escapeClose: false,
+                clickClose: false,
+                showClose: false
+            });
+    }
+</script>
+<script>
+        changeb('fqe', 1);
+
+        var msgDiv = $(".alert, .alert-danger, .alert-dismissable");
+        if (msgDiv != null && msgDiv.length > 0) {
+            var msg = msgDiv.find("span")[0].innerText;
+            msgDiv.remove();
+            alert(msg);
+        }
+    </script>
+    <script src="/scripts/Accordion.js"></script>
+    <script>
+        $(function () {
+            $('.link:last').trigger('click');
+            $('#scfi').addClass("current");
+        });
+    </script></body>
+</html>

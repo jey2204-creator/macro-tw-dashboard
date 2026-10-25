@@ -1,0 +1,486 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<title>Shanghai Shipping Exchange</title>
+<link href="/resource/css/allen.css" rel="stylesheet" type="text/css"/>
+<link href="/resource/css/secondmenu.css" rel="stylesheet" type="text/css"/>
+<link href="/resource/css/indices_list.css" rel="stylesheet" type="text/css"/>
+<style rel="stylesheet" type="text/css">
+<!--
+.height1000 {
+    height: 440px;
+}
+
+.STYLE1 {
+    font-weight: bold
+
+.list_bottom1 {
+	height: 60px;
+	width: 755px;
+	text-align: left;
+}
+-->
+</style>
+<link href="../resource/css/indseasingle.css" rel="stylesheet" type="text/css"/>
+<script language="javascript" type="text/javascript" src="/resource/img/flash/flash.js"></script>
+<!--script language="javascript" type="text/javascript" src="/js/front/jquery.js"></--script-->
+<script language="javascript" type="text/javascript" src="/js/jquery/jquery.js"></script>
+<script language="javascript" type="text/javascript" src="/js/jquery/jquery.form.js"></script>
+
+<script language="javascript" type="text/javascript" src="/js/login/login.js"></script>
+<script language="javascript" type="text/javascript" src="/js/jquery.modal.js"></script>
+<link rel="stylesheet" href="/resource/css/jquery.modal.css">
+<link href="/resource/css/changePWD.css" rel="stylesheet" type="text/css" >
+<script language="javascript" type="text/javascript" src="/js/singleIndex/single.js"></script>
+<script language="javascript" type="text/javascript" src="/js/domainname.js"></script>
+<script language="javascript" type="text/javascript">
+
+    $(document).ready(function () {
+
+        isLogin2();
+
+      $.ajax({
+          url:  "/currentIndex",
+          type: "GET",
+          dataType: "json",
+          data: {indexName:"scfi"},
+          success: function (result) {
+              var status = result["status"];
+              var msg = result["msg"];
+              if(status ==0){
+                  alert(msg);
+              }else {
+                  var data = result["data"];
+                  var currentDate =data["currentDate"];
+                  var lastDate = data["lastDate"];
+                  var lineDataList = data["lineDataList"];
+                  $("#currdate").text(currentDate);
+                  $("#lastdate").text(lastDate);
+                  for(var j=0;j<lineDataList.length;j++){
+                      var lineData = lineDataList[j];
+                      var properties = lineData["properties"];
+                      var lineName_EN;
+                      var unit_EN;
+                      var weighting_EN;
+                      for(var k in properties){
+                          if(k=="lineName_EN"){
+                              lineName_EN= properties[k];
+                          }
+                          if(k=="unit_EN"){
+                              unit_EN = properties[k];
+                          }
+                          if(k=="weighting_EN"){
+                              weighting_EN = properties[k];
+                          }
+                      }
+                      if(j==0){
+                          var currentContent = lineData["currentContent"];
+                          var lastContent = lineData["lastContent"];
+                          var absolute = lineData["absolute"];
+                          var trString = " <tr>\n" +
+                              "        <td height=\"28\" class=\"list_right\">"+ lineName_EN +"</td>\n" +
+                              "        <td align=\"center\" valign=\"middle\" class=\"ind_td\"><span class=\"idx1\">"+unit_EN+"</span></td>\n" +
+                              "        <td align=\"center\" valign=\"middle\" class=\"ind_td\"><span class=\"idx2\">"+weighting_EN+"</span></td>\n" +
+                              "        <td align=\"center\" valign=\"middle\" class=\"ind_td\"><span class=\"idx3\">"+setPrecision(lastContent,2)+"</span></td>\n" +
+                              "        <td align=\"center\" valign=\"middle\" class=\"ind_td\"><span class=\"idx4\">"+setPrecision(currentContent,2)+"</span></td>\n" +
+                              "        <td align=\"center\" valign=\"middle\" class=\"ind_td\"><span class=\"idx5\">"+setPrecision(absolute,2)+"</span></td>\n" +
+                              "    </tr>";
+
+                      }else {
+                          var currentContent = lineData["currentContent"];
+                          var lastContent = lineData["lastContent"];
+                          var absolute = lineData["absolute"];
+                          var trString = " <tr>\n" +
+                              "        <td height=\"28\" class=\"list_right\">"+ lineName_EN +"</td>\n" +
+                              "        <td align=\"center\" valign=\"middle\" class=\"ind_td\"><span class=\"idx1\">"+unit_EN+"</span></td>\n" +
+                              "        <td align=\"center\" valign=\"middle\" class=\"ind_td\"><span class=\"idx2\">"+weighting_EN+"</span></td>\n" +
+                              "        <td align=\"center\" valign=\"middle\" class=\"ind_td\"><span class=\"idx3\">"+showEmpty(setPrecision(lastContent,0))+"</span></td>\n" +
+                              "        <td align=\"center\" valign=\"middle\" class=\"ind_td\"><span class=\"idx4\">"+showEmpty(setPrecision(currentContent,0))+"</span></td>\n" +
+                              "        <td align=\"center\" valign=\"middle\" class=\"ind_td\"><span class=\"idx5\">"+showEmpty(setPrecision(absolute,0))+"</span></td>\n" +
+                              "    </tr>";
+
+                      }
+
+                      $('.indiceslist').append(trString);
+                  }
+
+                  var trEndString3 =
+                      " <tr>\n" +
+                      "        <td colspan=\"6\" class=\"list_bottom1\">　<span class=\"STYLE1\">For any inquiry or purchase issue, please contact: <br/></span>　<span class=\"STYLE1\">Mr. Jiang:&nbsp;&nbsp;008621-65151166#2356 , jiangt@sse.net.cn</span></td>\n" +
+                      "    </tr>";
+                  trEndString3 +=
+                      " <tr>\n" +
+                      "        <td colspan=\"6\" class=\"list_bottom\">　<span class=\"STYLE1\">Issued by SSE</span></td>\n" +
+                      "    </tr>";
+                  $(".indiceslist").append(trEndString3);
+              }
+          }
+      })
+    });
+
+    function querySCFI2(){
+
+        $.ajax({
+            type: "POST",
+            dataType: "json",
+            url: "/islogin2",
+            data: "",
+            success: function (result) {
+                if(result==false){
+                    alert("please login !");
+                }else {
+                    var d = $('#indexDateInput').val();
+                    if (!validInputDate(d)) {
+                        alert("The format of the date is wrong, please input the correct one(yyyy-mm-yy).");
+                    }else {
+                    $.ajax({
+                        url:  "/singleIndex/scfi",
+                        type: "GET",
+                        dataType: "json",
+                        data: {date: new Date(Date.parse($("#indexDateInput").val()+' 00:00:00'))},
+                        success: function (result) {
+                            var status = result["status"];
+                            var msg = result["msg"];
+                            if (status == 0) {
+                                alert(msg);
+                            } else {
+
+                                var data = result["data"];
+                                var currentDate = data["currentDate"];
+                                var lastDate = data["lastDate"];
+                                var lineDataList = data["lineDataList"];
+
+                                $(".indiceslist").empty();
+
+                             var trHead ="<tr>\n"+
+                                 "<td class=\"listtitle\" colspan=\"6\">Shanghai Containerized Freight Index</td>\n"+
+                                 "</tr>\n"+
+                                 "<tr>\n"+
+                                "<td width=\"270\" height=\"70\" align=\"center\" valign=\"middle\" class=\"list_head\">Description</td>\n"+
+                                 "   <td width=\"100\" align=\"center\" valign=\"middle\" class=\"list_head\"><p>Unit</p></td>\n" +
+                                "<td width=\"80\" class=\"list_head\"><p>Weighting</p></td>\n"+
+                                "<td width=\"100\" align=\"center\" valign=\"middle\" class=\"list_head\"><p>Previous Index</p>\n"+
+                                "<span id=\"lastdate\">"+ lastDate +"</span></td>\n"+
+                                "<td width=\"100\" align=\"center\" valign=\"middle\" class=\"list_head\"><p>Current Index</p>\n" +
+                                "<span id=\"currdate\">"+ currentDate +"</span></td>\n" +
+                                "<td align=\"center\" valign=\"middle\" class=\"list_head\"><p>Compare With Last Week</p></td>\n" +
+                                "</tr>";
+
+                                $(".indiceslist").append(trHead);
+
+                                for (var j = 0; j < lineDataList.length; j++) {
+                                    var lineData = lineDataList[j];
+                                    var properties = lineData["properties"];
+                                    var lineName_EN;
+                                    var unit_EN;
+                                    var weighting_EN;
+                                    for (var k in properties) {
+                                        if (k == "lineName_EN") {
+                                            lineName_EN = properties[k];
+                                        }
+                                        if(k=="unit_EN"){
+                                            unit_EN = properties[k];
+                                        }
+                                        if(k=="weighting_EN"){
+                                            weighting_EN = properties[k];
+                                        }
+                                    }
+                                    var currentContent = lineData["currentContent"];
+                                    var lastContent = lineData["lastContent"]
+                                    var absolute = lineData["absolute"];
+
+                                    var trString = " <tr>\n" +
+                                        "        <td height=\"28\" class=\"list_right\">"+ lineName_EN +"</td>\n" +
+                                        "        <td align=\"center\" valign=\"middle\" class=\"ind_td\"><span class=\"idx1\">"+unit_EN+"</span></td>\n" +
+                                        "        <td align=\"center\" valign=\"middle\" class=\"ind_td\"><span class=\"idx2\">"+weighting_EN+"</span></td>\n" +
+                                        "        <td align=\"center\" valign=\"middle\" class=\"ind_td\"><span class=\"idx3\">"+setPrecision(lastContent,2)+"</span></td>\n" +
+                                        "        <td align=\"center\" valign=\"middle\" class=\"ind_td\"><span class=\"idx4\">"+setPrecision(currentContent,2)+"</span></td>\n" +
+                                        "        <td align=\"center\" valign=\"middle\" class=\"ind_td\"><span class=\"idx5\">"+setPrecision(absolute,2)+"</span></td>\n" +
+                                        "    </tr>";
+                                    $('.indiceslist').append(trString);
+                                }
+                                var trEndString = " <tr>\n" +
+                                    "        <td colspan=\"6\" class=\"list_bottom\">　<span class=\"STYLE1\">Issued by SSE </span></td>\n" +
+                                    "    </tr>";
+                                $(".indiceslist").append(trEndString);
+                            }
+
+                        }
+                    })
+                }
+                }
+            }
+        })
+
+    }
+
+</script>
+</head>
+<!--body onload="MM_preloadImages('/resource/img/button/loginan_onen.gif')"-->
+<script language="javascript" type="text/javascript">
+    writeflashhtml("_swf=/resource/img/flash/enlogo_s.swf", "_width=980", "_height=80", "_wmode=transparent");
+</script>
+
+<div id="menu" class="whitezi"><a href="/memberen/join.jsp"><img src="/resource/img/2010/gosseen.gif" width="116" height="26" border="0" align="absmiddle" /></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href="/home">Home</a>&nbsp;&nbsp;&nbsp;&nbsp;<a href="/brief/introen.jsp">About us </a>&nbsp;&nbsp;&nbsp;&nbsp;<a href="/indices/ccfinew.jsp">Freight Indices</a>&nbsp;&nbsp;&nbsp;&nbsp;<a href="/shipsp/shippurchase.jsp">Ship Trading</a>&nbsp;&nbsp;&nbsp;&nbsp;<a href="/filingen/aboutfiling.jsp">Freight Rate Filing</a>&nbsp;&nbsp;&nbsp;&nbsp;<a href="/memberen/contentsen.jsp">Member Services</a></div>
+
+<div class="row">
+<div style="float: left; width: 180px; margin-right: 10px; margin-left: 15px">
+    
+    
+
+<h4 style="color: #999999; text-align: center; padding: 10px; font-size: 18px; font-weight: bold">Freight
+    Indices</h4>
+<ul class="nav nav-list bs-docs-sidenav" style="margin-bottom: 20px;">
+    <li style="line-height: 36px; font-size: 16px; font-weight: bold; background-color: #d3d3d3;">Introduction
+    </li>
+    <li style="text-indent: 20px">
+        <a href="introduction_ctfi_new.jsp"><i class="icon-chevron-right"></i>About Indices</a>
+    </li>
+    <li style="text-indent: 20px">
+        <a href="panelistsnew.jsp"><i class="icon-chevron-right"></i>Panelists</a>
+    </li>
+    <li style="text-indent: 20px">
+        <a href="fqaennew.jsp"><i class="icon-chevron-right"></i>FAQ</a>
+    </li>
+    <li style="text-indent: 20px">
+        <a href="ContractTemplate.jsp"><i class="icon-chevron-right"></i>Contract Template</a>
+    </li>
+    <li style="line-height: 36px; font-size: 16px; font-weight: bold; background-color: #d3d3d3;">Indices</li>
+    <li style="text-indent: 20px">
+        <a href="./ccfinew.jsp"><i class="icon-chevron-right"></i>CCFI</a>
+    </li>
+    <li class='active'
+ style="text-indent: 20px">
+        <a href="./scfinew.jsp"><i class="icon-chevron-right"></i>SCFI</a>
+    </li>
+    <li style="text-indent: 20px">
+        <a href="scfisnew.jsp"><i class="icon-chevron-right"></i>SCFIS</a>
+    </li>
+    <li style="text-indent: 20px">
+        <a href="cbfinew.jsp"><i class="icon-chevron-right"></i>CBFI</a>
+    </li>
+    <li style="text-indent: 60px">
+        <a href="cbcfinew.jsp"><i class="icon-chevron-right"></i>CBCFI</a>
+    </li>
+    <li style="text-indent: 60px">
+        <a href="./cbofinew.jsp"><i class="icon-chevron-right"></i>CBOFI</a>
+    </li>
+    <li style="text-indent: 60px">
+        <a href="./cbgfinew.jsp"><i class="icon-chevron-right"></i>CBGFI</a>
+    </li>
+    
+    <li style="text-indent: 20px">
+        <a href="./cdfinew2.jsp"><i class="icon-chevron-right"></i>CDFI</a>
+    </li>
+    <li style="text-indent: 20px">
+        <a href="./fdinew2.jsp"><i class="icon-chevron-right"></i>FDI</a>
+    </li>
+    <li style="text-indent: 20px">
+        <a href="./ctfinew2.jsp"><i class="icon-chevron-right"></i>CTFI</a>
+    </li>
+    <li style="text-indent: 20px">
+        <a href="./csinew.jsp"><i class="icon-chevron-right"></i>CSI</a>
+    </li>
+    <li style="text-indent: 20px">
+        <a href="./cicfinew2.jsp"><i class="icon-chevron-right"></i>CICFI</a>
+    </li>
+    <li style="text-indent: 20px">
+        <a href="./seafinew2.jsp"><i class="icon-chevron-right"></i>SEAFI</a>
+    </li>
+    <li style="text-indent: 20px">
+        <a href="./srftinew2.jsp"><i class="icon-chevron-right"></i>SRFTI</a>
+    </li>
+    <li style="text-indent: 20px">
+        <a href="./brstinew2.jsp"><i class="icon-chevron-right"></i>BRSTI</a>
+    </li>
+    <li style="text-indent: 60px">
+        <a href="./brtvinew2.jsp"><i class="icon-chevron-right"></i>BRTVI</a>
+    </li>
+    <li style="text-indent: 60px">
+        <a href="./brcvinew2.jsp"><i class="icon-chevron-right"></i>BRCVI</a>
+    </li>
+    <li style="text-indent: 60px">
+        <a href="./srfinew2.jsp"><i class="icon-chevron-right"></i>SRFI</a>
+    </li>
+    <!--GCSPI-->
+    <li style="text-indent: 20px">
+        <a href="gcspi_main.jsp"><i class="icon-chevron-right"></i>GCSPI</a>
+    </li>
+    <li style="text-indent: 60px">
+        <a href="gcspi_main.jsp"><i class="icon-chevron-right"></i>MTSR</a>
+    </li>
+    <li style="text-indent: 60px">
+        <a href="gcspi_ca.jsp"><i class="icon-chevron-right"></i>CASR</a>
+    </li>
+    <li style="text-indent: 60px">
+        <a href="./gcspi_port.jsp"><i class="icon-chevron-right"></i>PCSR</a>
+    </li>
+    <!--GCSPI-->
+    <!--TWFI-->
+    <li style="text-indent: 20px">
+        <a href="twfi.jsp"><i class="icon-chevron-right"></i>TWFI</a>
+    </li>
+    <!--TWFI-->
+    <li style="text-indent: 20px">
+        <a href="ccri.jsp"><i class="icon-chevron-right"></i>CCRI</a>
+    </li>
+    <!--CCRI-->
+    <li>
+        <a href="/eninfo/MarketReport/index.shtml"><i class="icon-chevron-right"></i>Report</a>
+    </li>
+    <li>
+        <a href="agreementnew.jsp"><i class="icon-chevron-right"></i>Subscription</a>
+    </li>
+    <li>
+        <a href="/eninfo/Bulletin/index.shtml"><i class="icon-chevron-right"></i>Bulletin</a>
+    </li>
+    <li>
+        <a href="cfsaennew.jsp"><i class="icon-chevron-right"></i>CFSA</a>
+    </li>
+</ul>
+
+
+    <div class="left230 mtitlb" style="margin-left: 0"></div>
+    <div class="left230 m_b" style="margin-left: 0">
+        <div style="clear: both">
+            <iframe src="scfiscrollen.htm" height="950" width="110" frameborder="no" border="0" marginwidth="0"
+                    marginheight="0" scrolling="no"></iframe>
+        </div>
+        <div class="more_m"><a href="panelistsnew.jsp">< more ></a></div>
+    </div>
+    <div class="left230 m_d" style="margin-left: 0"></div>
+</div>
+<div id="emb" style="margin-top: 10px; width: 760px; float: left;">
+<div id="indexImgLoginTip" class="login01" style="display: block; padding-right: 0">
+      <form id="form1" name="loginform" method="post" action="/authentication/form">
+        <table width="210" border="0" cellpadding="0" cellspacing="0">
+          <tr>
+            <td width="73" height="24" align="right" valign="middle">Username:</td>
+            <td width="137" align="left" valign="middle"><input id="indexUser" name="username" type="text" class="input2" /></td>
+          </tr>
+
+          <tr>
+            <td height="24" align="right" valign="middle">Password:</td>
+            <td align="left" valign="middle"><input id="indexPWD" name="password" type="password" class="input2" /></td>
+          </tr>
+
+          <tr>
+            <td height="35" align="right" valign="middle">Verification Code:</td>
+              <td align="left" valign="middle"><input id="indexCHK" name="imageCode" type="text" class="input2 input3" size="4" maxlength="4" />
+                  <a href="javascript:changeIMG();" title="Click to change another picture"/>
+                  <img src="" width="42" height="20" hspace="10" align="absmiddle" id="indexCHKImg"/>
+              </td>
+          </tr>
+
+          <tr>
+            <td height="45" colspan="2" align="center" valign="middle"><img src="/resource/img/button/loginan_outen.gif" width="186" height="30" style="cursor:pointer"  name="indexLoginButton" id="indexLoginButton" onclick="toLogin()"/></td>
+          </tr>
+
+        </table>
+      </form>
+</div>
+<div id="loginIndexFront" class="login01" style="padding-right: 0">
+      <form id="form2" name="loginform" method="post" action="">
+	    <table width="210" border="0" cellpadding="0" cellspacing="0">
+	      <tr> 
+	        <td width="73" height="24" align="right" valign="middle">User:</td>
+	        <td width="137" align="left" valign="middle"><input id="indexUserInfo" name="indexUserInfo" type="text" class="input2" /></td>
+	      </tr>
+	      <tr> 
+	        <td height="24" align="right" valign="middle">Username:</td>
+        <td align="left" valign="middle"><input id="indexUserName" name="indexUserName" type="text" class="input2" /></td>
+	      </tr>
+	      <tr>
+              <td height="40" colspan="2" align="center" valign="middle"><img src="/resource/img/button/changepwden.png" width="186" height="30" style="cursor:pointer" name="changePwdButton" id="changePwdButton" onclick="showChangePwdDlg(true)"/></td>
+	      </tr>
+	      <tr> 
+	        <td height="40" colspan="2" align="center" valign="middle"><img src="/resource/img/button/logout_outen.gif" width="186" height="30" style="cursor:pointer" name="indexLogoutButton" id="indexLogoutButton" onclick="tologout()"/></td>
+	      </tr>
+	    </table>
+      </form>
+</div>
+<form class="login_form modal" id="changePwdForm" style="display:none;">
+    <h3>Please change your password</h3>
+    <p><label>Original password:</label><input type="password" id="originalPwd" name="originalPwd" /></p>
+    <p><label>New password:</label><input type="password" id="newPwd" name="newPwd" /></p>
+    <p><label>Confirm password:</label><input type="password" id="confirmPwd" name="confirmPwd" /></p>
+    <input type="hidden" id="userName" name="userName" />
+    <p id="msg" style="display: none; color: red"></p>
+    <div style="text-align: center; margin: 10px 0 10px 0">
+        <input type="button" style="cursor:pointer; width: 150px;height: 30px; background-color: #1C80BE; color: white; font-weight: bold" value="Change" onclick="changePWD(true)" />
+    </div>
+</form>
+<div class="indsea_back" style="height: 40px"><img src="../resource/img/2010/ind_single.gif" width="221" height="32" hspace="20" border="0"
+                              usemap="#Map"/>
+    <map name="Map" id="Map">
+        <area shape="rect" coords="109,0,221,30" href="scfiadvancenew.jsp"/>
+    </map>
+</div>
+<div id="divIndexDate" class="indsea_y indsea_d ind_adsea" style="height: 130px; padding-left: 10px; padding-right: 10px; width: 502px">
+    <table id="fSelLine" name="fSelLine" width="400" border="0" cellspacing="0" cellpadding="0" style="margin-left: 50px;">
+        <tr>
+            <td><span class="seatitl">Please input the period: (YYYY-MM-DD)</span></td>
+            <td><input id="indexDateInput" name="indexDateInput" type="text" class="seainput" size="20" maxlength="10"/>
+            </td>
+        </tr>
+        <tr>
+            <td align="center" colspan="2">
+                <a href="javascript:querySCFI2();">
+                    <img src="../resource/img/button/search_an.gif" width="87" height="23"/>
+                </a>
+            </td>
+        </tr>
+    </table>
+</div>
+<table width="670" border="0" cellpadding="0" cellspacing="0" class="indiceslist" style="margin-right: 0">
+    <tr>
+        <td class="listtitle" colspan="6">Shanghai Containerized Freight Index&nbsp;&nbsp;&nbsp;&nbsp;<a style="color: white;padding: 5px 5px 5px 5px;background-color: #4981C7FF;font-size: 15px" href="/indices/ContractTemplate.jsp">Contract Template</a></td>
+    </tr>
+    <tr>
+        <td width="270" height="70" align="center" valign="middle" class="list_head">Description</td>
+        <td width="100" align="center" valign="middle" class="list_head"><p>Unit</p></td>
+        <td width="80" class="list_head"><p>Weighting</p></td>
+        <td width="100" align="center" valign="middle" class="list_head"><p>Previous Index</p>
+            <span id="lastdate">&nbsp;</span></td>
+        <td width="100" align="center" valign="middle" class="list_head"><p>Current Index</p>
+            <span id="currdate">&nbsp;</span></td>
+        <td align="center" valign="middle" class="list_head"><p>Compare With Last Week</p></td>
+    </tr>
+
+</table>
+
+<div class="mdir15 indicesimg" style="margin-right: 0"><img src="http://www.sse.net.cn/index/indexImg?name=scfi&type=english" width="755"
+                                                            height="300" vspace="10"/>
+</div>
+</div>
+</div>
+
+
+<table width="980" border="0" cellspacing="0" cellpadding="0" id="bottom">
+  <tr>
+    <td height="10"></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td width="43%" align="center">&copy; 2001-2024 Shanghai Shipping Exchange All Rights   Reserved.</td>
+    <td width="25%">&nbsp;</td>
+    <td width="32%" align="center"><a href="/brief/copyrighten.jsp" target="_blank"><font color="#FFFFFF">Copyright Declaration</font></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="/brief/contactusen.jsp" target="_blank"><font color="#FFFFFF">Contact us</font></a></td>
+  </tr>
+  <tr>
+    <td align="center">Shanghai ICP B2-20050110-1</td>
+    <td>&nbsp;</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr>
+    <td height="10"></td>
+    <td></td>
+    <td></td>
+  </tr>
+</table>
+
+</body>
+</html>
