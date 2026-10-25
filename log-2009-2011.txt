@@ -1,0 +1,9 @@
+CDX en.sse.net.cn/indices/scfinew.jsp 0
+CDX www.sse.net.cn/index/singleIndex?indexType=scfi 0
+CDX ERR www1.sse.net.cn/index/scfinew.jsp <urlopen error [Errno 111] Connection refused>
+CDX ERR www.sse.net.cn/index/scfi.jsp HTTP Error 503: Service Unavailable
+CDX www.sse.net.cn/index/scfinew.jsp 0
+CDX ERR www1.sse.net.cn/index/scfiAdvanceNew.jsp <urlopen error [Errno 111] Connection refused>
+CDX ERR en.sse.net.cn/currentIndex?indexName=scfi <urlopen error _ssl.c:983: The handshake operation timed out>
+snapshots 0
+points 0
