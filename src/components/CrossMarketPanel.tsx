@@ -55,6 +55,7 @@ import {
   type MarkedEvent,
 } from '../shared/eventMarkers';
 import { INDICATOR_MAP } from '../shared/indicators';
+import { maTrend, TREND_TEXT, type MaTrend } from '../shared/maTrend';
 import { MA_PERIODS, rangeStart, sma, type MaPeriod, type RangeKey } from '../shared/timeseries';
 import type { Bar, SummaryFile } from '../shared/types';
 
@@ -215,6 +216,8 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
 
   const twDates = useMemo(() => twBars.map((b) => b[0]), [twBars]);
   const twMa = useMemo(() => maLines(twBars, mas), [twBars, mas]);
+  // 多空狀態列固定用 MA10/20/60/120/240 計算，不受均線按鈕開關影響
+  const trendMa = useMemo(() => maLines(twBars, [10, 20, 60, 120, 240]), [twBars]);
   const nowDate = now ?? new Date();
   const today = todayInTaipei(nowDate);
   // 公布日標記：歷史清單＋日程表已發生者 → 反應日（公布後第一個台股交易日）
@@ -495,10 +498,13 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
       twBar,
       twPct: twBar && twPrev ? ((twBar[4] - twPrev[4]) / Math.abs(twPrev[4])) * 100 : null,
       ma: Object.fromEntries(mas.map((p) => [p, twBar ? twMa[p]?.[twIdx] : null])) as Partial<Record<MaPeriod, number | null | undefined>>,
+      trend: twBar
+        ? maTrend({ close: twBar[4], 10: trendMa[10]?.[twIdx], 20: trendMa[20]?.[twIdx], 60: trendMa[60]?.[twIdx], 120: trendMa[120]?.[twIdx], 240: trendMa[240]?.[twIdx] })
+        : null,
       rows,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [twBars, twDates, twMa, panes, hoverTime, mas, showEvents, eventsByDay, calendar, summary]);
+  }, [twBars, twDates, twMa, trendMa, panes, hoverTime, mas, showEvents, eventsByDay, calendar, summary]);
 
   const latestRho = panes.filter((p) => !p.flow).map((p) => ({ label: p.label, rho60: p.corr[60].at(-1) ?? null }));
   const failed = COMPARE_SERIES.flatMap((s) => {
@@ -529,6 +535,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         黃金、VIX 用來分辨今天是哪種行情（黃金↑油↑殖利率↓＝地緣避險；黃金↑美元↑殖利率↑＝通膨），不是預測戰爭。比特幣不是避險資產（跟美股同漲同跌），放在「避險」組合是看週末台股休市時的風險胃口。
         「亞洲資金」看外資有沒有撤出：台外資、韓外資是外資每日買賣超換算成億美元（柱＝每日、線＝20 日累計），是直接證據；兩國同時賣＝亞洲撤出，只有一國賣＝該國個別因素。匯率是結果：當地貨幣貶（USD/xxx 上升）而 DXY 沒漲＝資金離開該國，DXY 也漲＝全球美元回流。日圓是避險貨幣，恐慌時常升值，不能用來判斷外資撤出日股。韓國資料來自 Naver（韓國交易所數字）。
         TLT 是美債價格，與 10Y 殖利率鏡像（殖利率 +10bp ≈ TLT −1.6%），兩張圖是同一件事，不算兩個證據；用途是比 FRED 早 1–2 天看到昨晚美債走勢。
+        加權下方的狀態列（參考、不計分）：短線＝收盤與 MA10 都在 MA20 之上為「短多」、都在之下為「短空」；中期＝收盤與 MA60 對 MA120 同理（MA60＝季線）；不一致為「整理」。乖離＝收盤離該均線多少 %。均線落後價格，狀態列描述現況、不是預測。
         加權 K 棒下方的圓點是 CPI（藍）、就業報告（橘）、FOMC（黑）公布後台股第一個交易日：美東 08:30／14:00 公布時台股已收盤，反應落在隔天。
         動市場的是「實績 vs 預期」不是年增率本身，所以用標記不畫月線；2026-10 起有市場預期，點到該日圖例會列出驚喜值。標記只在 1 年以內的區間顯示（半年以內才附文字）。
       </p>
@@ -611,6 +618,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
                 <span className="muted">{legend.date}</span> 加權 <b>{fmtNum(legend.twBar?.[4], 0)}</b>{' '}
                 <span className={legend.twPct !== null ? (legend.twPct > 0 ? 'up' : legend.twPct < 0 ? 'down' : '') : ''}>{fmtPct(legend.twPct)}</span>
               </div>
+              {legend.trend && <TrendRow t={legend.trend} />}
               {legend.events.map((e) => (
                 <div key={e.label} className="cm-event">
                   <i className="swatch" style={{ background: `var(${EVENT_COLOR_VAR[e.kind]})` }} />
@@ -664,5 +672,23 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
       )}
       <BtcTwCard version={version} near={near} />
     </section>
+  );
+}
+
+const sideClass = (v: string | null) => (v === 'bull' || v === 'above' ? 'up' : v === 'bear' || v === 'below' ? 'down' : 'muted');
+const fmtDev = (v: number | null) => (v === null ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(1)}%`);
+
+/** 加權多空狀態列：短線／中期／年線三格＋乖離 */
+function TrendRow({ t }: { t: MaTrend }) {
+  return (
+    <div className="cm-trend">
+      {t.short && <b className={`cm-tag ${sideClass(t.short)}`}>{TREND_TEXT.short[t.short]}</b>}
+      {t.mid && <b className={`cm-tag ${sideClass(t.mid)}`}>{TREND_TEXT.mid[t.mid]}</b>}
+      {t.long && <b className={`cm-tag ${sideClass(t.long)}`}>{TREND_TEXT.long[t.long]}</b>}
+      <span className="muted">
+        乖離 MA20 <span className={signClass(t.dev[20])}>{fmtDev(t.dev[20])}</span> MA60 <span className={signClass(t.dev[60])}>{fmtDev(t.dev[60])}</span> MA240{' '}
+        <span className={signClass(t.dev[240])}>{fmtDev(t.dev[240])}</span>
+      </span>
+    </div>
   );
 }

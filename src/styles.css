@@ -908,6 +908,21 @@ th {
 .wide .cm-host {
   height: calc(240px + var(--cm-panes, 3) * 150px);
 }
+.cm-trend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px 6px;
+  margin: 2px 0;
+}
+.cm-tag {
+  padding: 0 6px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+}
 .cm-host-wrap {
   position: relative;
 }
