@@ -1,7 +1,6 @@
 name: 資料來源連線診斷
 
 on:
-  workflow_dispatch:
   push:
     paths: ['.github/workflows/diag.yml']
 
@@ -9,34 +8,37 @@ permissions:
   contents: write
 
 jobs:
-  wayback:
+  cdx:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      max-parallel: 1
-      matrix:
-        span: ['2020 2021', '2022 2023', '2017 2019', '2009 2016', '2024 2026']
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - name: 回收 SCFI 存檔
+      - name: CDX 探測
         shell: bash
         run: |
-          set +e
-          read A B <<< "${{ matrix.span }}"
           mkdir -p /tmp/out
-          timeout 40m python3 -u scripts/oneoff/scfi_wayback_seed.py $A $B /tmp/out/wb-$A-$B.json > /tmp/out/log-$A-$B.txt 2>&1
-          tail -5 /tmp/out/log-$A-$B.txt
+          python3 -u - > /tmp/out/cdx.txt 2>&1 <<'PY'
+          import json, urllib.request, urllib.parse, collections, time
+          UA="macro-tw-dashboard/0.1 (+https://github.com/jey2204-creator/macro-tw-dashboard)"
+          pats=["index.chineseshipping.com.cn","www.chineseshipping.com.cn","en.chineseshipping.com.cn","sse.net.cn/currentIndex","www.sse.net.cn/currentIndex","en.sse.net.cn/currentIndex","www.sse.net.cn/index/currentIndex","www.sse.net.cn/indexService"]
+          for p in pats:
+              q=urllib.parse.urlencode({"url":p,"matchType":"prefix","output":"json","fl":"timestamp,original","filter":"statuscode:200","from":"2019","to":"2022","limit":"20000"})
+              for i in range(4):
+                  try:
+                      rows=json.loads(urllib.request.urlopen(urllib.request.Request("https://web.archive.org/cdx/search/cdx?"+q,headers={"User-Agent":UA}),timeout=60).read() or b"[]")[1:]
+                      break
+                  except Exception as e:
+                      rows=None; print("retry",p,e); time.sleep(10*2**i)
+              if rows is None: continue
+              sc=[r for r in rows if "scfi" in r[1].lower()]
+              yrs=collections.Counter(r[0][:6] for r in sc if r[0][:4]=="2020")
+              print(p,"all",len(rows),"scfi",len(sc),"2020 by month",sorted(yrs.items()))
+              for o,c in collections.Counter(r[1] for r in sc).most_common(8): print("   ",c,o)
+              time.sleep(5)
+          PY
+          cat /tmp/out/cdx.txt
       - name: 推送結果
         if: always()
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set -e
-          read A B <<< "${{ matrix.span }}"
-          cd /tmp/out
-          git init -q -b wb
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A && git commit -q -m "wb $A-$B"
-          git push -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}" wb:refs/heads/wb-$A-$B
+          cd /tmp/out && git init -q -b x && git config user.name bot && git config user.email "41898282+github-actions[bot]@users.noreply.github.com" && git add -A && git commit -qm cdx && git push -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}" x:refs/heads/wb-cdx
