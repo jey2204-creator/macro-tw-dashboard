@@ -21,18 +21,20 @@ jobs:
           CH="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
           mkdir -p /tmp/p && cd /tmp/p
           g(){ n=$1; u=$2; r=$(curl -s -L -c cj -b cj -A "$CH" -o "$n" -w "code=%{http_code} size=%{size_download}" -m 40 "$u"); echo "RESULT $n | $r | $u"; }
-          g list.html "https://www.sse.net.cn/index/scfilist"
-          for q in "columns=T&startDate=2026-07-25&endDate=2026-10-25" "columns=T&startDate=2009-10-01&endDate=2026-10-25" "columns=T&startDate=2009-10-01&endDate=2012-12-31" "columns=T,L4,L5&startDate=2026-09-01&endDate=2026-10-25"; do
-            n="m_$(echo $q | tr '&=,' '___' | cut -c1-60).json"
-            r=$(curl -s -c cj -b cj -A "$CH" -H "X-Requested-With: XMLHttpRequest" -H "Referer: https://www.sse.net.cn/index/scfilist" -o "$n" -w "code=%{http_code} size=%{size_download}" -m 60 "https://www.sse.net.cn/index/mutipleIndex?indexType=scfi&$q")
-            echo "RESULT $q | $r"; head -c 600 "$n"; echo; tail -c 300 "$n"; echo
+          ext(){ sed -e 's/<[^>]*>/ /g' "$1" | tr -s ' \n' | grep -A6 -E '上期' | tr '\n' ' ' | grep -oE '上期 [0-9-]+ 本期 [0-9-]+|综合指数 Comprehensive Index [0-9. -]+' | tr '\n' ' '; echo; }
+          g s0.html "https://www.sse.net.cn/index/singleIndex?indexType=scfi"
+          TOK=$(grep -oE 'name="CSRFToken" value="[^"]+"' s0.html | head -1 | cut -d'"' -f4); echo "TOK=$TOK"
+          for d in 2009-10-16 2009-10-23 2012-06-15 2015-01-09 2020-03-20 2021-09-17 2025-12-31 2026-10-16; do
+            curl -s -c cj -b cj -A "$CH" -m 40 -o get.html "https://www.sse.net.cn/index/singleIndex?indexType=scfi&date=$d"
+            echo -n "GET  $d -> "; ext get.html
+            curl -s -c cj -b cj -A "$CH" -m 40 -o post.html -H "Referer: https://www.sse.net.cn/index/singleIndex?indexType=scfi" --data-urlencode "CSRFToken=$TOK" --data-urlencode "date=$d" "https://www.sse.net.cn/index/singleIndex?indexType=scfi"
+            echo -n "POST $d -> "; ext post.html
+            sleep 1
           done
-          echo "=== no cookie"
-          curl -s -A "$CH" -m 60 "https://www.sse.net.cn/index/mutipleIndex?indexType=scfi&columns=T&startDate=2026-09-01&endDate=2026-10-25" | head -c 400; echo
-          echo "=== no UA"
-          curl -s -m 60 "https://www.sse.net.cn/index/mutipleIndex?indexType=scfi&columns=T&startDate=2026-09-01&endDate=2026-10-25" | head -c 400; echo
-          echo "=== seafi"
-          curl -s -A "$CH" -m 60 "https://www.sse.net.cn/index/mutipleIndex?indexType=seafi&columns=T&startDate=2026-09-01&endDate=2026-10-25" | head -c 400; echo
+          echo "=== rapid 10 GETs"
+          for i in 1 2 3 4 5 6 7 8 9 10; do curl -s -A "$CH" -m 40 -o r.html -w "%{http_code} %{time_total} " "https://www.sse.net.cn/index/singleIndex?indexType=scfi&date=2018-0$((i%9+1))-15"; ext r.html; done
+          echo "=== seafi / ccfi GET"
+          curl -s -A "$CH" -m 40 -o x.html "https://www.sse.net.cn/index/singleIndex?indexType=ccfi&date=2005-01-07"; echo -n "ccfi 2005 -> "; sed -e 's/<[^>]*>/ /g' x.html | tr -s ' \n' | grep -A6 -E '上期' | tr '\n' ' ' | cut -c1-300; echo
       - name: 推送探測結果到 probe-out 分支
         if: always()
         env:
