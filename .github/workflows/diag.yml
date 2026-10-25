@@ -21,17 +21,30 @@ jobs:
           CH="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
           mkdir -p /tmp/p && cd /tmp/p
           g(){ n=$1; u=$2; r=$(curl -s -L -c cj -b cj -A "$CH" -o "$n" -w "code=%{http_code} size=%{size_download}" -m 40 "$u"); echo "RESULT $n | $r | $u"; }
-          E="https://datacenter-web.eastmoney.com/api/data/v1/get"
-          for d in 2026-10-23 2026-10-16 2026-10-24 2026-10-22; do
-            for pg in 1 2 3; do
-              curl -s -A "$CH" -m 40 -G "$E" --data-urlencode "reportName=RPT_INDUSTRY_INDEX" --data-urlencode "columns=REPORT_DATE,INDICATOR_ID,INDICATOR_NAME,INDICATOR_VALUE" --data-urlencode "filter=(REPORT_DATE='$d')" --data-urlencode "pageSize=500" --data-urlencode "pageNumber=$pg" --data-urlencode "sortColumns=INDICATOR_ID" --data-urlencode "sortTypes=1" --data-urlencode "source=WEB" --data-urlencode "client=WEB" -o em_$d_$pg.json
-              python3 -c "
-          import json,sys;d=json.load(open('em_$d_$pg.json'));r=d.get('result') or {};rows=r.get('data') or []
-          print('$d p$pg', d.get('message'), 'pages',r.get('pages'),'count',r.get('count'))
-          for x in rows: print('  ',x['INDICATOR_ID'],x['INDICATOR_NAME'],x['INDICATOR_VALUE'])
+          for id in 2603 2609 2615; do
+            curl -s -m 60 "https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockMonthRevenue&data_id=$id&start_date=2000-01-01&end_date=2026-10-25" -o rev_$id.json
+            python3 -c "
+          import json;d=json.load(open('rev_$id.json'));r=d.get('data') or []
+          print('rev $id',d.get('status'),d.get('msg'),len(r))
+          for x in r[:2]+r[-3:]: print('   ',x)
           "
-            done
           done
+          curl -s -c ycj -A "$CH" -m 20 -o /dev/null https://fc.yahoo.com
+          for sym in 2603.TW 2609.TW 2615.TW; do
+            curl -s -A "$CH" -m 60 "https://query2.finance.yahoo.com/v8/finance/chart/$sym?period1=0&period2=1800000000&interval=1d&events=div,splits" -o y_$sym.json
+            python3 -c "
+          import json,datetime as dt
+          j=json.load(open('y_$sym.json'));r=j['chart']['result'][0];ts=r['timestamp'];q=r['indicators']['quote'][0];a=(r['indicators'].get('adjclose') or [{}])[0].get('adjclose')
+          print('$sym n',len(ts),'first',dt.datetime.utcfromtimestamp(ts[0]).date(),'adj?',a is not None)
+          ev=r.get('events',{})
+          for k in ('splits','dividends'):
+            for v in sorted(ev.get(k,{}).values(),key=lambda x:x['date'])[-12:]: print('   ',k,dt.datetime.utcfromtimestamp(v['date']).date(),{kk:vv for kk,vv in v.items() if kk!='date'})
+          c=q['close']
+          for i in range(1,len(ts)):
+            if c[i] and c[i-1] and abs(c[i]/c[i-1]-1)>0.12: print('   jump',dt.datetime.utcfromtimestamp(ts[i]).date(),round(c[i-1],2),'->',round(c[i],2),'adj',a and (round(a[i-1],2),round(a[i],2)))
+          "
+          done
+          curl -s -m 30 -L https://raw.githubusercontent.com/DoiEnnoson/freight-indices-newsletter/main/data/scfi.csv | tail -3
       - name: 推送探測結果到 probe-out 分支
         if: always()
         env:
