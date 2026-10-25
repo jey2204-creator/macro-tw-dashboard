@@ -1303,3 +1303,20 @@ th {
 .btc-find li + li {
   margin-top: 2px;
 }
+
+/* 航運景氣：上窗格還原股價、中窗格 SCFI、下窗格月營收 */
+.sh-host {
+  height: max(460px, 62vh);
+}
+.wide .sh-host {
+  height: 540px;
+}
+.sh-sigs {
+  list-style: none;
+  margin: 2px 0 6px;
+  padding: 0;
+  line-height: 1.55;
+}
+.sh-sigs li {
+  margin: 1px 0;
+}

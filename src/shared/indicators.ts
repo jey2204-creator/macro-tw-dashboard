@@ -7,6 +7,12 @@ import type { Category, Frequency } from './types';
 
 export type SourceSpec =
   | { provider: 'yahoo'; symbol: string }
+  /** Yahoo 還原股價（除權息還原，用 adjclose 等比例縮放開高低收；每次整批重抓，因為每次除息都會改寫歷史） */
+  | { provider: 'yahoo_adj'; symbol: string }
+  /** 上海航交所 SCFI 綜合指數（官方免費只給最新兩期；歷史種子見 data/scfi-seed.json；scripts/fetch-data/sources/sse.ts） */
+  | { provider: 'sse'; symbol: 'SCFI' }
+  /** FinMind 台股月營收（TaiwanStockMonthRevenue，2002 起；scripts/fetch-data/sources/finmindRevenue.ts） */
+  | { provider: 'finmind_rev'; symbol: string }
   | { provider: 'fred'; symbol: string }
   | { provider: 'tpex'; symbol: 'TPEX_INDEX' }
   | { provider: 'twse'; symbol: 'TAIEX' }
@@ -332,6 +338,36 @@ export const INDICATORS: IndicatorDef[] = [
     market: true, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true,
     note: 'CBOE 以 S&P 500 選擇權計算的 30 日隱含波動率；比黃金乾淨的風險情緒量尺（不混利率）。跨市場對照面板用，不計分',
   },
+  // ── 航運景氣（航運面板用，參考、不計分）────────────────
+  // SCFI：上海航交所官方免費只公布最新兩期（多期查詢要登入），歷史從 data/scfi-seed.json（2026-01 起）＋每週累積
+  {
+    id: 'scfi', name: '上海出口貨櫃運價指數（SCFI 綜合）', short: 'SCFI', category: 'commodity', frequency: 'weekly',
+    subtitle: '貨櫃即期運價｜每週五公布',
+    unit: 'pt', decimals: 2, sources: [{ provider: 'sse', symbol: 'SCFI' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 16, hidden: true,
+    note: '上海出口貨櫃即期運價的綜合指數（2009-10-16＝1000）；反映即期市場，不等於航商的長約價。航運面板用，不計分',
+  },
+  // 貨櫃三雄還原股價：長榮 2022 配 45 元＋2023 配 70 元，不還原會把除息當成暴跌
+  ...(
+    [
+      ['emc', '2603', '長榮'],
+      ['ym', '2609', '陽明'],
+      ['wh', '2615', '萬海'],
+    ] as const
+  ).flatMap(([id, code, name]): IndicatorDef[] => [
+    {
+      id: `${id}_adj`, name: `${name}（${code}）還原股價`, short: name, category: 'tw_equity', frequency: 'daily',
+      unit: 'TWD', decimals: 2, sources: [{ provider: 'yahoo_adj', symbol: `${code}.TW` }], transform: 'none',
+      market: true, rule: { kind: 'info' }, weight: 0, maxAgeDays: 7, hidden: true,
+      note: `${name}除權息還原收盤（Yahoo adjclose）；航運面板用，不計分`,
+    },
+    {
+      id: `${id}_rev`, name: `${name}（${code}）月營收`, short: `${name}營收`, category: 'tw_equity', frequency: 'monthly',
+      unit: '億', decimals: 1, sources: [{ provider: 'finmind_rev', symbol: code }], transform: 'none',
+      market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 50, hidden: true,
+      note: `${name}合併月營收（億元，日期＝營收所屬月份 1 日；每月 10 日前公布）；航運面板用，不計分`,
+    },
+  ]),
   // ── 美國總經 ───────────────────────────────
   {
     id: 'fed', name: 'Fed 政策利率（目標區間）', short: 'Fed利率', category: 'macro', frequency: 'daily',
@@ -997,7 +1033,12 @@ export function getIndicator(id: string): IndicatorDef {
 export function sourceUrl(spec: SourceSpec): string {
   switch (spec.provider) {
     case 'yahoo':
+    case 'yahoo_adj':
       return `https://finance.yahoo.com/quote/${encodeURIComponent(spec.symbol)}`;
+    case 'sse':
+      return 'https://www.sse.net.cn/index/singleIndex?indexType=scfi';
+    case 'finmind_rev':
+      return `https://mops.twse.com.tw/mops/web/t05st10_ifrs?co_id=${spec.symbol}`;
     case 'fred':
       return `https://fred.stlouisfed.org/series/${spec.symbol}`;
     case 'tpex':
@@ -1061,6 +1102,9 @@ export const TW_GOV_DATASET_ID: Record<Extract<SourceSpec, { provider: 'tw_gov' 
 
 export const PROVIDER_LABEL: Record<SourceSpec['provider'], string> = {
   yahoo: 'Yahoo Finance',
+  yahoo_adj: 'Yahoo Finance（除權息還原）',
+  sse: '上海航運交易所（SCFI，最新兩期）',
+  finmind_rev: 'FinMind（公開資訊觀測站月營收）',
   fred: 'FRED（St. Louis Fed）',
   tpex: '櫃買中心 TPEx',
   twse: '臺灣證交所 TWSE',
