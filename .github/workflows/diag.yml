@@ -11,8 +11,9 @@ permissions:
 jobs:
   diag:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 40
     steps:
+      - uses: actions/checkout@v4
       - name: 上海航交所 SCFI 頁面探測
         shell: bash
         run: |
@@ -21,22 +22,7 @@ jobs:
           CH="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
           mkdir -p /tmp/p && cd /tmp/p
           g(){ n=$1; u=$2; r=$(curl -s -L -c cj -b cj -A "$CH" -o "$n" -w "code=%{http_code} size=%{size_download}" -m 40 "$u"); echo "RESULT $n | $r | $u"; }
-          python3 - <<'PY'
-          import json, urllib.request, urllib.parse, collections
-          UA="macro-tw-dashboard/0.1 (+https://github.com/jey2204-creator/macro-tw-dashboard)"
-          pats=["en.sse.net.cn/currentIndex*","www.sse.net.cn/index/singleIndex?indexType=scfi*","en.sse.net.cn/indices/scfinew.jsp*","www.sse.net.cn/indices/scfinew.jsp*","www1.sse.net.cn/indices/scfinew.jsp*","sse.net.cn/indices/scfinew.jsp*","www.sse.net.cn/index/scfi*","en.sse.net.cn/indices/*"]
-          for p in pats:
-              u="https://web.archive.org/cdx/search/cdx?"+urllib.parse.urlencode({"url":p,"output":"json","fl":"timestamp,original,statuscode,length","filter":"statuscode:200","limit":"20000"})
-              try:
-                  t=urllib.request.urlopen(urllib.request.Request(u,headers={"User-Agent":UA}),timeout=90).read().decode()
-                  rows=json.loads(t)[1:] if t.strip() else []
-                  yrs=collections.Counter(r[0][:4] for r in rows)
-                  wk=collections.Counter(r[0][:4] for r in {(r[0][:8]):r for r in rows}.values())
-                  print(p,len(rows),sorted(yrs.items()))
-                  origs=collections.Counter(r[1] for r in rows).most_common(4); print('   top',origs)
-              except Exception as e:
-                  print(p,'ERR',e)
-          PY
+          cd $GITHUB_WORKSPACE && python3 scripts/oneoff/scfi_wayback_seed.py /tmp/p/scfi-wayback.json
       - name: 推送探測結果到 probe-out 分支
         if: always()
         env:
