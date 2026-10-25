@@ -1,0 +1,5 @@
+CDX en.sse.net.cn/indices/scfinew.jsp 25
+CDX www.sse.net.cn/index/singleIndex?indexType=scfi 7
+CDX ERR www1.sse.net.cn/index/scfinew.jsp <urlopen error _ssl.c:983: The handshake operation timed out>
+CDX www.sse.net.cn/index/scfi.jsp 0
+CDX www.sse.net.cn/index/scfinew.jsp 10
