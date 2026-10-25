@@ -21,20 +21,25 @@ jobs:
           CH="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
           mkdir -p /tmp/p && cd /tmp/p
           g(){ n=$1; u=$2; r=$(curl -s -L -c cj -b cj -A "$CH" -o "$n" -w "code=%{http_code} size=%{size_download}" -m 40 "$u"); echo "RESULT $n | $r | $u"; }
-          ext(){ sed -e 's/<[^>]*>/ /g' "$1" | tr -s ' \n' | grep -A6 -E '上期' | tr '\n' ' ' | grep -oE '上期 [0-9-]+ 本期 [0-9-]+|综合指数 Comprehensive Index [0-9. -]+' | tr '\n' ' '; echo; }
-          g s0.html "https://www.sse.net.cn/index/singleIndex?indexType=scfi"
-          TOK=$(grep -oE 'name="CSRFToken" value="[^"]+"' s0.html | head -1 | cut -d'"' -f4); echo "TOK=$TOK"
-          for d in 2009-10-16 2009-10-23 2012-06-15 2015-01-09 2020-03-20 2021-09-17 2025-12-31 2026-10-16; do
-            curl -s -c cj -b cj -A "$CH" -m 40 -o get.html "https://www.sse.net.cn/index/singleIndex?indexType=scfi&date=$d"
-            echo -n "GET  $d -> "; ext get.html
-            curl -s -c cj -b cj -A "$CH" -m 40 -o post.html -H "Referer: https://www.sse.net.cn/index/singleIndex?indexType=scfi" --data-urlencode "CSRFToken=$TOK" --data-urlencode "date=$d" "https://www.sse.net.cn/index/singleIndex?indexType=scfi"
-            echo -n "POST $d -> "; ext post.html
-            sleep 1
+          E="https://datacenter-web.eastmoney.com/api/data/v1/get"
+          curl -s -A "$CH" -m 40 "$E?sortColumns=REPORT_DATE&sortTypes=-1&pageSize=500&pageNumber=1&reportName=RPT_INDUSTRY_INDEX&columns=REPORT_DATE,INDICATOR_ID,INDICATOR_NAME,INDICATOR_VALUE&source=WEB&client=WEB" -o em_all.json
+          echo "em_all size $(wc -c < em_all.json)"; head -c 300 em_all.json; echo
+          python3 -c "
+          import json;d=json.load(open('em_all.json'));r=d.get('result') or {};rows=r.get('data') or []
+          print('pages',r.get('pages'),'count',r.get('count'))
+          seen={}
+          for x in rows: seen.setdefault(x.get('INDICATOR_ID'),(x.get('INDICATOR_NAME'),x.get('REPORT_DATE'),x.get('INDICATOR_VALUE')))
+          for k,v in seen.items():
+            n=str(v[0])
+            if any(t in n for t in ['集装箱','运价','SCFI','CCFI','航运','BDI','波罗的海','运费']): print('HIT',k,v)
+          print('distinct',len(seen))
+          "
+          for f in '(INDICATOR_NAME like \"%集装箱%\")' '(INDICATOR_NAME like \"%SCFI%\")'; do
+            curl -s -A "$CH" -m 40 -G "$E" --data-urlencode "reportName=RPT_INDUSTRY_INDEX" --data-urlencode "columns=REPORT_DATE,INDICATOR_ID,INDICATOR_NAME,INDICATOR_VALUE" --data-urlencode "filter=$f" --data-urlencode "pageSize=50" --data-urlencode "sortColumns=REPORT_DATE" --data-urlencode "sortTypes=-1" --data-urlencode "source=WEB" --data-urlencode "client=WEB" | head -c 1500; echo
           done
-          echo "=== rapid 10 GETs"
-          for i in 1 2 3 4 5 6 7 8 9 10; do curl -s -A "$CH" -m 40 -o r.html -w "%{http_code} %{time_total} " "https://www.sse.net.cn/index/singleIndex?indexType=scfi&date=2018-0$((i%9+1))-15"; ext r.html; done
-          echo "=== seafi / ccfi GET"
-          curl -s -A "$CH" -m 40 -o x.html "https://www.sse.net.cn/index/singleIndex?indexType=ccfi&date=2005-01-07"; echo -n "ccfi 2005 -> "; sed -e 's/<[^>]*>/ /g' x.html | tr -s ' \n' | grep -A6 -E '上期' | tr '\n' ' ' | cut -c1-300; echo
+          for id in EMI00107664 EMI00107665 EMI00107667 EMI00107668 EMI00107669 EMI00107670 EMI00107671 EMI00107672 EMI00238133 EMI00238134 EMI00238135; do
+            echo -n "$id -> "; curl -s -A "$CH" -m 40 -G "$E" --data-urlencode "reportName=RPT_INDUSTRY_INDEX" --data-urlencode "columns=REPORT_DATE,INDICATOR_ID,INDICATOR_NAME,INDICATOR_VALUE" --data-urlencode "filter=(INDICATOR_ID=\"$id\")" --data-urlencode "pageSize=1" --data-urlencode "sortColumns=REPORT_DATE" --data-urlencode "sortTypes=-1" --data-urlencode "source=WEB" --data-urlencode "client=WEB" | head -c 300; echo
+          done
       - name: 推送探測結果到 probe-out 分支
         if: always()
         env:
