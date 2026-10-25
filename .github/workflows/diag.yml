@@ -8,27 +8,55 @@ permissions:
   contents: write
 
 jobs:
-  live:
+  news:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
-      - name: 探測 chineseshipping 指定日期
+      - name: 鉅亨新聞 2020 SCFI
         shell: bash
         run: |
           mkdir -p /tmp/out
-          CH="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
-          {
-          for d in "" 2020-05-15 2020-05-14 2015-01-09 2010-06-11; do
-            for h in http https; do
-              echo "== $h $d"; curl -s -L -A "$CH" -m 30 -w "\ncode=%{http_code}\n" "$h://index.chineseshipping.com.cn/servlet/scfiGetContrast?SpecifiedDate=$d&jc=cb" | head -c 500; echo
-            done
-          done
-          echo "== home"; curl -s -L -A "$CH" -m 30 -o /dev/null -w "code=%{http_code} url=%{url_effective}\n" "http://index.chineseshipping.com.cn/"
-          } > /tmp/out/live.txt 2>&1
-          cat /tmp/out/live.txt
+          timeout 18m python3 -u - > /tmp/out/news.txt 2>&1 <<'PY'
+          import json, urllib.request, urllib.parse, time, datetime as dt
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
+          def get(u):
+              return json.loads(urllib.request.urlopen(urllib.request.Request(u,headers={"User-Agent":UA,"Referer":"https://news.cnyes.com/"}),timeout=30).read())
+          # 1) 搜尋 API
+          for u in ["https://api.cnyes.com/media/api/v1/search/list?q=SCFI&limit=5&page=1",
+                    "https://api.cnyes.com/media/api/v1/search?q=SCFI&limit=5&page=1"]:
+              try: j=get(u); print("SEARCH OK",u,json.dumps(j,ensure_ascii=False)[:600])
+              except Exception as e: print("SEARCH ERR",u,e)
+          # 2) 分類新聞清單（依時間）
+          hits=[]
+          start=dt.datetime(2020,2,1,tzinfo=dt.timezone(dt.timedelta(hours=8)))
+          end=dt.datetime(2020,12,1,tzinfo=dt.timezone(dt.timedelta(hours=8)))
+          cur=start
+          while cur<end:
+              nxt=cur+dt.timedelta(days=7)
+              for cat in ["tw_stock","headline","cn_stock"]:
+                  page=1
+                  while True:
+                      u=f"https://api.cnyes.com/media/api/v1/newslist/category/{cat}?startAt={int(cur.timestamp())}&endAt={int(nxt.timestamp())}&limit=100&page={page}"
+                      try: j=get(u)
+                      except Exception as e: print("ERR",cat,cur.date(),e); break
+                      items=(j.get("items") or {}).get("data") or []
+                      for it in items:
+                          t=it.get("title","")
+                          if "SCFI" in t or "航運指數" in t or "運價指數" in t or "集裝箱運價" in t or "貨櫃運價" in t:
+                              hits.append((it.get("publishAt"),it.get("newsId"),t))
+                      last=(j.get("items") or {}).get("last_page",1)
+                      if page>=last: break
+                      page+=1; time.sleep(0.3)
+              cur=nxt
+          hits=sorted(set(hits))
+          print("HITS",len(hits))
+          for h in hits: print(dt.datetime.fromtimestamp(h[0],dt.timezone(dt.timedelta(hours=8))).date(),h[1],h[2])
+          json.dump(hits,open("/tmp/out/hits.json","w"),ensure_ascii=False)
+          PY
+          tail -50 /tmp/out/news.txt
       - name: 推送
         if: always()
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cd /tmp/out && git init -q -b x && git config user.name bot && git config user.email "41898282+github-actions[bot]@users.noreply.github.com" && git add -A && git commit -qm live && git push -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}" x:refs/heads/wb-live
+          cd /tmp/out && git init -q -b x && git config user.name bot && git config user.email "41898282+github-actions[bot]@users.noreply.github.com" && git add -A && git commit -qm news && git push -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}" x:refs/heads/wb-news
