@@ -4,19 +4,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Bar, SeriesFile } from '../src/shared/types';
 
 // lightweight-charts 需要 canvas，jsdom 沒有：以假物件記錄呼叫，驗證窗格與序列的配置
-const chartLog = { seriesPanes: [] as number[], watermarks: [] as string[], removed: 0, markers: [] as { time: string; text?: string }[] };
+const chartLog = { seriesOpts: [] as { pane: number; opts: Record<string, unknown> }[], seriesPanes: [] as number[], watermarks: [] as string[], removed: 0, markers: [] as { time: string; text?: string }[] };
 vi.mock('lightweight-charts', () => {
   const makeChart = () => {
-    const panes = new Map<number, { setStretchFactor: () => void }>();
+    const panes = new Map<number, { setStretchFactor: () => void; getHeight: () => number }>();
     return {
-      addSeries: (_type: unknown, _opts: unknown, paneIndex = 0) => {
+      addSeries: (_type: unknown, opts: Record<string, unknown>, paneIndex = 0) => {
         chartLog.seriesPanes.push(paneIndex);
-        if (!panes.has(paneIndex)) panes.set(paneIndex, { setStretchFactor: () => {} });
-        return { setData: () => {}, createPriceLine: () => {}, priceScale: () => ({ applyOptions: () => {} }) };
+        chartLog.seriesOpts.push({ pane: paneIndex, opts });
+        if (!panes.has(paneIndex)) panes.set(paneIndex, { setStretchFactor: () => {}, getHeight: () => 300 });
+        return { setData: () => {}, createPriceLine: () => {}, priceToCoordinate: () => 100, priceScale: () => ({ applyOptions: () => {} }) };
       },
       panes: () => [...panes.keys()].sort((a, b) => a - b).map((k) => panes.get(k)!),
       priceScale: () => ({ applyOptions: () => {} }),
-      timeScale: () => ({ fitContent: () => {}, setVisibleRange: () => {}, setVisibleLogicalRange: () => {}, applyOptions: () => {}, subscribeVisibleLogicalRangeChange: () => {}, getVisibleRange: () => null, timeToCoordinate: () => null }),
+      timeScale: () => ({ fitContent: () => {}, setVisibleRange: () => {}, setVisibleLogicalRange: () => {}, applyOptions: () => {}, subscribeVisibleLogicalRangeChange: () => {}, unsubscribeVisibleLogicalRangeChange: () => {}, getVisibleRange: () => null, timeToCoordinate: () => null }),
       subscribeCrosshairMove: () => {},
       unsubscribeCrosshairMove: () => {},
       applyOptions: () => {},
@@ -81,6 +82,7 @@ const fetched: string[] = [];
 
 beforeEach(() => {
   chartLog.seriesPanes = [];
+  chartLog.seriesOpts = [];
   chartLog.watermarks = [];
   chartLog.removed = 0;
   chartLog.markers = [];
@@ -195,6 +197,15 @@ describe('跨市場對照面板', () => {
     expect(legend.textContent).toContain('MA240 —');
     fireEvent.click(screen.getByRole('button', { name: 'MA5' }));
     expect(onMas).toHaveBeenCalledWith([10, 20, 60, 120, 240]);
+  });
+
+  it('加權窗格的 MA120／MA240 不參與 Y 軸自動縮放；其他均線與對照窗格照常', async () => {
+    render(<CrossMarketPanel version="v1" themeKey="auto-false-tw" mas={[20, 60, 120, 240]} onMas={() => {}} />);
+    await waitFor(() => expect(chartLog.seriesOpts.length).toBeGreaterThan(5));
+    const excluded = chartLog.seriesOpts.filter((s) => typeof s.opts.autoscaleInfoProvider === 'function');
+    expect(excluded).toHaveLength(2);
+    expect(excluded.every((s) => s.pane === 0)).toBe(true);
+    expect(excluded.map((s) => (s.opts.autoscaleInfoProvider as () => unknown)())).toEqual([null, null]);
   });
 
   it('公布日標記：10/14 CPI 公布 → 10/15 加權 K 棒標記；關閉後清空並記住', async () => {
