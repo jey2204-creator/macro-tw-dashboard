@@ -1,0 +1,6 @@
+CDX en.sse.net.cn/indices/scfinew.jsp 24
+CDX www.sse.net.cn/index/singleIndex?indexType=scfi 17
+CDX ERR www1.sse.net.cn/index/scfinew.jsp HTTP Error 503: Service Unavailable
+CDX ERR www.sse.net.cn/index/scfi.jsp <urlopen error _ssl.c:983: The handshake operation timed out>
+CDX www.sse.net.cn/index/scfinew.jsp 12
+CDX www1.sse.net.cn/index/scfiAdvanceNew.jsp 14
