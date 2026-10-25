@@ -1,0 +1,17 @@
+CDX en.sse.net.cn/indices/scfinew.jsp 22
+CDX ERR www.sse.net.cn/index/singleIndex?indexType=scfi <urlopen error timed out>
+CDX www1.sse.net.cn/index/scfinew.jsp 7
+CDX www.sse.net.cn/index/scfi.jsp 0
+CDX www.sse.net.cn/index/scfinew.jsp 7
+CDX www1.sse.net.cn/index/scfiAdvanceNew.jsp 1
+CDX en.sse.net.cn/currentIndex?indexName=scfi 0
+snapshots 30
+20150218155922 0 []
+20150223090212 0 []
+20150321070153 0 []
+20150423060258 0 []
+20150524001853 0 []
+20150525035132 0 []
+20150730112021 0 []
+ERR 20150831125153 http://en.sse.net.cn:80/indices/scfinew.jsp <urlopen error timed out>
+20150831125153 0 []
