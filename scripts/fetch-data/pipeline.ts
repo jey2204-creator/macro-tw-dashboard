@@ -20,7 +20,9 @@ import { fetchTwGov } from './sources/twGov';
 import { fetchTwseChips } from './sources/twseChips';
 import { fetchTwseValuation } from './sources/twseValuation';
 import type { SourceFetchResult } from './sources/types';
-import { fetchYahoo } from './sources/yahoo';
+import { fetchYahoo, fetchYahooAdjusted } from './sources/yahoo';
+import { fetchSseScfi } from './sources/sse';
+import { fetchFinmindRevenue } from './sources/finmindRevenue';
 
 /**
  * 資料管線：每個指標依序嘗試來源，任何單一來源/指標失敗都不會中斷整體。
@@ -88,6 +90,14 @@ async function fetchFromSource(
     case 'yahoo':
       // 增量：回抓 14 天以覆蓋修正值與假期
       return fetchYahoo(spec.symbol, cacheLast ? addDays(cacheLast, -14) : null, http, now);
+    case 'yahoo_adj':
+      // 還原係數每次除息都會改寫歷史 → 每次整批重抓
+      return fetchYahooAdjusted(spec.symbol, http, now);
+    case 'sse':
+      // 官方只給最新兩期：種子檔＋同來源快取＋最新兩期整批合併
+      return fetchSseScfi(cacheLast ? cached!.data : null, http);
+    case 'finmind_rev':
+      return fetchFinmindRevenue(spec.symbol, today, http);
     case 'fred':
       return fetchFred(spec.symbol, http);
     case 'tpex':

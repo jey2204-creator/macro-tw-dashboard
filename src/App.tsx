@@ -14,6 +14,7 @@ import { RegimePanel } from './components/RegimePanel';
 import { SourceStatus } from './components/SourceStatus';
 import { TwValuationPanel } from './components/TwValuationPanel';
 import { UsValuationPanel } from './components/UsValuationPanel';
+import { ShippingPanel } from './components/ShippingPanel';
 import { useBacktest, useCalendar, useBreadthStress, useForeignChips, useMarginStress, useSummary } from './hooks/useData';
 import { buildRow } from './lib/rows';
 import { loadList, loadPref, savePref } from './lib/storage';
@@ -211,6 +212,7 @@ export default function App() {
             <ForeignChipsPanel data={foreignChips} themeKey={themeKey} />
             <MarginStressPanel data={marginStress} themeKey={themeKey} />
             <BreadthPanel data={breadthStress} themeKey={themeKey} />
+            <ShippingPanel version={summary.generatedAt} themeKey={themeKey} />
             <SourceStatus summary={summary} />
           </div>
           {activeDef && activeEval && (

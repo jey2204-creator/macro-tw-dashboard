@@ -22,6 +22,7 @@ interface YahooChart {
           timestamp?: number[];
           indicators: {
             quote: { open?: (number | null)[]; high?: (number | null)[]; low?: (number | null)[]; close?: (number | null)[] }[];
+            adjclose?: { adjclose?: (number | null)[] }[];
           };
         }[]
       | null;
@@ -120,4 +121,49 @@ export async function fetchYahoo(
   }
   const { bars, partial } = parseYahooChart(json, nowSec);
   return { bars, closeOnly: false, partial, incremental: since !== null };
+}
+
+/**
+ * 還原股價：把開高低收都乘上 adjclose ÷ close（Yahoo 的除權息還原係數）。
+ * 只用在要算報酬的個股（貨櫃三雄每年大額配息，不還原會把除息日當成暴跌）。
+ * 還原係數每次除息都會改寫整段歷史，所以每次整批重抓、不與快取合併。
+ */
+export function adjustYahooChart(json: YahooChart): YahooChart {
+  const r = json.chart.result?.[0];
+  const q = r?.indicators.quote[0];
+  const adj = r?.indicators.adjclose?.[0]?.adjclose;
+  if (!r || !q || !adj) throw new Error('Yahoo 回應沒有 adjclose');
+  const k = (q.close ?? []).map((c, i) => {
+    const a = adj[i];
+    return c && a && Number.isFinite(c) && Number.isFinite(a) ? a / c : null;
+  });
+  const scale = (xs: (number | null)[] | undefined) => (xs ?? []).map((v, i) => (v == null || k[i] == null ? null : v * k[i]!));
+  return {
+    ...json,
+    chart: {
+      ...json.chart,
+      result: [
+        {
+          ...r,
+          // 最新一根收盤若為 null，parseYahooChart 會用 regularMarketPrice 補；還原後就不能再補原始價
+          meta: { ...r.meta, regularMarketPrice: undefined },
+          indicators: { ...r.indicators, quote: [{ open: scale(q.open), high: scale(q.high), low: scale(q.low), close: scale(q.close) }] },
+        },
+      ],
+    },
+  };
+}
+
+export async function fetchYahooAdjusted(symbol: string, http: HttpOptions, now: Date): Promise<SourceFetchResult> {
+  const nowSec = Math.floor(now.getTime() / 1000);
+  let json: YahooChart;
+  try {
+    json = await getJson<YahooChart>(yahooUrl(symbol, 0, nowSec + 86_400), { ...http, retries: 0 });
+  } catch (e) {
+    if (!(e instanceof HttpError) || (e.status !== 429 && e.status !== 401)) throw e;
+    const s = await getYahooSession(http);
+    json = await getJson<YahooChart>(yahooUrl(symbol, 0, nowSec + 86_400, s.crumb), http, { headers: { Cookie: s.cookie } });
+  }
+  const { bars, partial } = parseYahooChart(adjustYahooChart(json), nowSec);
+  return { bars, closeOnly: false, partial, incremental: false };
 }
