@@ -1,0 +1,469 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<title>Shanghai Shipping Exchange</title>
+<link href="/resource/css/allen.css" rel="stylesheet" type="text/css"/>
+<link href="/resource/css/secondmenu.css" rel="stylesheet" type="text/css"/>
+<link href="/resource/css/indices_list.css" rel="stylesheet" type="text/css"/>
+<link href="../resource/css/indseasingle.css" rel="stylesheet" type="text/css"/>
+<style type="text/css">
+<!--
+.height1000 {
+    height: 440px;
+}
+
+.Statement {
+    font-size: 12px;
+    color: #F24F00;
+    font-family: Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+<script language="javascript" type="text/javascript" src="/resource/img/flash/flash.js"></script>
+<script language="javascript" type="text/javascript" src="/js/jquery/jquery.js"></script>
+<script language="javascript" type="text/javascript" src="/js/jquery/jquery.form.js"></script>
+<script language="javascript" type="text/javascript" src="http://index.chineseshipping.com.cn/resource/js/front/server.js"></script>
+<script language="javascript" type="text/javascript" src="/js/login/login.js"></script>
+<script type="text/javascript">
+    $.ajaxSetup({type: 'POST',dataType: 'json'});
+    $(document).ready(function() {
+        querySCFI('');
+    })
+
+    function showIndexData(obj) {
+        switch (obj.result) {
+            case 'ok':
+                fillSCFIData(obj);
+                break;
+            case 'na':
+                alert('No Data');
+                break;
+            case 'deny':
+                isLogin();
+                if (userinfo == '') {
+                    alert('Please Login');
+                } else {
+                    alert('The data is not available for your subscription.');
+                }
+                break;
+        }
+    }
+
+    function MM_preloadImages() { //v3.0
+        var d = document;
+        if (d.images) {
+            if (!d.MM_p) d.MM_p = new Array();
+            var i,j = d.MM_p.length,a = MM_preloadImages.arguments;
+            for (i = 0; i < a.length; i++)
+                if (a[i].indexOf("#") != 0) {
+                    d.MM_p[j] = new Image;
+                    d.MM_p[j++].src = a[i];
+                }
+        }
+    }
+
+    function MM_swapImgRestore() { //v3.0
+        var i,x,a = document.MM_sr;
+        for (i = 0; a && i < a.length && (x = a[i]) && x.oSrc; i++) x.src = x.oSrc;
+    }
+
+    function MM_findObj(n, d) { //v4.01
+        var p,i,x;
+        if (!d) d = document;
+        if ((p = n.indexOf("?")) > 0 && parent.frames.length) {
+            d = parent.frames[n.substring(p + 1)].document;
+            n = n.substring(0, p);
+        }
+        if (!(x = d[n]) && d.all) x = d.all[n];
+        for (i = 0; !x && i < d.forms.length; i++) x = d.forms[i][n];
+        for (i = 0; !x && d.layers && i < d.layers.length; i++) x = MM_findObj(n, d.layers[i].document);
+        if (!x && d.getElementById) x = d.getElementById(n);
+        return x;
+    }
+
+    function MM_swapImage() { //v3.0
+        var i,j = 0,x,a = MM_swapImage.arguments;
+        document.MM_sr = new Array;
+        for (i = 0; i < (a.length - 2); i += 3)
+            if ((x = MM_findObj(a[i])) != null) {
+                document.MM_sr[j++] = x;
+                if (!x.oSrc) x.oSrc = x.src;
+                x.src = a[i + 2];
+            }
+    }
+    //getIndexdate((new Date().getYear()),new Date().getMonth());
+</script>
+</head>
+<body onLoad="MM_preloadImages('/resource/img/button/loginan_onen.gif')">
+<script language="javascript" type="text/javascript">
+    writeflashhtml("_swf=/resource/img/flash/enlogo_s.swf", "_width=980", "_height=80", "_wmode=transparent");
+</script>
+
+<div id="menu" class="whitezi"><a href="/memberen/join.jsp"><img src="/resource/img/2010/gosseen.gif" width="116" height="26" border="0" align="absmiddle" /></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href="/index.jsp">Home</a>&nbsp;&nbsp;&nbsp;&nbsp;<a href="/brief/introen.jsp">About us </a>&nbsp;&nbsp;&nbsp;&nbsp;<a href="/indices/ccfinew.jsp">Freight Indices</a>&nbsp;&nbsp;&nbsp;&nbsp;<a href="/shipsp/shippurchase.jsp">Ship Trading</a>&nbsp;&nbsp;&nbsp;&nbsp;<a href="/filingen/aboutfiling.jsp">Freight Rate Filing</a>&nbsp;&nbsp;&nbsp;&nbsp;<a href="/memberen/contentsen.jsp">Member Services</a></div>
+
+<div class="row">
+<div style="float: left; width: 180px; margin-right: 10px; margin-left: 15px">
+    
+
+    
+    
+        <h4 style="color: #999999; text-align: center; padding: 10px; font-size: 18px; font-weight: bold">Freight
+            Indices</h4>
+        <ul class="nav nav-list bs-docs-sidenav" style="margin-bottom: 20px;">
+            <li style="line-height: 36px; font-size: 16px; font-weight: bold; background-color: #d3d3d3;">Introduction
+            </li>
+            <li style="text-indent: 20px">
+                <a href="introduction_ctfi_new.jsp"><i class="icon-chevron-right"></i>About Indices</a>
+            </li>
+            <li style="text-indent: 20px">
+                <a href="panelistsnew.jsp"><i class="icon-chevron-right"></i>Panelists</a>
+            </li>
+            <li style="text-indent: 20px">
+                <a href="fqaennew.jsp"><i class="icon-chevron-right"></i>FAQ</a>
+            </li>
+            <li style="line-height: 36px; font-size: 16px; font-weight: bold; background-color: #d3d3d3;">Indices</li>
+            <li style="text-indent: 20px">
+                <a href="./ccfinew.jsp"><i class="icon-chevron-right"></i>CCFI</a>
+            </li>
+            <li class='active'
+ style="text-indent: 20px">
+                <a href="./scfinew.jsp"><i class="icon-chevron-right"></i>SCFI</a>
+            </li>
+            <li style="text-indent: 20px">
+                <a href="./cbfinew.jsp"><i class="icon-chevron-right"></i>CBFI</a>
+            </li>
+            <li style="text-indent: 20px">
+                <a href="./cbcfinew.jsp"><i class="icon-chevron-right"></i>CBCFI</a>
+            </li>
+            
+            <li style="text-indent: 20px">
+                <a href="./cdfinew.jsp"><i class="icon-chevron-right"></i>CDFI</a>
+            </li>
+            <li style="text-indent: 20px">
+                <a href="./ctfinew.jsp"><i class="icon-chevron-right"></i>CTFI</a>
+            </li>
+            <li style="text-indent: 20px">
+                <a href="./cicfinew.jsp"><i class="icon-chevron-right"></i>CICFI</a>
+            </li>
+            <li style="text-indent: 20px">
+                <a href="./seafinew.jsp"><i class="icon-chevron-right"></i>SEAFI</a>
+            </li>
+            <li style="text-indent: 20px">
+                <a href="./obornew.jsp"><i class="icon-chevron-right"></i>SRFTI</a>
+            </li>
+            <li style="text-indent: 20px">
+                <a href="./nmsrnew.jsp"><i class="icon-chevron-right"></i>MSFI</a>
+            </li>
+            <li>
+                <a href="/eninfo/MarketReport/"><i class="icon-chevron-right"></i>Report</a>
+            </li>
+            <li>
+                <a href="agreementnew.jsp"><i class="icon-chevron-right"></i>Subscription</a>
+            </li>
+            <li>
+                <a href="bulletinnew.jsp"><i class="icon-chevron-right"></i>Bulletin</a>
+            </li>
+            <li>
+                <a href="cfsaennew.jsp"><i class="icon-chevron-right"></i>CFSA</a>
+            </li>
+        </ul>
+
+
+    <div class="left230 mtitlb" style="margin-left: 0"></div>
+    <div class="left230 m_b m_b01" style="height: auto; margin-left: 0">
+        <div style="clear: both">
+            <iframe src="scfiscrollen.htm" height="880" width="110" frameborder="no" border="0" marginwidth="0"
+                    marginheight="0"
+                    scrolling="no">
+
+            </iframe>
+        </div>
+        <div class="more_m"><a href="panelistsnew.jsp">< more ></a></div>
+    </div>
+    <div class="left230 m_d" style="margin-left: 0"></div>
+</div>
+<div id="emb" style="margin-top: 10px; width: 760px; float: left;">
+
+<div id="indexImgLoginTip" class="login01" style="display: block; padding-right: 0">
+      <form id="form1" name="loginform" method="post" action="">
+        <table width="210" border="0" cellpadding="0" cellspacing="0">
+          <tr>
+            <td width="73" height="24" align="right" valign="middle">Username:</td>
+            <td width="137" align="left" valign="middle"><input id="indexUser" name="indexUser" type="text" class="input2" /></td>
+          </tr>
+          <tr>
+            <td height="24" align="right" valign="middle">Password:</td>
+            <td align="left" valign="middle"><input id="indexPWD" name="indexPWD" type="password" class="input2" /></td>
+          </tr>
+          <tr>
+            <td height="35" align="right" valign="middle">Verification Code:</td>
+            <td align="left" valign="middle"><input id="indexCHK" name="indexCHK" type="text" class="input2 input3" size="4" maxlength="4" />
+                <a href="javascript:changeIMG();" title="Click to change another picture"/> <img src="" width="42" height="20" hspace="10" align="absmiddle" id="indexCHKImg"/></td>
+          </tr>
+          <tr>
+            <td height="45" colspan="2" align="center" valign="middle"><img src="/resource/img/button/loginan_outen.gif" width="186" height="30" style="cursor:pointer"  name="indexLoginButton" id="indexLoginButton"  onMouseOver="MM_swapImage('Image11','','/resource/img/button/loginan_onen.gif',1)" onMouseOut="MM_swapImgRestore()" /></td>
+          </tr>
+        </table>
+      </form>
+</div>
+<div id="loginIndexFront" class="login01" style="padding-right: 0">
+      <form id="form1" name="loginform" method="post" action="">
+	    <table width="210" border="0" cellpadding="0" cellspacing="0">
+	      <tr> 
+	        <td width="73" height="24" align="right" valign="middle">User:</td>
+	        <td width="137" align="left" valign="middle"><input id="indexUserInfo" name="indexUserInfo" type="text" class="input2" /></td>
+	      </tr>
+	      <tr> 
+	        <td height="24" align="right" valign="middle">Username:</td>
+        <td align="left" valign="middle"><input id="indexUserName" name="indexUserName" type="text" class="input2" /></td>
+	      </tr>
+	      <tr> 
+	        <td height="35" align="right" valign="middle">&nbsp;</td>
+	        <td align="left" valign="middle">&nbsp; </td>
+	      </tr>
+	      <tr> 
+	        <td height="45" colspan="2" align="center" valign="middle"><img src="/resource/img/button/logout_outen.gif" width="186" height="30" style="cursor:pointer" name="indexLogoutButton" id="indexLogoutButton"  onMouseOver="MM_swapImage('Image11','','/resource/img/button/loginan_onen.gif',1)" onMouseOut="MM_swapImgRestore()" /></td>
+	      </tr>
+	    </table>
+      </form>
+</div>
+<div class="indsea_back" style="height: 40px"><img src="../resource/img/2010/ind_single.gif" width="221" height="32" hspace="20" border="0"
+                              usemap="#Map"/>
+    <map name="Map" id="Map">
+        <area shape="rect" coords="108,2,220,30" href="scfiadvancenew.jsp"/>
+    </map>
+</div>
+<div id="divIndexDate" class="indsea_y indsea_d ind_adsea" style="height: 130px; padding-left: 10px; padding-right: 10px; width: 502px">
+    <table id="fSelLine" name="fSelLine" width="400" border="0" cellspacing="0" cellpadding="0" style="margin-left: 50px;">
+        <tr>
+            <td><span class="seatitl">Please input the period: (YYYY-MM-DD)</span></td>
+            <td><input id="indexDateInput" name="indexDateInput" type="text" class="seainput" size="20" maxlength="10"/>
+            </td>
+        </tr>
+        <tr>
+            <td align="center" colspan="2">
+                <a href="javascript:querySCFI();">
+                    <img src="../resource/img/button/search_an.gif" width="87" height="23"/>
+                </a>
+            </td>
+        </tr>
+    </table>
+</div>
+<table width="750" border="0" cellpadding="0" cellspacing="0" class="indiceslist" style="margin-right: 0">
+    <tr>
+        <td class="listtitle" colspan="6"> Shanghai Containerized Freight Index <img
+                src="../resource/img/2010/waittingen.gif" align="absmiddle" width="20" height="20" hspace="5" vspace="7"
+                id="waitIndexTip"/><br/></td>
+    </tr>
+    <tr>
+        <td width="270" height="70" align="center" valign="middle" class="list_head">Description</td>
+        <td width="100" align="center" valign="middle" class="list_head"><p>Unit</p></td>
+        <td width="80" class="list_head"><p>Weighting</p></td>
+        <td width="100" align="center" valign="middle" class="list_head"><p>Previous Index</p><br>
+            <span id="lastdate">&nbsp;</span></td>
+        <td width="100" align="center" valign="middle" class="list_head"><p>Current Index</p><br>
+            <span id="currdate">&nbsp;</span></td>
+        <td align="center" valign="middle" class="list_head"><p>Compare With Last Week</p></td>
+    </tr>
+    <tr>
+        <td height="30" class="list_right"> Comprehensive Index</td>
+        <td align="center" valign="middle" class="ind_td"></td>
+        <td align="center" valign="middle" class="ind_td"></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx1">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx2">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx3">&nbsp;</span></td>
+    </tr>
+    <tr>
+        <td height="30" class="list_right">Line Service:</td>
+        <td align="center" valign="middle" class="ind_td"></td>
+        <td align="center" valign="middle" class="ind_td"></td>
+        <td align="center" valign="middle" class="ind_td">&nbsp;</td>
+        <td align="center" valign="middle" class="ind_td">&nbsp;</td>
+        <td align="center" valign="middle" class="ind_td">&nbsp;</td>
+    </tr>
+    <tr>
+        <td height="30" class="list_right"><p>Europe (Base port)</p></td>
+        <td align="center" valign="middle" class="ind_td">USD/TEU</td>
+        <td align="center" valign="middle" class="ind_td">20.0%</td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx1">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx2">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx3">&nbsp;</span></td>
+    </tr>
+    <tr>
+        <td height="30" class="list_right"><p>Mediterranean (Base port)</p></td>
+        <td align="center" valign="middle" class="ind_td">USD/TEU</td>
+        <td align="center" valign="middle" class="ind_td">10.0%</td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx1">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx2">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx3">&nbsp;</span></td>
+    </tr>
+    <tr>
+        <td height="30" class="list_right"><p>USWC (Base port)</p></td>
+        <td align="center" valign="middle" class="ind_td">USD/FEU</td>
+        <td align="center" valign="middle" class="ind_td">20.0%</td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx1">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx2">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx3">&nbsp;</span></td>
+    </tr>
+    <tr>
+        <td height="30" class="list_right"><p>USEC (Base port)</p></td>
+        <td align="center" valign="middle" class="ind_td">USD/FEU</td>
+        <td align="center" valign="middle" class="ind_td">7.5%</td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx1">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx2">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx3">&nbsp;</span></td>
+    </tr>
+    <tr>
+        <td height="30" class="list_right"><p>Persian Gulf and Red Sea (Dubai)</p></td>
+        <td align="center" valign="middle" class="ind_td">USD/TEU</td>
+        <td align="center" valign="middle" class="ind_td">7.5%</td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx1">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx2">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx3">&nbsp;</span></td>
+    </tr>
+    <tr>
+        <td height="30" class="list_right"><p>Australia/New Zealand (Melbourne)</p></td>
+        <td align="center" valign="middle" class="ind_td">USD/TEU</td>
+        <td align="center" valign="middle" class="ind_td">5.0%</td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx1">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx2">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx3">&nbsp;</span></td>
+    </tr>
+    <tr>
+        <td height="30" class="list_right"><p>East/West Africa (Lagos)</p></td>
+        <td align="center" valign="middle" class="ind_td">USD/TEU</td>
+        <td align="center" valign="middle" class="ind_td">2.5%</td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx1">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx2">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx3">&nbsp;</span></td>
+    </tr>
+    <tr>
+        <td height="30" class="list_right"><p>South Africa (Durban)</p></td>
+        <td align="center" valign="middle" class="ind_td">USD/TEU</td>
+        <td align="center" valign="middle" class="ind_td">2.5%</td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx1">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx2">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx3">&nbsp;</span></td>
+    </tr>
+    <tr>
+        <td height="30" class="list_right"><p>South America (Santos)</p></td>
+        <td align="center" valign="middle" class="ind_td">USD/TEU</td>
+        <td align="center" valign="middle" class="ind_td">2.5%</td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx1">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx2">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx3">&nbsp;</span></td>
+    </tr>
+    <tr>
+        <td height="30" class="list_right"><p>West Japan (Base port)</p></td>
+        <td align="center" valign="middle" class="ind_td">USD/TEU</td>
+        <td align="center" valign="middle" class="ind_td">5.0%</td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx1">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx2">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx3">&nbsp;</span></td>
+    </tr>
+    <tr>
+        <td height="30" class="list_right"><p>East Japan (Base port)</p></td>
+        <td align="center" valign="middle" class="ind_td">USD/TEU</td>
+        <td align="center" valign="middle" class="ind_td">5.0%</td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx1">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx2">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx3">&nbsp;</span></td>
+    </tr>
+    <tr>
+        <td height="30" class="list_right"><p>Southeast Asia (Singapore)</p></td>
+        <td align="center" valign="middle" class="ind_td">USD/TEU</td>
+        <td align="center" valign="middle" class="ind_td">5.0%</td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx1">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx2">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx3">&nbsp;</span></td>
+    </tr>
+    <tr>
+        <td height="30" class="list_right"><p>Korea (Pusan)</p></td>
+        <td align="center" valign="middle" class="ind_td">USD/TEU</td>
+        <td align="center" valign="middle" class="ind_td">2.5%</td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx1">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx2">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx3">&nbsp;</span></td>
+    </tr>
+    <tr>
+        <td height="30" class="list_right"><p>Taiwan (Kaohsiung)</p></td>
+        <td align="center" valign="middle" class="ind_td">USD/TEU</td>
+        <td align="center" valign="middle" class="ind_td">2.5%</td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx1">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx2">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx3">&nbsp;</span></td>
+    </tr>
+    <tr>
+        <td height="30" class="list_right"><p>Hong Kong (Hong Kong)</p></td>
+        <td align="center" valign="middle" class="ind_td">USD/TEU</td>
+        <td align="center" valign="middle" class="ind_td">2.5%</td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx1">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx2">&nbsp;</span></td>
+        <td align="center" valign="middle" class="ind_td"><span class="idx3">&nbsp;</span></td>
+    </tr>
+
+    <tr>
+        <td height="35" colspan="6" class="list_memo"><p>&nbsp;&nbsp;&nbsp;Note: The freight rate includes ocean freight
+            and surcharges, i.e.:</p>
+
+            <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;BAF/FAF/LSS*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;EBS/EBA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3&nbsp;&nbsp;&nbsp;CAF/YAS&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;4&nbsp;&nbsp;&nbsp;PSS<br/>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;5&nbsp;&nbsp;&nbsp;WRS&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;6&nbsp;&nbsp;&nbsp;PCS&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;7&nbsp;&nbsp;&nbsp;SCS/SCF/PTF/PCC<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*Low Sulphur Surcharge (LSS) was included from end of year 2014.
+            </p></td>
+    </tr>
+    <tr>
+        <td height="130" colspan="6" class="list_memo"> &nbsp;&nbsp;&nbsp;Base Port: Report Freight Rates of Base Ports
+            <div align="left"> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mediterranean
+                Sea—Barcelona/Valencia/Genoa/Naples<br/>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Europe—Hamburg/Antwerp/Felixstowe/Le
+                Havre<br/>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;USWC—Los
+                Angeles/Long Beach/Oakland<br/>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;USEC—New
+                York/Savannah/Norfolk/Charleston<br/>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;West
+                Japan—Osaka/Kobe East Japan—Tokyo/Yokohama
+            </div>
+        </td>
+    </tr>
+    <tr>
+        <td colspan="6" class="list_bottom">&nbsp;&nbsp;&nbsp;<span class="STYLE1">Issued by SSE </span></td>
+    </tr>
+</table>
+
+<div class="mdir15 indicesimg" style="margin-right: 0"><img src="../resource/img/update/scfiallen.png" width="755"
+                                                            height="300"/><br/>
+
+    <img src="/resource/img/2010/Statement.gif" width="755" height="95"/></div>
+</div>
+</div>
+
+
+<table width="980" border="0" cellspacing="0" cellpadding="0" id="bottom">
+  <tr>
+    <td height="10"></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td width="43%" align="center">&copy; 2001-2017 Shanghai Shipping Exchange All Rights   Reserved.</td>
+    <td width="25%">&nbsp;</td>
+    <td width="32%" align="center"><a href="/brief/copyrighten.jsp" target="_blank"><font color="#FFFFFF">Copyright Declaration</font></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="/brief/contactusen.jsp" target="_blank"><font color="#FFFFFF">Contact us</font></a></td>
+  </tr>
+  <tr>
+    <td align="center">Shanghai ICP B2-20050110</td>
+    <td>&nbsp;</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr>
+    <td height="10"></td>
+    <td></td>
+    <td></td>
+  </tr>
+</table>
+
+</body>
+</html>
