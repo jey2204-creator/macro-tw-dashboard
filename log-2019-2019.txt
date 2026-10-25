@@ -1,0 +1,8 @@
+CDX en.sse.net.cn/indices/scfinew.jsp 17
+CDX www.sse.net.cn/index/singleIndex?indexType=scfi 17
+CDX ERR www1.sse.net.cn/index/scfinew.jsp <urlopen error [Errno 111] Connection refused>
+CDX ERR www.sse.net.cn/index/scfi.jsp <urlopen error _ssl.c:983: The handshake operation timed out>
+CDX www.sse.net.cn/index/scfinew.jsp 11
+CDX www1.sse.net.cn/index/scfiAdvanceNew.jsp 9
+CDX ERR en.sse.net.cn/currentIndex?indexName=scfi <urlopen error [Errno 111] Connection refused>
+snapshots 45
