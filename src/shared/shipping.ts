@@ -10,13 +10,17 @@ import type { Bar } from './types';
  *    a. 營收年增率分組 → 營收「公布後」買進持有 3／6／12 個月的報酬（營收 M 月於 M+1 月 10 日前公布，以 11 日後第一個交易日進場，不偷看）
  *    b. 營收循環高點 vs 股價高點：股價領先幾個月見頂、營收見頂「公布時」股價已從高點回落多少
  *
- * SCFI 官方歷史要登入，免費只有最新兩期；種子檔只有稀疏歷史，所以運價只做「目前狀態」，不拿來回測。
+ * SCFI 官方歷史要登入，免費只有最新兩期；種子檔只從 2026-01 起，所以運價只做「目前狀態」，不拿來回測。
  */
 
+/**
+ * revFrom：月營收可比較的起點。長榮 2012 年以前公布的是母公司營收（每月約 13 億），
+ * 2013-01 起改 IFRS 合併營收（約 118 億），直接比會變成年增 800%，所以長榮的營收只從 2013 起用（年增率 2014 起）。
+ */
 export const SHIP_STOCKS = [
-  { key: 'emc', code: '2603', name: '長榮' },
-  { key: 'ym', code: '2609', name: '陽明' },
-  { key: 'wh', code: '2615', name: '萬海' },
+  { key: 'emc', code: '2603', name: '長榮', revFrom: '2013-01-01' },
+  { key: 'ym', code: '2609', name: '陽明', revFrom: null },
+  { key: 'wh', code: '2615', name: '萬海', revFrom: null },
 ] as const;
 export type ShipKey = (typeof SHIP_STOCKS)[number]['key'];
 
@@ -445,8 +449,8 @@ export interface ShippingAnalysis {
   nowPosBucket: string | null;
 }
 
-export function analyzeShipping(scfi: readonly Bar[], px: readonly Bar[], rev: readonly Bar[]): ShippingAnalysis {
-  const rr = revRows(rev);
+export function analyzeShipping(scfi: readonly Bar[], px: readonly Bar[], rev: readonly Bar[], revFrom: string | null = null): ShippingAnalysis {
+  const rr = revRows(revFrom ? rev.filter((b) => b[0] >= revFrom) : rev);
   const s = scfiState(scfi);
   const r = revState(rr);
   const k = stockState(px);

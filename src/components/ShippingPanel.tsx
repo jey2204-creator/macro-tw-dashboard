@@ -89,14 +89,14 @@ function findings(a: ShippingAnalysis, name: string): string[] {
   const h12 = (r: BucketRow | undefined) => r?.h.m12;
   const boom = a.yoy.rows.find((r) => r.key === 'boom');
   const bust = a.yoy.rows.find((r) => r.key === 'bust');
-  if (boom && bust && fin(h12(boom)?.avg) && fin(h12(bust)?.avg))
+  if (boom && bust && fin(h12(boom)?.med) && fin(h12(bust)?.med))
     out.push(
-      `營收年增 ≥ +50%（爆發期）公布後買進，12 個月平均 ${p0(h12(boom)!.avg)}、上漲機率 ${h12(boom)!.up?.toFixed(0)}%（n=${h12(boom)!.n}）；年增 ≤ −40%（最慘時）買進反而 ${p0(h12(bust)!.avg)}、上漲 ${h12(bust)!.up?.toFixed(0)}%（n=${h12(bust)!.n}）。全部月份平均 ${p0(a.yoy.base.h.m12.avg)}。`,
+      `營收年增 ≥ +50%（爆發期）公布後買進：6 個月中位數 ${p0(h6(boom)!.med)}，但 12 個月中位數 ${p0(h12(boom)!.med)}、上漲機率只有 ${h12(boom)!.up?.toFixed(0)}%（n=${h12(boom)!.n}）；年增 ≤ −40%（最慘時）買進，12 個月中位數 ${p0(h12(bust)!.med)}、上漲 ${h12(bust)!.up?.toFixed(0)}%（n=${h12(bust)!.n}）。全部月份 12 個月中位數 ${p0(a.yoy.base.h.m12.med)}。`,
     );
   const high = a.position.find((r) => r.key === 'high');
   const off = a.position.find((r) => r.key === 'off');
-  if (high && off && fin(h6(high)?.avg))
-    out.push(`營收（3 個月平均）創 24 個月新高時買進，6 個月平均 ${p0(h6(high)!.avg)}（n=${h6(high)!.n}）；已從高點回落 ≥ 15% 時 ${p0(h6(off)?.avg)}（n=${h6(off)?.n ?? 0}）。`);
+  if (high && off && fin(h12(high)?.med))
+    out.push(`營收（3 個月平均）創 24 個月新高時買進，12 個月中位數 ${p0(h12(high)!.med)}、上漲 ${h12(high)!.up?.toFixed(0)}%；已從高點回落 ≥ 15% 時 ${p0(h12(off)?.med)}、上漲 ${h12(off)?.up?.toFixed(0) ?? '—'}%。`);
   const cs = a.cycles;
   if (cs.length) {
     const leads = cs.map((c) => c.leadMonths).sort((x, y) => x - y);
@@ -133,8 +133,8 @@ export function ShippingPanel({ version, themeKey }: Props) {
   const px = get(`${stock}_adj`);
   const rev = get(`${stock}_rev`);
   const ready = ids.every((id) => files[id]?.status === 'ready');
-  const a = useMemo(() => (ready ? analyzeShipping(scfi, px, rev) : null), [ready, scfi, px, rev]);
   const meta = SHIP_STOCKS.find((s) => s.key === stock)!;
+  const a = useMemo(() => (ready ? analyzeShipping(scfi, px, rev, meta.revFrom) : null), [ready, scfi, px, rev, meta.revFrom]);
 
   const pickStock = (k: ShipKey) => {
     setStock(k);
@@ -297,8 +297,7 @@ export function ShippingPanel({ version, themeKey }: Props) {
             {Math.abs(REV_MOM_PCT)}%（2 月工作天少，季節性月減要打折看）；④ 還原股價跌破季線（MA60）且季線 {MA_SLOPE_DAYS} 日下彎。
           </p>
           <p>
-            回測只用月營收＋還原股價（2005 起）：運價會先反映在營收，月營收有 20 年歷史；SCFI 官網的多期、指定日期查詢都要登入，免費只公布最新兩期，所以 SCFI 只看「目前狀態」，歷史是
-            Wayback 存檔的官方頁面（稀疏）加上每週累積，不拿來回測。營收 M 月於 M+1 月 10 日前公布，回測以 11 日後第一個交易日進場，不偷看。
+            回測只用月營收＋還原股價（2005 起）：運價會先反映在營收，月營收有 20 年歷史；SCFI 官網的多期、指定日期查詢都要登入，免費只公布最新兩期，所以 SCFI 只看「目前狀態」：歷史從 2026-01 起（第三方每週存下的官方數值，已與新聞核對），之後每週自動累積，不拿來回測。營收 M 月於 M+1 月 10 日前公布，回測以 11 日後第一個交易日進場，不偷看。長榮 2012 年以前公布的是母公司營收（每月約 13 億，2013 起改合併營收約 118 億），所以長榮的營收從 2013 起算、回測從 2014 起。
           </p>
           <p>
             資料：上海航運交易所 SCFI（綜合指數）、FinMind 月營收（公開資訊觀測站）、Yahoo 還原股價（除權息還原；長榮 2022–2023 配 45、70 元，不還原會把除息當成暴跌）。參考、不計分。
@@ -361,13 +360,13 @@ function ShipBacktest({ a, name, open, setOpen }: { a: ShippingAnalysis; name: s
   return (
     <div className="cr" aria-label="航運回測">
       <p className="score num cr-verdict">
-        <span className="muted small">🚢 {name}：月營收 vs 還原股價（回測 2005 起・參考、不計分）</span>
+        <span className="muted small">🚢 {name}：月營收 vs 還原股價（回測 {a.obs[0]?.month.slice(0, 4) ?? '—'} 起・參考、不計分）</span>
       </p>
       {lastRev && nowRow && (
         <p className="small num btc-now">
           目前：{ym(lastRev.date)} 近 3 月營收年增 <b className={sign(lastRev.yoy3)}>{p1(lastRev.yoy3)}</b>（{nowRow.label}）
-          {nowPos && <>、{nowPos.label}</>} → 歷史同組公布後 6 個月平均 <b className={sign(nowRow.h.m6.avg)}>{p0(nowRow.h.m6.avg)}</b>、12 個月{' '}
-          <b className={sign(nowRow.h.m12.avg)}>{p0(nowRow.h.m12.avg)}</b>（上漲 {nowRow.h.m12.up?.toFixed(0) ?? '—'}%，n={nowRow.h.m12.n}）
+          {nowPos && <>、{nowPos.label}</>} → 歷史同組公布後報酬中位數：6 個月 <b className={sign(nowRow.h.m6.med)}>{p0(nowRow.h.m6.med)}</b>、12 個月{' '}
+          <b className={sign(nowRow.h.m12.med)}>{p0(nowRow.h.m12.med)}</b>（12 個月上漲機率 {nowRow.h.m12.up?.toFixed(0) ?? '—'}%，n={nowRow.h.m12.n}）
         </p>
       )}
       <ul className="small btc-find">
@@ -409,8 +408,8 @@ function BucketTable({ caption, rows, base, now }: { caption: string; rows: Buck
                 {r.key === now && <span className="small"> ◀ 目前</span>}
               </td>
               {HORIZONS.map((h) => (
-                <td key={h.key} className={`r ${sign(r.h[h.key].avg)}`}>
-                  {p0(r.h[h.key].avg)}
+                <td key={h.key} className={`r ${sign(r.h[h.key].med)}`}>
+                  {p0(r.h[h.key].med)}
                 </td>
               ))}
               <td className="r">{r.h.m12.up === null ? '—' : `${r.h.m12.up.toFixed(0)}%`}</td>
@@ -427,25 +426,25 @@ function ShipTables({ a }: { a: ShippingAnalysis }) {
   return (
     <>
       <BucketTable
-        caption="① 近 3 個月營收年增率分組 → 公布後買進持有的還原報酬（平均）。重疊的月份會互相相關，月數不等於獨立樣本數"
+        caption="① 近 3 個月營收年增率分組 → 公布後買進持有的還原報酬（中位數；平均數被 2020–21 超級循環的幾倍漲幅拉高，不用）。相鄰月份互相重疊，月數不等於獨立樣本數"
         rows={a.yoy.rows}
         base={a.yoy.base}
         now={a.nowYoyBucket}
       />
-      <BucketTable caption="② 營收位置（3 個月平均相對近 24 個月高點）→ 公布後報酬" rows={a.position} now={a.nowPosBucket} />
+      <BucketTable caption="② 營收位置（3 個月平均相對近 24 個月高點）→ 公布後報酬（中位數）" rows={a.position} now={a.nowPosBucket} />
       <div className="table-wrap">
         <table className="bt-table num">
           <caption className="small muted">
-            ③ 營收循環高點（3 個月平均為前後 12 個月最高、比前 24 個月低點高 ≥ {CYCLE_MIN_RISE}%）vs 股價高點（營收高點前 24 個月到後 6 個月內）
+            ③ 營收循環高點（3 個月平均為前後 12 個月最高、比前 24 個月低點高 ≥ {CYCLE_MIN_RISE}%）vs 股價頂（營收高點前 24 個月到後 6 個月內）。領先＝股價比營收早幾個月見頂；公布時＝營收高點公布時股價距頂點；後12M＝公布後 12 個月報酬
           </caption>
           <thead>
             <tr>
               <th>營收高點</th>
-              <th className="r">循環漲幅</th>
-              <th>股價高點</th>
-              <th className="r">股價領先</th>
-              <th className="r">公布時距高點</th>
-              <th className="r">公布後12M</th>
+              <th className="r">漲幅</th>
+              <th>股價頂</th>
+              <th className="r">領先</th>
+              <th className="r">公布時</th>
+              <th className="r">後12M</th>
             </tr>
           </thead>
           <tbody>
@@ -454,7 +453,7 @@ function ShipTables({ a }: { a: ShippingAnalysis }) {
                 <td className="nw">{c.revPeak.replace('-', '/')}</td>
                 <td className="r">{p0(c.revRise)}</td>
                 <td className="nw">{c.stockPeak.slice(0, 7).replace('-', '/')}</td>
-                <td className="r">{c.leadMonths > 0 ? `${c.leadMonths} 個月` : c.leadMonths < 0 ? `落後 ${-c.leadMonths}` : '同月'}</td>
+                <td className="r">{c.leadMonths > 0 ? `${c.leadMonths}月` : c.leadMonths < 0 ? `落後${-c.leadMonths}` : '同月'}</td>
                 <td className={`r ${sign(c.ddAtKnown)}`}>{p0(c.ddAtKnown)}</td>
                 <td className={`r ${sign(c.after12)}`}>{c.after12 === null ? '—' : p0(c.after12)}</td>
               </tr>

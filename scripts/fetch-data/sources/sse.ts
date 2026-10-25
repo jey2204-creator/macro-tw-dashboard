@@ -9,7 +9,7 @@ import type { SourceFetchResult } from './types';
  *
  * 官方免費只公布最新兩期（本期＋上期）：en.sse.net.cn/currentIndex?indexName=scfi。
  * 「多期查詢」（/index/mutipleIndex）與「指定日期查詢」都要登入（2026-10 探測：回「对不起你没有登陆!」、表格空白）。
- * 所以歷史 = data/scfi-seed.json（Wayback 存檔的官方頁面＋已核對的週資料，見檔內 note）＋快取＋每週抓到的最新兩期。
+ * 所以歷史 = data/scfi-seed.json（2026-01 起已核對的週資料，見檔內 note）＋快取＋每週抓到的最新兩期。
  * 每次都回傳「種子 ∪ 快取 ∪ 最新兩期」整批（incremental=false），同一天以官方最新抓到的值為準。
  */
 export const SSE_CURRENT_URL = 'https://en.sse.net.cn/currentIndex?indexName=scfi';
