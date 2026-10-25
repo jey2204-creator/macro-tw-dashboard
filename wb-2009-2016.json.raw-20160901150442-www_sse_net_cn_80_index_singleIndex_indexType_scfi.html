@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<!--%@ taglib prefix="t" tagdir="/WEB-INF/tags" %-->
+
+<html lang="zh-CN">
+<head>
+    <meta http-equiv="Cache-Control" content="no-store"/>
+    <meta http-equiv="Pragma" content="no-cache"/>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/images/favicon.ico"/>
+    <title>SCFI运价指数 | Shanghai Shipping Exchange</title>
+    <!--t:assets type="css"/-->
+    <link rel="stylesheet" type="text/css" media="screen" href="/assets/v/30888/main.css"/>
+    <style>
+        /*.li_a{width:100%;}*/
+        #ownlink a {
+            color: #c6cad2;
+        }
+        #ownlink a:hover {
+            color: #fff;
+        }
+
+        #up {
+            background-color: #ffffff;
+            height: 90px;
+            border-bottom: solid 1px #DCDCDC;
+        }
+        #up div {
+            height: 100%;
+        }
+        #up div {
+            background-image: none;
+        }
+        #up div a.logo {
+            background-image: url("/images/head-logo.png");
+            width: 355px;
+            margin-top: 30px;
+        }
+        #english {
+            margin: 60px 10px 0px 10px;height:20px;float:left;font-size:14px;
+            color: #0066CC;
+        }
+        #english:hover {color: rgb(253,151,1);}
+
+        #up div a.dh {
+            font-family: "SimHei";
+            font-size: 20px;
+            border-left: none;
+            line-height: 20px;
+            padding: 60px 15px 10px 15px;
+            color: #0066CC;
+        }
+
+        #up div a.dh:hover {
+            background: none;
+            color: rgb(253,151,1);
+        }
+
+        #up div a.dl {
+            font-family: "SimHei";
+            font-size: 16px;
+            line-height: 16px;
+            padding: 64px 10px 10px 5px;
+            color: #0066CC;
+        }
+
+        #up div a.dl:before {
+            content: '\25AA'; /* \b7 is a middot, \a0 is a space */
+            width: 5px;
+        }
+
+        #up div a.dl:hover {
+            background: none;
+            color: rgb(253,151,1);
+        }
+
+        nav {
+            display: inline-block;
+            /*
+            -moz-border-radius: 5px;
+            -webkit-border-radius: 5px;
+            -webkit-box-shadow: 1px 1px 3px #292929;
+            -moz-box-shadow: 1px 1px 3px #292929;
+            */
+            border-radius: 0;
+            box-shadow: none;
+            height: 16px;
+            margin-top: 65px;
+            margin-right: 10px;
+            float: right;
+        }
+
+
+        #up div nav.about a.dl:before {
+            content: '';
+            width: 0;
+        }
+
+        nav ul {
+            height: 16px;
+        }
+
+        #up nav ul li a.dl {
+            font-family: "arial", "Microsoft Yahei";
+            font-size: 16px;
+            height: 16px;
+            line-height: 16px;
+            text-shadow: none;
+            padding: 0;
+            color: #0066CC;
+        }
+
+        #up nav ul li a.dl, #up nav ul li a.dl:hover, #up nav ul li a.dl:visited, #up nav ul li a.dl:active {
+            text-decoration: none;
+        }
+
+        .clear dl {
+            position: absolute;
+            display: block;
+            top: 81px;
+            left: -55px;
+            width: 165px;
+            background: #222222;
+            -moz-border-radius: 5px;
+            -webkit-border-radius: 5px;
+            -webkit-box-shadow: 1px 1px 3px #292929;
+            -moz-box-shadow: 1px 1px 3px #292929;
+            z-index: 100000;
+        }
+
+        .clear li dl dt {
+            display: none;
+            margin-top: -25px;
+            padding-top: 15px;
+            height: 10px;
+        }
+
+        .clear li a {
+            display: block;
+            height: 30px;
+            line-height: 30px;
+            padding: 0 30px;
+            font-size: 14px;
+            color: #fff;
+            text-shadow: 0px -1px 0px #000;
+            text-decoration: none;
+            white-space: nowrap;
+            border-left: 1px solid #999E9F;
+            border-top: 1px solid #999E9F;
+            -moz-border-top-left-radius: 2px;
+            -webkit-border-top-left-radius: 2px;
+            z-index: 100;
+        }
+
+        .clear li:hover dl{
+            top:30px;
+            display:block;
+            width:145px;
+            padding:10px;
+        }
+
+        nav.about {
+            float: left;
+            height: 20px;
+            margin: 0;
+            margin: 60px 15px 10px 15px;
+        }
+
+        nav.about ul {
+            height: 20px;
+        }
+
+        #up nav.about ul li a.dl {
+            font-family: "SimHei";
+            font-size: 20px;
+            /*border-left: none;*/
+            line-height: 20px;
+
+            /*(color: #0066CC;*/
+        }
+
+        nav.about .clear dl {
+            left: -40px;
+        }
+
+        #end {
+            background-color: rgb(95,95,95);
+            border-top: solid 1px #DCDCDC;
+            color: #fff;
+            font-size: 14px;
+            margin-top: 0;
+            padding-top: 15px;
+            height: 100px;
+        }
+
+        #end div:first-child {
+            background-image: url(/images/foot-logo.png);
+            background-repeat: no-repeat;
+        }
+
+        #end a:link, #end a:visited, #end a:hover, #end a:active {
+            color: #fff;
+        }
+
+        #footer-right {
+            width: 190px;
+            float: right;
+        }
+        #footer-right a:first-child {
+            display: inline-block;
+            background-image: url(/images/foot2.png);
+            background-repeat: no-repeat;
+            background-position: top center;
+            width: 120px;
+            font-size: 12px;
+            text-align: center;
+            padding-top: 60px;
+        }
+        #footer-right a:nth-child(2) {
+            display: inline-block;
+            background-image: url(/images/foot3.png);
+            background-repeat: no-repeat;
+            background-position: top center;
+            width: 60px;
+            height: 8px;
+            padding-top: 68px;
+        }
+        #endkd {
+            height: 90px;
+        }
+        #endkd select {
+            font-size: 12px;
+            margin-top: 10px;
+            margin-left: 10px;
+        }
+
+
+        /* Dropdown Button */
+        .dropbtn {
+            font-family: "SimHei";
+            border: none;
+            color: #0066CC;
+            padding: 0;
+            margin: 0;
+            font-size: 20px;
+            line-height: 20px;
+            border: none;
+            cursor: pointer;
+        }
+
+        /* The container <div> - needed to position the dropdown content */
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .dropdown:hover {
+            color: rgb(253,151,1);
+        }
+
+        /* Dropdown Content (Hidden by Default) */
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #f9f9f9;
+            max-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.7);
+            z-index: 100;
+        }
+
+        #up div.dropdown {
+            width: 90px;
+            height: 20px;
+            padding: 60px 15px 10px 15px;
+        }
+
+        .dropdown-content {
+            background-color: #f9f9f9;
+        }
+
+        /* Links inside the dropdown */
+        .dropdown-content a {
+            color: #0066CC;
+            padding: 10px 16px;
+            text-decoration: none;
+            display: block;
+            background-color: #f9f9f9;
+        }
+
+        /* Change color of dropdown links on hover */
+        .dropdown-content a:hover {
+            background-color: #f1f1f1;
+        }
+
+        /* Show the dropdown menu on hover */
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+
+        /* Change the background color of the dropdown button when the dropdown content is shown */
+        .dropdown:hover .dropbtn {
+            /*background-color: #f9f9f9;*/
+            color: rgb(253,151,1);
+        }
+
+        #usermenu div.dropdown-content {
+            height: auto;
+        }
+    </style>
+    
+    
+    <link href="/styles/font-awesome/css/font-awesome.css" rel="stylesheet">
+    <style>
+        a {
+            text-decoration: none;
+        }
+
+        a:link, a:visited, a:hover, a:active {
+            color: #0086b3;
+        }
+
+        div.alert, div.alert-danger, div.alert-dismissable {
+            display: none;
+        }
+
+    </style>
+    <link rel="stylesheet" type="text/css" media="screen" href="/styles/leftMenu.css"/>
+    </head>
+<body class="home444">
+<div id="up">
+    <div>
+        <a href="/" class="logo"></a>
+        <a href="http://en.sse.net.cn/" id="english"  target="_blank">English</a>
+        <a href="/service" style="margin-left:50px;" class="dh">产品与服务</a>
+        <a href="/datacenter" class="dh">数据中心</a>
+        <a href="http://forum.sse.net.cn/" target="_blank" class="dh">互动交流</a>
+        <!--a href="/about" target="_blank" class="dh">关于我们</a-->
+        <div class="dropdown" id="abt">
+            <a class="dropbtn" href="/about" target="_blank">关于我们</a>
+            <div class="dropdown-content">
+                <a href="/about#msg1" target="_blank">简介</a>
+                <a href="/about#msg2" target="_blank">组织机构</a>
+                <a href="/about#msg3" target="_blank">航交所动态</a>
+                <a href="/about#msg4" target="_blank">大事记</a>
+                <a href="/about#msg5" target="_blank">联系我们</a>
+                <a href="http://www1.sse.net.cn/cninfo/PartyMasses/index.shtml" target="_blank" style="padding: 5px 16px"><img src="/images/party_s.png" /></a>
+            </div>
+        </div>
+        <a href="/signup" class="dl">注册</a>
+        <a href="/login" class="dl">登录</a>
+        </div>
+</div>
+<div class="container" id="content">
+    <div class="row">
+        
+<div id="center">
+
+    <div id="leftmenu">
+
+    <ul id="accordion" class="accordion">
+        <li>
+            <div class="link">指数简介/公告/版权声明<i class="fa fa-chevron-down"></i></div>
+            <ul class="submenu">
+                <li><a href="/indexIntro?indexName=bulletins" id="bulletins_i">运价指数公示公告</a></li>                
+                <!-- yxy 2016-08-10 -->
+                <li><a href="/indexIntro?indexName=copyright" id="copyright_i">指数版权声明</a></li>
+                <!-- end -->                
+                <li><a href="/indexIntro?indexName=ccfi" id="ccfi_i">中国出口集装箱运价指数</a></li>
+                <li><a href="/indexIntro?indexName=scfi" id="scfi_i">上海出口集装箱运价指数</a></li>
+                <li><a href="/indexIntro?indexName=cbfi" id="cbfi_i">中国沿海散货运价指数</a></li>
+                <li><a href="/indexIntro?indexName=cbcfi" id="cbcfi_i">中国沿海煤炭运价指数</a></li>
+                <li><a href="/indexIntro?indexName=cdfi" id="cdfi_i">中国进口干散货运价指数</a></li>
+                <li><a href="/indexIntro?indexName=ctfi" id="ctfi_i">中国进口原油运价指数</a></li>
+                <li><a href="/indexIntro?indexName=cicfi" id="cicfi_i">中国进口集装箱运价指数</a></li>
+                <li><a href="/indexIntro?indexName=scfi_sa" id="scfi_sa_i">东南亚集装箱运价指数</a></li>
+                <li><a href="/indexIntro?indexName=twfi" id="twfi_i">台湾海峡集装箱运价指数</a></li>
+                <li><a href="/indexIntro?indexName=obor" id="obor_i">“一带一路”货运贸易指数</a></li>
+                <li><a href="/indexIntro?indexName=nmsr" id="nmsr_i">“海上丝绸之路”运价指数</a></li>            
+            </ul>
+        </li>
+        <li>
+            <div class="link">指数查询<i class="fa fa-chevron-down"></i></div>
+            <ul class="submenu">
+                <li><a href="/index/singleIndex?indexType=ccfi" id="ccfi">中国出口集装箱运价指数</a></li>
+                <li><a href="/index/singleIndex?indexType=scfi" id="scfi">上海出口集装箱运价指数</a></li>
+                <li><a href="/index/singleIndex?indexType=cbfi" id="cbfi">中国沿海散货运价指数</a></li>
+                <li><a href="/index/singleIndex?indexType=cbcfi" id="cbcfi">中国沿海煤炭运价指数</a></li>
+                <li><a href="/index/singleIndex?indexType=cdfi" id="cdfi">中国进口干散货运价指数</a></li>
+                <li><a href="/index/singleIndex?indexType=ctfi" id="ctfi">中国进口原油运价指数</a></li>
+                <li><a href="/index/singleIndex?indexType=cicfi" id="cicfi">中国进口集装箱运价指数</a></li>
+                <li><a href="/index/singleIndex?indexType=scfi_sa" id="scfi_sa">东南亚集装箱运价指数</a></li>
+                <li><a href="/index/singleIndex?indexType=twfi" id="twfi">台湾海峡集装箱运价指数</a></li>
+                <li><a href="/index/singleIndex?indexType=obor" id="obor">“一带一路”货运贸易指数</a></li>
+                <li><a href="/index/singleIndex?indexType=nmsr" id="nmsr">“海上丝绸之路”运价指数</a></li>
+            </ul>
+        </li>
+    </ul>
+
+</div><div id="right" style="min-height: 1450px">
+        <div id="zfq1">
+            <ul>
+                <li id="fqe1" style="color:#fff;">单期查询</li>
+                <li id="fqe2" style="color:#333;"><a href="/index/scfilist">多期查询</a></li>
+            </ul>
+        </div>
+        <div style="margin:20px 0;text-align:center;"><img src="/index/indexImg?name=scfi&type=query" style="border: 1px solid #A5CBF7"></div>
+        <form action="/index/singleIndex?indexType=scfi" method="post">
+            <div style="padding:10px 0 30px;text-align:center;">
+            <font style="color:#333;font-size:16px;">指数查询（请输入指数日期）：&nbsp;</font>
+            <input type="text" name="date" value="" class="grade_text ss1" style="width:300px;"
+                   placeholder="Sep 1, 2016"/>&nbsp;&nbsp;
+            <button class="an1" type="button" onclick="queryscfi(this.form);">查询</button>&nbsp;&nbsp;
+        </div>
+        </form>
+        <div class="title2">上海出口集装箱运价指数SHANGHAI CONTAINERIZED FREIGHT INDEX</div>
+        <table width="880" border="0" cellspacing="0" cellpadding="0" class="lb1">
+            <tbody>
+            <tr class="csx1">
+                <td class="ts1">航线</td>
+                <td>单位<br></td>
+                <td>权重<br></td>
+                <td>上期<br>2016-08-19</td>
+                <td>本期<br>2016-08-26</td>
+                <td>与上期比涨跌<br>(%)</td>
+            </tr>
+            <tr>
+                <td>综合指数 Comprehensive Index</td>
+                <td></td>
+                <td></td>
+                <td align="center">597.47</td>
+                <td align="center">596.38</td>
+                <td align="center">-1.09</td>
+            </tr>
+            <tr>
+                <td>分航线 (Line Service):</td>
+                <td></td>
+                <td></td>
+                <td align="center"></td>
+                <td align="center"></td>
+                <td align="center"></td>
+            </tr>
+            <tr>
+                <td><p>欧洲（基本港）</p><p>Europe (Base port)</p></td>
+                <td>USD/TEU</td>
+                <td>20.0%</td>
+                <td align="center">691</td>
+                <td align="center">695</td>
+                <td align="center">4</td>
+            </tr>
+            <tr>
+                <td><p>地中海（基本港）</p><p>Mediterranean (Base port)</p></td>
+                <td>USD/TEU</td>
+                <td>10.0%</td>
+                <td align="center">594</td>
+                <td align="center">553</td>
+                <td align="center">-41</td>
+            </tr>
+            <tr>
+                <td><p>美西（基本港）</p><p>USWC (Base port)</p></td>
+                <td>USD/FEU</td>
+                <td>20.0%</td>
+                <td align="center">1159</td>
+                <td align="center">1153</td>
+                <td align="center">-6</td>
+            </tr>
+            <tr>
+                <td><p>美东（基本港）</p><p>USEC (Base port)</p></td>
+                <td>USD/FEU</td>
+                <td>7.5%</td>
+                <td align="center">1694</td>
+                <td align="center">1684</td>
+                <td align="center">-10</td>
+            </tr>
+            <tr>
+                <td><p>波斯湾（迪拜）</p><p>Persian Gulf and Red Sea (Dubai)</p></td>
+                <td>USD/TEU</td>
+                <td>7.5%</td>
+                <td align="center">230</td>
+                <td align="center">247</td>
+                <td align="center">17</td>
+            </tr>
+            <tr>
+                <td><p>澳新（墨尔本）</p><p>Australia/New Zealand (Melbourne)</p></td>
+                <td>USD/TEU</td>
+                <td>5.0%</td>
+                <td align="center">337</td>
+                <td align="center">361</td>
+                <td align="center">24</td>
+            </tr>
+            <tr>
+                <td><p>西非（拉各斯）</p><p>East/West Africa (Lagos)</p></td>
+                <td>USD/TEU</td>
+                <td>2.5%</td>
+                <td align="center">1083</td>
+                <td align="center">1030</td>
+                <td align="center">-53</td>
+            </tr>
+            <tr>
+                <td><p>南非（德班）</p><p>South Africa (Durban)</p></td>
+                <td>USD/TEU</td>
+                <td>2.5%</td>
+                <td align="center">658</td>
+                <td align="center">740</td>
+                <td align="center">82</td>
+            </tr>
+            <tr>
+                <td><p>南美（桑托斯）</p><p>South America (Santos)</p></td>
+                <td>USD/TEU</td>
+                <td>2.5%</td>
+                <td align="center">2832</td>
+                <td align="center">2711</td>
+                <td align="center">-121</td>
+            </tr>
+            <tr>
+                <td><p>日本关西（基本港）</p><p>West Japan (Base port)</p></td>
+                <td>USD/TEU</td>
+                <td>5.0%</td>
+                <td align="center">195</td>
+                <td align="center">196</td>
+                <td align="center">1</td>
+            </tr>
+            <tr>
+                <td><p>日本关东（基本港）</p><p>East Japan (Base port)</p></td>
+                <td>USD/TEU</td>
+                <td>5.0%</td>
+                <td align="center">188</td>
+                <td align="center">190</td>
+                <td align="center">2</td>
+            </tr>
+            <tr>
+                <td><p>东南亚（新加坡）</p><p>Southeast Asia (Singapore)</p></td>
+                <td>USD/TEU</td>
+                <td>5.0%</td>
+                <td align="center">54</td>
+                <td align="center">54</td>
+                <td align="center">0</td>
+            </tr>
+            <tr>
+                <td><p>韩国（釜山）</p><p>Korea (Pusan)</p></td>
+                <td>USD/TEU</td>
+                <td>2.5%</td>
+                <td align="center">88</td>
+                <td align="center">87</td>
+                <td align="center">-1</td>
+            </tr>
+            <tr>
+                <td><p>台湾（高雄）</p><p>Taiwan (Kaohsiung)</p></td>
+                <td>USD/TEU</td>
+                <td>2.5%</td>
+                <td align="center">153</td>
+                <td align="center">153</td>
+                <td align="center">0</td>
+            </tr>
+            <tr>
+                <td><p>香港（香港）</p><p>Hong Kong (Hong Kong)</p></td>
+                <td>USD/TEU</td>
+                <td>2.5%</td>
+                <td align="center">56</td>
+                <td align="center">56</td>
+                <td align="center">0</td>
+            </tr>
+            </tbody>
+        </table>
+        <div class="wei1">
+                备注：分航线运价包含海运费及海运相关附加费，具体包括下列附加费:
+                Note: The freight rate includes ocean freight and surcharges, i.e.:
+                1、燃油附加费（BAF/FAF/LSS*） 2、紧急燃油附加费（EBS/EBA) 3、币值附加费（CAF/YAS）
+                 4、旺季附加费（PSS） 5、战争附加费（WRS） 6、港口拥挤附加费（PCS） 7、运河附加费（SCS/SCF/PTF/PCC）
+                *自2014年末起包含低硫附加费（LSS）
+                基本港：选择该航线基本港的运价进行报送，Base Port: Report Freight Rates of Base Ports
+                如: 地中海－巴塞罗那/瓦伦西亚/热那亚/那不勒斯 Mediterranean Sea—Barcelona/Valencia/Genoa/Naples
+                 欧洲－汉堡/鹿特丹/安特卫普/弗利克斯托/勒阿弗尔 Europe—Hamburg/Antwerp/Felixstowe/Le Havre
+                 美西－洛杉矶/长滩/奥克兰 USWC—Los Angeles/Long Beach/Oakland
+                美东－纽约/萨凡纳/诺福克/查尔斯顿 USEC—New York/Savannah/Norfolk/Charleston
+                日本关西－大阪/神户；日本关东－东京/横滨 West Japan—Osaka/Kobe East Japan—Tokyo/Yokohama
+            <div style="margin: 20px">　上海航运交易所发布</div>
+        </div>
+        <div class="wei2" style="margin:10px 0 80px;">上海航运交易所聘请了毕马威对上海出口集装箱运价指数的编制和发布工作的内容控制进行检查，毕马威会计师事务所出具了截止至2010年7月31日的SAS70第一类报告。</div>
+    </div>
+</div>
+
+<script src="/scripts/validate.js"></script>
+<script language="javascript" type="text/javascript">
+function queryscfi(form){
+    var d = $("[name='date']")[0].value;
+    if(!validInputDate(d)){
+        alert("日期格式错误,格式应为 yyyy-mm-dd");
+        return;
+    }
+    else{
+        form.submit();
+    }
+}
+</script>
+</div>
+</div>
+
+<div id="end">
+    <div id="endkd">
+        <div style="width: 980px; display: inline-block">
+            <div style="padding-left: 250px; height: 46px">
+                <span id="ownlink">
+                    <a href="http://www.chineseshipping.com.cn" target="_blank" style="margin: 5px 5px;">中华航运网</a>
+                    <a href="http://www.cn-eship.com" target="_blank" style="margin: 5px 5px;">中华船舶交易网</a>
+                    <a href="http://www.shippinghr.com" target="_blank">中华航运物流人才网</a>
+                </span>
+                <select>
+                    <option>政府部门网站</option>
+                    <option value="http://www.moc.gov.cn/">中华人民共和国交通运输部</option>
+                    <option value="http://www.shanghaiport.gov.cn/">上海市交通委员会</option>
+                    <option value="http://www.shport.gov.cn/shkaq/">上海市口岸服务办公室</option>
+                    <option value="http://www.shippingcenter.gov.cn">浦东航运</option>
+                </select>
+                <select>
+                    <option>友情链接</option>
+                    <option value="http://www.ssefc.com/">上海航运运价交易有限公司</option>
+                    <option value="http://www.chinaccia.com">中国集装箱行业协会</option>
+                </select>
+            </div>
+            <div id="endfont">
+                <a href="/about#msg5" class="pic1" style="margin-left: 50px;background-image: none">联系方式</a>
+                <span>　电话：021-65151166 021-20280388　传真：021-65152291　邮箱：<a href="mailto:support@sse.net.cn">support@sse.net.cn</a></span>　　　　
+                <a href="/sitemap.jsp">网站地图</a>
+                <!--p style="margin-left: 78px">支持浏览器： Chrome, Firefox, IE9+</p-->
+            </div>
+        </div>
+        <div id="footer-right">
+            <a href="http://www.sgs.gov.cn/lz/licenseLink.do?method=licenceView&entyId=20130510153953139" target="_blank">沪ICP证B2-20050110</a>
+            <a href="http://bszs.conac.cn/sitename?method=show&id=2801B669B8E679BCE053012819AC793D" target="_blank"></a>
+        </div>
+    </div>
+</div>
+<script type="text/javascript" src="/assets/v/30888/main.js"></script>
+<script>
+    $(function(){
+        // bind change event to select
+        $('#endkd select').on('change', function () {
+            var url = $(this).val(); // get selected value
+            if (url) { // require a URL
+                window.open(url);
+            }
+            $('option', this).get(0).selected=true;
+            return false;
+        });
+    });
+</script>
+<!--t:assets type="js"/-->
+<script>
+        changeb('fqe',1);
+
+        var msgDiv = $(".alert, .alert-danger, .alert-dismissable");
+        if (msgDiv != null && msgDiv.length > 0) {
+            var msg = msgDiv.find("span")[0].innerText;
+            msgDiv.remove();
+            alert(msg);
+        }
+    </script>
+    <script src="/scripts/Accordion.js"></script>
+    <script>
+        $(function() {
+            $('.link:last').trigger('click');
+            $('#scfi').addClass("current");
+        });
+    </script></body>
+</html>
