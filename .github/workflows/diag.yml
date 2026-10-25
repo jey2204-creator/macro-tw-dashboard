@@ -9,30 +9,34 @@ permissions:
   contents: write
 
 jobs:
-  diag:
+  wayback:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        span: ['2009 2011', '2012 2014', '2015 2016', '2017 2017', '2018 2018', '2019 2019', '2020 2021', '2022 2023', '2024 2024', '2025 2026']
     steps:
       - uses: actions/checkout@v4
-      - name: 上海航交所 SCFI 頁面探測
+      - name: 回收 SCFI 存檔
         shell: bash
         run: |
           set +e
-          exec > >(tee /tmp/probe.log) 2>&1
-          CH="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
-          mkdir -p /tmp/p && cd /tmp/p
-          g(){ n=$1; u=$2; r=$(curl -s -L -c cj -b cj -A "$CH" -o "$n" -w "code=%{http_code} size=%{size_download}" -m 40 "$u"); echo "RESULT $n | $r | $u"; }
-          cd $GITHUB_WORKSPACE && python3 scripts/oneoff/scfi_wayback_seed.py /tmp/p/scfi-wayback.json
-      - name: 推送探測結果到 probe-out 分支
+          read A B <<< "${{ matrix.span }}"
+          mkdir -p /tmp/out
+          timeout 25m python3 -u scripts/oneoff/scfi_wayback_seed.py $A $B /tmp/out/wb-$A-$B.json > /tmp/out/log-$A-$B.txt 2>&1
+          tail -5 /tmp/out/log-$A-$B.txt
+      - name: 推送結果
         if: always()
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
-          rm -rf /tmp/out && mkdir -p /tmp/out && cd /tmp/out
-          cp /tmp/probe.log . ; cp /tmp/p/*.html /tmp/p/*.json . 2>/dev/null || true
-          git init -q -b probe-out
+          read A B <<< "${{ matrix.span }}"
+          cd /tmp/out
+          git init -q -b wb
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A && git commit -q -m probe
-          git push -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}" probe-out
+          git add -A && git commit -q -m "wb $A-$B"
+          git push -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}" wb:refs/heads/wb-$A-$B
