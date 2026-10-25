@@ -8,37 +8,43 @@ permissions:
   contents: write
 
 jobs:
-  cdx:
+  raw:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 40
     steps:
-      - name: CDX 探測
+      - name: 下載 chineseshipping SCFI 存檔原檔
         shell: bash
         run: |
-          mkdir -p /tmp/out
-          python3 -u - > /tmp/out/cdx.txt 2>&1 <<'PY'
-          import json, urllib.request, urllib.parse, collections, time
+          mkdir -p /tmp/out/raw
+          timeout 35m python3 -u - > /tmp/out/log.txt 2>&1 <<'PY'
+          import json, urllib.request, urllib.parse, time, re
           UA="macro-tw-dashboard/0.1 (+https://github.com/jey2204-creator/macro-tw-dashboard)"
-          pats=["index.chineseshipping.com.cn","www.chineseshipping.com.cn","en.chineseshipping.com.cn","sse.net.cn/currentIndex","www.sse.net.cn/currentIndex","en.sse.net.cn/currentIndex","www.sse.net.cn/index/currentIndex","www.sse.net.cn/indexService"]
-          for p in pats:
-              q=urllib.parse.urlencode({"url":p,"matchType":"prefix","output":"json","fl":"timestamp,original","filter":"statuscode:200","from":"2019","to":"2022","limit":"20000"})
-              for i in range(4):
-                  try:
-                      rows=json.loads(urllib.request.urlopen(urllib.request.Request("https://web.archive.org/cdx/search/cdx?"+q,headers={"User-Agent":UA}),timeout=60).read() or b"[]")[1:]
-                      break
+          def get(u,tries=4,timeout=40):
+              for i in range(tries):
+                  try: return urllib.request.urlopen(urllib.request.Request(u,headers={"User-Agent":UA}),timeout=timeout).read()
                   except Exception as e:
-                      rows=None; print("retry",p,e); time.sleep(10*2**i)
-              if rows is None: continue
-              sc=[r for r in rows if "scfi" in r[1].lower()]
-              yrs=collections.Counter(r[0][:6] for r in sc if r[0][:4]=="2020")
-              print(p,"all",len(rows),"scfi",len(sc),"2020 by month",sorted(yrs.items()))
-              for o,c in collections.Counter(r[1] for r in sc).most_common(8): print("   ",c,o)
-              time.sleep(5)
+                      if i==tries-1: raise
+                      time.sleep(10*2**i)
+          q=urllib.parse.urlencode({"url":"index.chineseshipping.com.cn","matchType":"prefix","output":"json","fl":"timestamp,original","filter":"statuscode:200","from":"2019","to":"2022"})
+          rows=json.loads(get("https://web.archive.org/cdx/search/cdx?"+q,timeout=90) or b"[]")[1:]
+          rows=[r for r in rows if "scfi" in r[1].lower()]
+          seen=set(); n=0
+          for ts,orig in sorted(rows):
+              k=ts[:8]+re.sub(r"[?&](jc|_)=[^&]*","",orig)
+              if k in seen: continue
+              seen.add(k)
+              try:
+                  raw=get(f"https://web.archive.org/web/{ts}id_/{orig}")
+                  open(f"/tmp/out/raw/{ts}_{re.sub(r'[^A-Za-z0-9]+','_',orig)[:80]}","wb").write(raw); n+=1
+                  print("ok",ts,orig,len(raw))
+              except Exception as e: print("ERR",ts,orig,str(e)[:60])
+              time.sleep(2)
+          print("saved",n,"of",len(seen))
           PY
-          cat /tmp/out/cdx.txt
-      - name: 推送結果
+          tail -3 /tmp/out/log.txt
+      - name: 推送
         if: always()
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cd /tmp/out && git init -q -b x && git config user.name bot && git config user.email "41898282+github-actions[bot]@users.noreply.github.com" && git add -A && git commit -qm cdx && git push -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}" x:refs/heads/wb-cdx
+          cd /tmp/out && git init -q -b x && git config user.name bot && git config user.email "41898282+github-actions[bot]@users.noreply.github.com" && git add -A && git commit -qm raw && git push -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}" x:refs/heads/wb-cs
