@@ -170,7 +170,7 @@ describe('跨市場對照面板', () => {
     expect(JSON.parse(window.localStorage.getItem('cm-ids')!)).toEqual(['tpex', 'sox', 'nasdaq', 'kospi', 'nikkei']);
     expect(screen.getByRole('button', { name: '股市' }).getAttribute('aria-pressed')).toBe('true');
     fireEvent.click(screen.getByRole('button', { name: '避險' }));
-    expect(JSON.parse(window.localStorage.getItem('cm-ids')!)).toEqual(['gold', 'wti', 'brent', 'vix']);
+    expect(JSON.parse(window.localStorage.getItem('cm-ids')!)).toEqual(['gold', 'wti', 'brent', 'vix', 'btc']);
   });
 
   it('對照序列載入失敗時顯示原因，其餘窗格照常', async () => {

@@ -60,7 +60,8 @@ export const COMPARE_PRESETS: { key: string; label: string; ids: string[] }[] = 
   { key: 'rates', label: '匯率利率', ids: ['usdtwd', 'dxy', 'us10y', 'tlt', 'us2y'] },
   // 外資有沒有撤出：直接證據（台、韓外資買賣超）＋結果（當地貨幣）＋DXY（同步漲＝全球美元回流，不是針對亞洲）
   { key: 'asia', label: '亞洲資金', ids: ['kospi', 'net_foreign', 'kr_foreign', 'usdtwd', 'usdkrw', 'dxy'] },
-  { key: 'hedge', label: '避險', ids: ['gold', 'wti', 'brent', 'vix'] },
+  // 比特幣不是避險資產（2020 起與費半相關約 0.4），放這組是看週末風險胃口，與 VIX 同類
+  { key: 'hedge', label: '避險', ids: ['gold', 'wti', 'brent', 'vix', 'btc'] },
 ];
 
 /** 選取規則：已選的點一下取消；未選的加到最後，已滿 MAX_COMPARE 時換掉最早選的 */
