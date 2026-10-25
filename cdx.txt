@@ -1,0 +1,23 @@
+index.chineseshipping.com.cn all 321 scfi 55 2020 by month [('202001', 2), ('202002', 5), ('202008', 14), ('202011', 1), ('202012', 5)]
+    1 http://index.chineseshipping.com.cn/servlet/scfiGetContrast?SpecifiedDate=&jc=jsonp1286015602410&_=1286015602495
+    1 http://index.chineseshipping.com.cn/servlet/scfiGetContrast?SpecifiedDate=&jc=jsonp1286015603802&_=1286015603923
+    1 http://index.chineseshipping.com.cn/servlet/scfiGetContrast?SpecifiedDate=&jc=jsonp1286015603804&_=1286015603945
+    1 http://index.chineseshipping.com.cn/servlet/scfiGetContrast?SpecifiedDate=&jc=jsonp1286015605787&_=1286015605934
+    1 http://index.chineseshipping.com.cn/servlet/scfiGetContrast?SpecifiedDate=&jc=jsonp1358355453799&_=1358355454590
+    1 http://index.chineseshipping.com.cn/servlet/scfiGetContrast?SpecifiedDate=&jc=jsonp1424275181261&_=1424275183111
+    1 http://index.chineseshipping.com.cn/servlet/scfiGetContrast?SpecifiedDate=&jc=jsonp1426921323356&_=1426921323460
+    1 http://index.chineseshipping.com.cn/servlet/scfiGetContrast?SpecifiedDate=&jc=jsonp1429768985665&_=1429768986424
+www.chineseshipping.com.cn all 1904 scfi 1 2020 by month []
+    1 https://www.chineseshipping.com.cn/resource/DailyUpdate/scfiimg.png
+retry en.chineseshipping.com.cn <urlopen error [Errno 111] Connection refused>
+retry en.chineseshipping.com.cn <urlopen error [Errno 111] Connection refused>
+retry en.chineseshipping.com.cn <urlopen error _ssl.c:983: The handshake operation timed out>
+en.chineseshipping.com.cn all 230 scfi 0 2020 by month []
+sse.net.cn/currentIndex all 0 scfi 0 2020 by month []
+www.sse.net.cn/currentIndex all 0 scfi 0 2020 by month []
+retry en.sse.net.cn/currentIndex <urlopen error [Errno 111] Connection refused>
+retry en.sse.net.cn/currentIndex <urlopen error [Errno 111] Connection refused>
+retry en.sse.net.cn/currentIndex <urlopen error [Errno 111] Connection refused>
+retry en.sse.net.cn/currentIndex <urlopen error _ssl.c:983: The handshake operation timed out>
+www.sse.net.cn/index/currentIndex all 0 scfi 0 2020 by month []
+www.sse.net.cn/indexService all 0 scfi 0 2020 by month []
