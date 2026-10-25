@@ -32,7 +32,6 @@ import {
   type ShipKey,
   type ShippingAnalysis,
 } from '../shared/shipping';
-import { addDays, daysBetween } from '../shared/dates';
 import { rangeStart, sma, type RangeKey } from '../shared/timeseries';
 import type { Bar } from '../shared/types';
 import { PanelNote } from './PanelNote';
@@ -46,8 +45,8 @@ const RANGES: { k: RangeKey; label: string }[] = [
 ];
 const PANE_STRETCH = [0.5, 0.25, 0.25] as const;
 const KEYS = SHIP_STOCKS.map((s) => s.key);
-/** SCFI 相鄰兩點超過這麼多天就斷線（每週公布，連假最多隔約 2 週） */
-const SCFI_GAP_DAYS = 21;
+/** 這天以後 SCFI 是每週完整資料（種子檔 2026-01-09 起），之前是存檔稀疏點 */
+const SCFI_DENSE_FROM = '2026-01-01';
 
 const fin = (v: number | null | undefined): v is number => v !== null && v !== undefined && Number.isFinite(v);
 const p1 = (v: number | null | undefined) => (fin(v) ? `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(1)}%` : '—');
@@ -128,6 +127,8 @@ export function ShippingPanel({ version, themeKey }: Props) {
   const [hoverTime, setHoverTime] = useState<string | null>(null);
   const [chartGen, setChartGen] = useState(0);
   const [open, setOpen] = useState(false);
+  /** 「看 2020–2022 循環」：只移動可視範圍，不改區間按鈕 */
+  const [focusCycle, setFocusCycle] = useState(0);
 
   const ids = useMemo(() => ['scfi', `${stock}_adj`, `${stock}_rev`], [stock]);
   const files = useSeriesMap(near ? ids : [], version);
@@ -185,19 +186,24 @@ export function ShippingPanel({ version, themeKey }: Props) {
     maLine(60, cssVar('--ma60'));
     maLine(240, cssVar('--ma240'));
 
+    // 2026 前是 Wayback 存檔拼出的稀疏點：只畫點、不連線（圖表庫會把空白點兩側連起來，斷不了線）；2026 起每週完整才連線
+    const dense = scfi.filter((x) => x[0] >= SCFI_DENSE_FROM);
+    const sparse = scfi.filter((x) => x[0] < SCFI_DENSE_FROM);
+    const accent = cssVar('--accent');
+    if (sparse.length) {
+      const sp = chart.addSeries(
+        LineSeries,
+        { color: accent, lineVisible: false, pointMarkersVisible: true, pointMarkersRadius: 3, priceFormat: f0, lastValueVisible: false, priceLineVisible: false },
+        1,
+      );
+      sp.setData(sparse.map((x) => ({ time: x[0] as Time, value: x[4] })));
+    }
     const scfiS = chart.addSeries(
       LineSeries,
-      { color: cssVar('--accent'), lineWidth: 2, pointMarkersVisible: true, pointMarkersRadius: 2, priceFormat: f0, lastValueVisible: true, priceLineVisible: false },
+      { color: accent, lineWidth: 2, pointMarkersVisible: true, pointMarkersRadius: 2, priceFormat: f0, lastValueVisible: true, priceLineVisible: false },
       1,
     );
-    // 2026 以前是 Wayback 存檔拼出的稀疏點：間隔 > 21 天就斷線（插入空白點），只畫點不連線，避免看起來像連續走勢
-    const scfiData: ({ time: Time; value: number } | { time: Time })[] = [];
-    scfi.forEach((b, i) => {
-      const prev = scfi[i - 1];
-      if (prev && daysBetween(prev[0], b[0]) > SCFI_GAP_DAYS) scfiData.push({ time: addDays(prev[0], 1) as Time });
-      scfiData.push({ time: b[0] as Time, value: b[4] });
-    });
-    scfiS.setData(scfiData);
+    scfiS.setData(dense.map((x) => ({ time: x[0] as Time, value: x[4] })));
     if (a.scfi) {
       scfiS.createPriceLine({ price: a.scfi.high * (1 + SCFI_DD_PCT / 100), color: cssVar('--lamp-red'), lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: `${SCFI_DD_PCT}%` });
     }
@@ -242,6 +248,13 @@ export function ShippingPanel({ version, themeKey }: Props) {
     const raf = requestAnimationFrame(apply);
     return () => cancelAnimationFrame(raf);
   }, [chartGen, range, resetKey, px]);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart || focusCycle === 0) return;
+    resetPriceScales(chart);
+    chart.timeScale().setVisibleRange({ from: '2019-07-01' as Time, to: '2023-06-30' as Time });
+  }, [focusCycle]);
 
   // 圖例：十字線所在日期（沒有時顯示最新）
   const legend = useMemo(() => {
@@ -307,7 +320,7 @@ export function ShippingPanel({ version, themeKey }: Props) {
             {Math.abs(REV_MOM_PCT)}%（2 月工作天少，季節性月減要打折看）；④ 還原股價跌破季線（MA60）且季線 {MA_SLOPE_DAYS} 日下彎。
           </p>
           <p>
-            回測只用月營收＋還原股價（2005 起）：運價會先反映在營收，月營收有 20 年歷史；SCFI 官網的多期、指定日期查詢都要登入，免費只公布最新兩期，所以 SCFI 只看「目前狀態」：2026-01 起是每週完整資料（第三方每週存下的官方數值，已與新聞核對），之後每週自動累積；2026 以前是 Wayback Machine 存檔的官方頁面拼出的稀疏點（每個存檔有本期＋上期，一年約十幾個點，間隔超過 3 週就斷線），只能看大致位置，不拿來回測。營收 M 月於 M+1 月 10 日前公布，回測以 11 日後第一個交易日進場，不偷看。長榮 2012 年以前公布的是母公司營收（每月約 13 億，2013 起改合併營收約 118 億），所以長榮的營收從 2013 起算、回測從 2014 起。
+            回測只用月營收＋還原股價（2005 起）：運價會先反映在營收，月營收有 20 年歷史；SCFI 官網的多期、指定日期查詢都要登入，免費只公布最新兩期，所以 SCFI 只看「目前狀態」：2026-01 起是每週完整資料（第三方每週存下的官方數值，已與新聞核對），之後每週自動累積；2026 以前是 Wayback Machine 存檔的官方頁面拼出的稀疏點（每個存檔有本期＋上期，一年約十幾個點，只畫點不連線），只能看大致位置，不拿來回測。營收 M 月於 M+1 月 10 日前公布，回測以 11 日後第一個交易日進場，不偷看。長榮 2012 年以前公布的是母公司營收（每月約 13 億，2013 起改合併營收約 118 億），所以長榮的營收從 2013 起算、回測從 2014 起。
           </p>
           <p>
             資料：上海航運交易所 SCFI（綜合指數）、FinMind 月營收（公開資訊觀測站）、Yahoo 還原股價（除權息還原；長榮 2022–2023 配 45、70 元，不還原會把除息當成暴跌）。參考、不計分。
@@ -325,6 +338,10 @@ export function ShippingPanel({ version, themeKey }: Props) {
           ↺ 重設
         </button>
       </div>
+
+      <button type="button" className="linkbtn small" onClick={() => setFocusCycle((k) => k + 1)}>
+        📍 看 2020–2022 超級循環（SCFI 存檔點＋股價）
+      </button>
 
       {failed.length > 0 && <p className="small warn">載入失敗：{failed.join('；')}</p>}
 
