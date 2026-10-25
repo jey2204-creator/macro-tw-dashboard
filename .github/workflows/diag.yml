@@ -21,13 +21,22 @@ jobs:
           CH="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
           mkdir -p /tmp/p && cd /tmp/p
           g(){ n=$1; u=$2; r=$(curl -s -L -c cj -b cj -A "$CH" -o "$n" -w "code=%{http_code} size=%{size_download}" -m 40 "$u"); echo "RESULT $n | $r | $u"; }
-          for q in "currentIndex?indexName=scfi&date=2015-01-09" "currentIndex?indexName=scfi&currentDate=2015-01-09" "currentIndex?indexName=scfi&indexDate=2015-01-09" "historyIndex?indexName=scfi" "indexHistory?indexName=scfi" "currentIndex?indexName=ccfi" ; do
-            echo -n "$q -> "; curl -s -A "$CH" -m 40 "https://en.sse.net.cn/$q" | head -c 160; echo
-          done
-          curl -s -A "$CH" -m 40 -o en_idx.html "https://en.sse.net.cn/indices/scfinew.jsp"; echo "en_idx $(wc -c < en_idx.html)"
-          grep -oE "(url|ajax|getJSON|fetch)[^;]{0,160}" en_idx.html | head -20
-          grep -oE '<script[^>]*src="[^"]+"' en_idx.html | head
-          curl -s -A "$CH" -m 40 -o en_home.html "https://en.sse.net.cn/"; grep -oE "['\"][^'\"]*(Index|index)[^'\"]*['\"]" en_home.html | sort -u | head -40
+          python3 - <<'PY'
+          import json, urllib.request, urllib.parse, collections
+          UA="macro-tw-dashboard/0.1 (+https://github.com/jey2204-creator/macro-tw-dashboard)"
+          pats=["en.sse.net.cn/currentIndex*","www.sse.net.cn/index/singleIndex?indexType=scfi*","en.sse.net.cn/indices/scfinew.jsp*","www.sse.net.cn/indices/scfinew.jsp*","www1.sse.net.cn/indices/scfinew.jsp*","sse.net.cn/indices/scfinew.jsp*","www.sse.net.cn/index/scfi*","en.sse.net.cn/indices/*"]
+          for p in pats:
+              u="https://web.archive.org/cdx/search/cdx?"+urllib.parse.urlencode({"url":p,"output":"json","fl":"timestamp,original,statuscode,length","filter":"statuscode:200","limit":"20000"})
+              try:
+                  t=urllib.request.urlopen(urllib.request.Request(u,headers={"User-Agent":UA}),timeout=90).read().decode()
+                  rows=json.loads(t)[1:] if t.strip() else []
+                  yrs=collections.Counter(r[0][:4] for r in rows)
+                  wk=collections.Counter(r[0][:4] for r in {(r[0][:8]):r for r in rows}.values())
+                  print(p,len(rows),sorted(yrs.items()))
+                  origs=collections.Counter(r[1] for r in rows).most_common(4); print('   top',origs)
+              except Exception as e:
+                  print(p,'ERR',e)
+          PY
       - name: 推送探測結果到 probe-out 分支
         if: always()
         env:
