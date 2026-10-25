@@ -17,41 +17,40 @@ jobs:
         run: |
           mkdir -p /tmp/out
           timeout 18m python3 -u - > /tmp/out/news.txt 2>&1 <<'PY'
-          import json, urllib.request, urllib.parse, time, datetime as dt
+          import json, urllib.request, time, datetime as dt, re
           UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
+          TZ=dt.timezone(dt.timedelta(hours=8))
           def get(u):
               return json.loads(urllib.request.urlopen(urllib.request.Request(u,headers={"User-Agent":UA,"Referer":"https://news.cnyes.com/"}),timeout=30).read())
-          # 1) 搜尋 API
-          for u in ["https://api.cnyes.com/media/api/v1/search/list?q=SCFI&limit=5&page=1",
-                    "https://api.cnyes.com/media/api/v1/search?q=SCFI&limit=5&page=1"]:
-              try: j=get(u); print("SEARCH OK",u,json.dumps(j,ensure_ascii=False)[:600])
-              except Exception as e: print("SEARCH ERR",u,e)
-          # 2) 分類新聞清單（依時間）
+          j=get("https://api.cnyes.com/media/api/v1/search?q=SCFI&limit=20&page=4")
+          d=j["items"]["data"]; print("search p4", [(dt.datetime.fromtimestamp(x.get("publishAt",0),TZ).date().isoformat(),x.get("title","")[:30]) for x in d[-3:]])
+          KW=("SCFI","航運指數","運價指數","集裝箱運價","貨櫃運價","海運運價")
           hits=[]
-          start=dt.datetime(2020,2,1,tzinfo=dt.timezone(dt.timedelta(hours=8)))
-          end=dt.datetime(2020,12,1,tzinfo=dt.timezone(dt.timedelta(hours=8)))
-          cur=start
-          while cur<end:
-              nxt=cur+dt.timedelta(days=7)
-              for cat in ["tw_stock","headline","cn_stock"]:
-                  page=1
-                  while True:
-                      u=f"https://api.cnyes.com/media/api/v1/newslist/category/{cat}?startAt={int(cur.timestamp())}&endAt={int(nxt.timestamp())}&limit=100&page={page}"
-                      try: j=get(u)
-                      except Exception as e: print("ERR",cat,cur.date(),e); break
-                      items=(j.get("items") or {}).get("data") or []
-                      for it in items:
-                          t=it.get("title","")
-                          if "SCFI" in t or "航運指數" in t or "運價指數" in t or "集裝箱運價" in t or "貨櫃運價" in t:
-                              hits.append((it.get("publishAt"),it.get("newsId"),t))
-                      last=(j.get("items") or {}).get("last_page",1)
-                      if page>=last: break
-                      page+=1; time.sleep(0.3)
-              cur=nxt
-          hits=sorted(set(hits))
-          print("HITS",len(hits))
-          for h in hits: print(dt.datetime.fromtimestamp(h[0],dt.timezone(dt.timedelta(hours=8))).date(),h[1],h[2])
+          day=dt.datetime(2020,2,28,tzinfo=TZ)
+          while day<dt.datetime(2020,11,30,tzinfo=TZ):
+              s0=int(day.timestamp()); s1=int((day+dt.timedelta(hours=40)).timestamp())
+              page=1; n=0
+              while page<=6:
+                  try: j=get(f"https://api.cnyes.com/media/api/v1/newslist/category/tw_stock?startAt={s0}&endAt={s1}&limit=100&page={page}")
+                  except Exception as e: print("ERR",day.date(),e); break
+                  it=j.get("items") or {}
+                  for x in it.get("data") or []:
+                      n+=1
+                      if any(k in x.get("title","") for k in KW): hits.append([day.date().isoformat(),x.get("newsId"),x.get("title")])
+                  if page>=it.get("last_page",1): break
+                  page+=1; time.sleep(0.3)
+              print(day.date(),"articles",n,"hits",[h[2][:28] for h in hits if h[0]==day.date().isoformat()],flush=True)
+              day+=dt.timedelta(days=7)
           json.dump(hits,open("/tmp/out/hits.json","w"),ensure_ascii=False)
+          # 抓內文找數值
+          for wk,nid,t in hits:
+              try:
+                  c=get(f"https://api.cnyes.com/media/api/v1/news/{nid}")
+                  body=re.sub(r"<[^>]+>"," ",(c.get("items") or c).get("content",""))
+                  m=re.findall(r"(SCFI[^。]{0,80}?(\d{3,4}\.\d{1,2})\s*點)",body)
+                  print("BODY",wk,nid,t[:30],"|",[x[1] for x in m][:3],"|",body[:160].replace("\n"," "),flush=True)
+              except Exception as e: print("BERR",nid,e)
+              time.sleep(0.3)
           PY
           tail -50 /tmp/out/news.txt
       - name: 推送
