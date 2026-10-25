@@ -10,6 +10,7 @@ import {
   createSeriesMarkers,
   createTextWatermark,
   type IChartApi,
+  type ISeriesApi,
   type ISeriesMarkersPluginApi,
   type MouseEventParams,
   type SeriesMarker,
@@ -68,6 +69,9 @@ const RANGES: { k: RangeKey; label: string }[] = [
 const COMPARE_IDS = COMPARE_SERIES.map((s) => s.id);
 /** 上窗格（加權）較高，其餘對照窗格等高 */
 const TOP_STRETCH = 1.6;
+// 加權窗格：長均線不參與 Y 軸自動縮放（否則 MA240 把刻度拉寬、K 棒被壓扁）；超出畫面時在邊緣標距離
+const NO_AUTOSCALE_MAS: readonly MaPeriod[] = [120, 240];
+type OffMa = { p: MaPeriod; value: number; pct: number; side: 'above' | 'below' };
 /** 公布日標記顏色（CSS 變數）；只在 1 年以內的區間顯示（5 年約 180 個點會蓋住 K 線、撐開 Y 軸） */
 const EVENT_COLOR_VAR: Record<EventKind, string> = { cpi: '--accent', jobs: '--warn', fomc: '--text-1' };
 const EVENT_RANGES: RangeKey[] = ['3M', '6M', '1Y'];
@@ -175,6 +179,8 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
   const hostRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
+  const twSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const [offMas, setOffMas] = useState<{ list: OffMa[]; paneH: number }>({ list: [], paneH: 0 });
   const [showEvents, setShowEvents] = useState(() => loadPref('cm-events', ['1', '0'] as const, '1') === '1');
   const near = useNearViewport(sectionRef);
   const [selected, setSelected] = useState<string[]>(() => loadIdList('cm-ids', COMPARE_IDS, DEFAULT_COMPARE));
@@ -306,7 +312,14 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         if (!vals) continue;
         const s = chart.addSeries(
           LineSeries,
-          { color: cssVar(MA_COLOR_VAR[p]), lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false },
+          {
+            color: cssVar(MA_COLOR_VAR[p]),
+            lineWidth: 1,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false,
+            ...(paneIndex === 0 && NO_AUTOSCALE_MAS.includes(p) ? { autoscaleInfoProvider: () => null } : {}),
+          },
           paneIndex,
         );
         s.setData(bars.flatMap((b, i) => (vals[i] == null ? [] : [{ time: b[0] as Time, value: vals[i]! }])));
@@ -317,6 +330,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
     const tw = chart.addSeries(CandlestickSeries, { ...candleOpts, priceFormat: { type: 'price', precision: 0, minMove: 1 } }, 0);
     tw.setData(twBars.map((b) => ({ time: b[0] as Time, open: b[1], high: b[2], low: b[3], close: b[4] })));
     markersRef.current = createSeriesMarkers(tw, []);
+    twSeriesRef.current = tw;
     addMas(0, twBars, twMa);
     watermark(0, `加權指數${maText}`);
 
@@ -356,6 +370,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
       chart.remove();
       chartRef.current = null;
       markersRef.current = null;
+      twSeriesRef.current = null;
     };
   }, [twBars, twMa, panes, aligned, mas, themeKey]);
 
@@ -402,6 +417,43 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
     const raf = requestAnimationFrame(apply);
     return () => cancelAnimationFrame(raf);
   }, [chartGen, range, resetKey, twBars, panes]);
+
+  // 長均線超出加權窗格可見範圍時，在上／下緣標出數值與距離（以最新收盤計）
+  useEffect(() => {
+    const chart = chartRef.current;
+    const tw = twSeriesRef.current;
+    const lastClose = twBars.at(-1)?.[4];
+    if (!chart || !tw || lastClose == null) return;
+    let raf = 0;
+    const check = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const paneH = chart.panes()[0]?.getHeight() ?? 0;
+        const list: OffMa[] = [];
+        for (const p of mas) {
+          if (!NO_AUTOSCALE_MAS.includes(p)) continue;
+          const value = twMa[p]?.at(-1);
+          if (value == null) continue;
+          const y = tw.priceToCoordinate(value);
+          if (y === null || (y >= 0 && y <= paneH)) continue;
+          list.push({ p, value, pct: (value / lastClose - 1) * 100, side: y < 0 ? 'above' : 'below' });
+        }
+        setOffMas((prev) => (JSON.stringify(prev) === JSON.stringify({ list, paneH }) ? prev : { list, paneH }));
+      });
+    };
+    check();
+    const ts = chart.timeScale();
+    ts.subscribeVisibleLogicalRangeChange(check);
+    chart.subscribeCrosshairMove(check);
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(check);
+    if (ro && hostRef.current) ro.observe(hostRef.current);
+    return () => {
+      cancelAnimationFrame(raf);
+      ts.unsubscribeVisibleLogicalRangeChange(check);
+      chart.unsubscribeCrosshairMove(check);
+      ro?.disconnect();
+    };
+  }, [chartGen, range, resetKey, twBars, twMa, mas]);
 
   // 圖例：十字線所在日期（沒有時各序列顯示自己最新一筆）
   const legend = useMemo(() => {
@@ -594,7 +646,20 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
               )}
             </div>
           )}
-          <div ref={hostRef} className="chart-host cm-host" style={hostStyle} />
+          <div className="cm-host-wrap">
+            <div ref={hostRef} className="chart-host cm-host" style={hostStyle} />
+            {offMas.list.map((o) => (
+              <div
+                key={o.p}
+                className="cm-offma num"
+                style={o.side === 'above' ? { top: 22 } : { top: Math.max(0, offMas.paneH - 24) }}
+              >
+                <i className="swatch" style={{ background: `var(${MA_COLOR_VAR[o.p]})` }} />
+                {o.side === 'above' ? '↑' : '↓'} MA{o.p} {fmtNum(o.value, 0)}（{o.pct > 0 ? '+' : ''}
+                {o.pct.toFixed(1)}%）
+              </div>
+            ))}
+          </div>
         </div>
       )}
       <BtcTwCard version={version} near={near} />
