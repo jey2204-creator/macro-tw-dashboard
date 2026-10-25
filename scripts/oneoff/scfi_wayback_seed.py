@@ -19,14 +19,15 @@ DATE = r"(20\d\d)[-/.年](\d{1,2})[-/.月](\d{1,2})"
 LABEL = re.compile(r"(Comprehensive\s*Index|综合指数|綜合指數)", re.I)
 
 
-def get(url, tries=2, timeout=25):
+def get(url, tries=4, timeout=40):
+    """archive.org 會限流（連線被拒、503、握手逾時）：指數退避 10、20、40 秒"""
     for i in range(tries):
         try:
             return urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": UA}), timeout=timeout).read()
         except Exception:  # noqa: BLE001
             if i == tries - 1:
                 raise
-            time.sleep(2)
+            time.sleep(10 * 2 ** i)
 
 
 def text_of(raw):
@@ -82,6 +83,8 @@ def main(y0, y1, out_file):
         except Exception as e:  # noqa: BLE001
             print("CDX ERR", p, e, flush=True)
             continue
+        finally:
+            time.sleep(3)
         for ts, orig in rows:
             o = orig.lower()
             if "scfi_sa" in o or "scfis" in o or ("indextype=scfi" in o and not re.search(r"indextype=scfi($|&)", o)):
@@ -91,9 +94,15 @@ def main(y0, y1, out_file):
     print("snapshots", len(snaps), flush=True)
     by_date = collections.defaultdict(list)
     done = 0
+    saved = set()
     for ts, orig in sorted(snaps.values()):
         try:
-            pts = extract(get(f"https://web.archive.org/web/{ts}id_/{orig}"), orig)
+            raw = get(f"https://web.archive.org/web/{ts}id_/{orig}")
+            pts = extract(raw, orig)
+            key = re.sub(r"\W+", "_", orig.split("//")[-1])[:60]
+            if key not in saved:
+                saved.add(key)
+                open(f"{out_file}.raw-{ts}-{key}.html", "wb").write(raw)
         except Exception as e:  # noqa: BLE001
             print("ERR", ts, orig, str(e)[:80], flush=True)
             pts = []
@@ -103,7 +112,7 @@ def main(y0, y1, out_file):
         print(ts, len(pts), pts, flush=True)
         if done % 10 == 0:
             json.dump(by_date, open(out_file, "w"), ensure_ascii=False)
-        time.sleep(0.5)
+        time.sleep(2)
     json.dump(by_date, open(out_file, "w"), ensure_ascii=False)
     print("points", len(by_date), flush=True)
 
