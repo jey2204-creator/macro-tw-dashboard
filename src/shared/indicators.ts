@@ -316,6 +316,15 @@ export const INDICATORS: IndicatorDef[] = [
     market: false, changeInBp: true, rule: { kind: 'info' }, weight: 0, maxAgeDays: 10, hidden: true,
     note: 'FRED 只提供近 3 年，無法回測，只在降息性質判定顯示目前讀數（≥ 400bp 警戒、≥ 600bp 衰退定價）。不計分',
   },
+  // 比特幣：24 小時、週末也交易（Yahoo 日 K 以 UTC 日期切，收盤＝台北隔天 08:00，在台股開盤前）。
+  // 只給跨市場對照與「比特幣 vs 加權」回測用；BTC-USD 自 2014-09 起
+  {
+    id: 'btc', name: '比特幣（BTC／USD）', short: '比特幣', category: 'commodity', frequency: 'daily',
+    subtitle: '比特幣｜24 小時風險胃口',
+    unit: 'USD', decimals: 0, sources: [{ provider: 'yahoo', symbol: 'BTC-USD' }], transform: 'none',
+    market: true, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true,
+    note: '比特幣兌美元（Yahoo 彙整報價，UTC 日 K）；週末也交易，可看台股休市期間的風險胃口。跨市場對照面板用，不計分',
+  },
   {
     id: 'vix', name: 'VIX 恐慌指數', short: 'VIX', category: 'us_equity', frequency: 'daily',
     subtitle: 'S&P500 隱含波動率｜市場為風險付的保費',
