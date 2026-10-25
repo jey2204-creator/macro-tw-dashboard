@@ -1257,3 +1257,16 @@ th {
 .cr .bt-table td.nw {
   white-space: nowrap;
 }
+/* 比特幣 vs 加權回測（跨市場對照面板下方） */
+.btc-now {
+  margin: 0 0 4px;
+  line-height: 1.6;
+}
+.btc-find {
+  margin: 4px 0 6px;
+  padding-left: 1.2em;
+  line-height: 1.55;
+}
+.btc-find li + li {
+  margin-top: 2px;
+}

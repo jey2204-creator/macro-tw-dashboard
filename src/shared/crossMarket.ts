@@ -20,6 +20,8 @@ export interface CompareSpec {
    * fx＝當地貨幣兌美元的序列；from＝資料來源（指標序列檔，或 foreign-chips.json 的 2010 起歷史）
    */
   flow?: { fx: string; from: 'series' | 'foreignChips' };
+  /** 週末也交易（比特幣）：對齊時保留週末 K 棒，併入週一；不對齊時照樣去掉週末 */
+  allWeek?: boolean;
 }
 
 /** 可選的對照序列（依顯示順序；id 對應指標註冊表） */
@@ -43,6 +45,8 @@ export const COMPARE_SERIES: CompareSpec[] = [
   { id: 'brent', session: 'us' },
   { id: 'gold', session: 'us' },
   { id: 'vix', session: 'us' },
+  // 比特幣 UTC 日 K 收盤＝台北隔天 08:00，比照美系往後對齊；週末三根合併到週一＝台股休市期間的漲跌
+  { id: 'btc', session: 'us', allWeek: true },
 ];
 
 /** 預設對照：三個不同資訊來源（前一晚美國半導體、同時段亞股、資金流向），而不是三個最像的 */

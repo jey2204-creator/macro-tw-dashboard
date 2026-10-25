@@ -1,3 +1,4 @@
+import { BtcTwCard } from './BtcTwCard';
 import {
   CandlestickSeries,
   ColorType,
@@ -243,7 +244,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
       }
       const f = files[spec.id];
       if (!f || f.status !== 'ready' || f.data.data.length === 0) continue;
-      const raw = dropWeekendBars(f.data.data);
+      const raw = spec.allWeek && spec.session === 'us' && aligned ? f.data.data : dropWeekendBars(f.data.data);
       const bars = spec.session === 'us' && aligned ? alignToTwCalendar(raw, twDates) : raw;
       out.push({
         id: spec.id,
@@ -596,6 +597,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
           <div ref={hostRef} className="chart-host cm-host" style={hostStyle} />
         </div>
       )}
+      <BtcTwCard version={version} near={near} />
     </section>
   );
 }
