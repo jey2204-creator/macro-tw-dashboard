@@ -23,6 +23,7 @@ import { releasesByIndicator } from './shared/calendar';
 import { INDICATOR_MAP } from './shared/indicators';
 import { computeRegime } from './shared/regime';
 import { outlooksFor } from './shared/outlook';
+import { weekdayHoursBetween } from './lib/dataAge';
 import { MA_PERIODS, type MaPeriod, type Period, type RangeKey } from './shared/timeseries';
 
 const WIDE_QUERY = '(min-width: 1100px)';
@@ -123,7 +124,8 @@ export default function App() {
   }, [overlay]);
 
   const themeKey = `${theme}-${systemDark}-${upDown}`;
-  const dataAgeHours = summary ? (nowMs - Date.parse(summary.generatedAt)) / 3_600_000 : 0;
+  // 只計平日時數：排程週末不跑，週末沒更新不算異常
+  const dataAgeHours = summary ? weekdayHoursBetween(Date.parse(summary.generatedAt), nowMs) : 0;
 
   return (
     <div className="app">
@@ -135,7 +137,7 @@ export default function App() {
           {summary && (
             <span className={`small num ${dataAgeHours > 36 ? 'warn' : 'muted'}`}>
               資料更新 {formatTaipeiDateTime(summary.generatedAt)}
-              {dataAgeHours > 36 && '（超過 36 小時未更新）'}
+              {dataAgeHours > 36 && '（平日超過 36 小時未更新）'}
             </span>
           )}
         </div>
