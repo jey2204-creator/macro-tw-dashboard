@@ -912,6 +912,12 @@ th {
   margin: 2px 0;
   line-height: 1.5;
 }
+.cm-fib-seg {
+  align-items: center;
+}
+.cm-fib-seg > span {
+  padding: 0 6px;
+}
 .cm-fib-levels {
   display: flex;
   flex-wrap: wrap;

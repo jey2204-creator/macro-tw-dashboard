@@ -82,6 +82,14 @@ const EVENT_RANGES: RangeKey[] = ['3M', '6M', '1Y'];
 const EVENT_TEXT_RANGES: RangeKey[] = ['3M', '6M'];
 /** 費波那契線：0.618 加粗；其餘細虛線 */
 const FIB_KEY_RATIO = 0.618;
+/** 費波那契波段長度：和圖表區間脫鉤（看 3 個月 K 線也能疊 1 年大波段），預設 1 年 */
+const FIB_RANGES: { k: RangeKey; label: string }[] = [
+  { k: '3M', label: '3個月' },
+  { k: '6M', label: '半年' },
+  { k: '1Y', label: '1年' },
+  { k: '5Y', label: '5年' },
+];
+const FIB_RANGE_KEYS = FIB_RANGES.map((r) => r.k);
 /** 波動統計起算日（通膨主題期） */
 const STATS_SINCE = '2022-01-01';
 
@@ -187,6 +195,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
   const twSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const fibLinesRef = useRef<IPriceLine[]>([]);
   const [showFib, setShowFib] = useState(() => loadPref('cm-fib', ['1', '0'] as const, '1') === '1');
+  const [fibRange, setFibRange] = useState<RangeKey>(() => loadPref<RangeKey>('cm-fib-range', FIB_RANGE_KEYS, '1Y'));
   const [offMas, setOffMas] = useState<{ list: OffMa[]; paneH: number }>({ list: [], paneH: 0 });
   const [showEvents, setShowEvents] = useState(() => loadPref('cm-events', ['1', '0'] as const, '1') === '1');
   const near = useNearViewport(sectionRef);
@@ -237,12 +246,16 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
     setShowFib(!showFib);
     savePref('cm-fib', showFib ? '0' : '1');
   };
-  // 費波那契回撤：波段高低點取自目前時間區間內的加權 K 棒（切區間就換波段）
+  const pickFibRange = (r: RangeKey) => {
+    setFibRange(r);
+    savePref('cm-fib-range', r);
+  };
+  // 費波那契回撤：波段高低點取自「波段」按鈕選的期間（不跟圖表區間走）
   const fib = useMemo(() => {
     const last = twBars.at(-1);
     if (!showFib || !last) return null;
-    return fibRetracement(twBars, rangeStart(last[0], range));
-  }, [twBars, range, showFib]);
+    return fibRetracement(twBars, rangeStart(last[0], fibRange));
+  }, [twBars, fibRange, showFib]);
 
   const panes = useMemo<PaneData[]>(() => {
     if (twBars.length === 0) return [];
@@ -433,8 +446,8 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         color,
         lineWidth: l.ratio === FIB_KEY_RATIO ? 2 : 1,
         lineStyle: l.ratio === FIB_KEY_RATIO ? LineStyle.Solid : LineStyle.Dashed,
-        // 不在窗格內標文字（五個標籤會蓋住右側 K 棒）；比例與價位列在圖例，價格軸只標數值
-        axisLabelVisible: true,
+        // 窗格內不標文字、價格軸也不標（五個標籤疊成一塊會蓋住 K 棒與刻度）；比例與價位列在圖例
+        axisLabelVisible: false,
       }),
     );
   }, [chartGen, fib]);
@@ -574,7 +587,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         加權下方的狀態列（參考、不計分）：短線＝收盤與 MA10 都在 MA20 之上為「短多」、都在之下為「短空」；中期＝收盤與 MA60 對 MA120 同理（MA60＝季線）；不一致為「整理」。乖離＝收盤離該均線多少 %。均線落後價格，狀態列描述現況、不是預測。
         加權 K 棒下方的圓點是 CPI（藍）、就業報告（橘）、FOMC（黑）公布後台股第一個交易日：美東 08:30／14:00 公布時台股已收盤，反應落在隔天。
         動市場的是「實績 vs 預期」不是年增率本身，所以用標記不畫月線；2026-10 起有市場預期，點到該日圖例會列出驚喜值。標記只在 1 年以內的區間顯示（半年以內才附文字）。
-        費波那契回撤（參考、不計分）：取目前時間區間內加權的最高與最低價當波段，高點在後＝多頭回撤、由高點往下畫 0.236／0.382／0.5／0.618（粗線）／0.786 當支撐；低點在後則由低點往上畫當壓力。切換區間就換波段：3 個月看短波段、1 年看大波段。
+        費波那契回撤（參考、不計分）：取「波段」按鈕所選期間內加權的最高與最低價當波段（預設 1 年，不跟圖表區間走），高點在後＝多頭回撤、由高點往下畫 0.236／0.382／0.5／0.618（粗線）／0.786 當支撐；低點在後則由低點往上畫當壓力。3 個月看短波段、1 年看大波段；線上不標數字，比例與價位列在圖例。
         它靠「大家都在看」才有效，單獨用勝率不高；守住 0.618 算趨勢延續、跌破要當趨勢可能反轉。高低點相隔不到 20 根 K 棒不畫。
       </p>
         {stats && Number.isFinite(stats.normal.meanAbs) && (
@@ -601,9 +614,19 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         <button type="button" className="ma-chip" aria-pressed={showEvents} onClick={toggleEvents} title="CPI／就業報告／FOMC 公布後台股第一個交易日">
           📌 公布日標記
         </button>
-        <button type="button" className="ma-chip" aria-pressed={showFib} onClick={toggleFib} title="以目前時間區間內的加權高低點畫 0.236／0.382／0.5／0.618／0.786">
+        <button type="button" className="ma-chip" aria-pressed={showFib} onClick={toggleFib} title="以所選波段內的加權高低點畫 0.236／0.382／0.5／0.618／0.786">
           📐 費波那契回撤
         </button>
+        {showFib && (
+          <div className="seg cm-fib-seg" role="group" aria-label="費波那契波段長度">
+            <span className="small muted">波段</span>
+            {FIB_RANGES.map((r) => (
+              <button key={r.k} type="button" aria-label={`波段${r.label}`} aria-pressed={fibRange === r.k} onClick={() => pickFibRange(r.k)}>
+                {r.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="cp-mas" role="group" aria-label="對照序列">
