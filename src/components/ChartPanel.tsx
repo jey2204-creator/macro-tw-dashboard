@@ -7,6 +7,7 @@ import { closes, MA_PERIODS, type MaPeriod, type Period, type RangeKey } from '.
 import type { BacktestStats, Bar, SummaryEntry } from '../shared/types';
 import { chartBars, MA_COLOR_VAR, type ChartKind } from '../lib/chartData';
 import { PriceChart } from './PriceChart';
+import { MaAllChip } from './MaAllChip';
 import { BacktestTable } from './BacktestTable';
 import { monthlyCloses, pctSign, pctText, shortMonth, zoneStreaks, type Companion, type ZoneStreak } from '../lib/companion';
 import { SignalBadge } from './SignalBadge';
@@ -106,6 +107,7 @@ export function ChartPanel({ def, ev, entry, version, prefs, onPrefs, onClose, t
       </div>
       {def.market && (
         <div className="cp-mas ma-row" role="group" aria-label="均線">
+          <MaAllChip mas={prefs.mas} onMas={(mas) => onPrefs({ ...prefs, mas })} />
           {MA_PERIODS.map((p) => (
             <button key={p} type="button" className="ma-chip" aria-pressed={prefs.mas.includes(p)} onClick={() => toggleMa(p)}>
               <i className="swatch" style={{ background: `var(${MA_COLOR_VAR[p]})` }} />

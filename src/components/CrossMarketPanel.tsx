@@ -21,6 +21,7 @@ import { PanelNote } from './PanelNote';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useForeignChips, useSeriesMap } from '../hooks/useData';
 import { MA_COLOR_VAR } from '../lib/chartData';
+import { MaAllChip } from './MaAllChip';
 import { CHART_INTERACTION, resetPaneStretch, resetPriceScales, attachTimeAxis, TIME_AXIS } from '../lib/chartInteraction';
 import { loadIdList, loadPref, savePref } from '../lib/storage';
 import { cssVar } from '../lib/stressFormat';
@@ -649,6 +650,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
       </div>
 
       <div className="cp-mas ma-row" role="group" aria-label="均線">
+        <MaAllChip mas={mas} onMas={onMas} />
         {MA_PERIODS.map((p) => (
           <button key={p} type="button" className="ma-chip" aria-pressed={mas.includes(p)} onClick={() => toggleMa(p)}>
             <i className="swatch" style={{ background: `var(${MA_COLOR_VAR[p]})` }} />
