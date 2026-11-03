@@ -125,19 +125,21 @@ describe('跨市場對照面板', () => {
     expect(screen.getByRole('button', { name: /費波那契回撤/ }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('button', { name: '波段1年' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('button', { name: '3個月' }).getAttribute('aria-pressed')).toBe('true'); // 圖表區間
-    expect(screen.getByText(/此區間高低點相隔不到 20 根 K 棒/)).toBeTruthy();
+    expect(screen.getByText(/📐 波段1年｜加權/)).toBeTruthy();
+    expect(screen.getByText(/📐 波段1年｜加權/).textContent).toMatch(/不畫/);
     expect(screen.queryByText(/📐 櫃買/)).toBeNull();
     // 選進櫃買後多一行櫃買圖例（共用同一顆開關與波段）
     fireEvent.click(screen.getByRole('button', { name: '櫃買指數' }));
     await waitFor(() => expect(screen.getByText(/📐 櫃買/)).toBeTruthy());
-    expect(screen.getAllByText(/此區間高低點相隔不到 20 根 K 棒/)).toHaveLength(2);
+    expect(document.querySelectorAll('.cm-fib')).toHaveLength(2);
     fireEvent.click(screen.getByRole('button', { name: '波段3個月' }));
     expect(window.localStorage.getItem('cm-fib-range')).toBe('3M');
+    expect(screen.getByText(/📐 波段3個月｜加權/)).toBeTruthy();
     expect(screen.getByRole('button', { name: '波段3個月' }).getAttribute('aria-pressed')).toBe('true');
     fireEvent.click(screen.getByRole('button', { name: /費波那契回撤/ }));
     expect(window.localStorage.getItem('cm-fib')).toBe('0');
     expect(screen.queryByRole('button', { name: '波段3個月' })).toBeNull();
-    expect(screen.queryByText(/此區間高低點相隔不到 20 根 K 棒/)).toBeNull();
+    expect(document.querySelectorAll('.cm-fib')).toHaveLength(0);
     expect(screen.queryByText(/📐 櫃買/)).toBeNull();
   });
 

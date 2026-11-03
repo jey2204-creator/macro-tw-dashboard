@@ -56,7 +56,7 @@ import {
   type EventKind,
   type MarkedEvent,
 } from '../shared/eventMarkers';
-import { FIB_DIRECTION_TEXT, fibRetracement } from '../shared/fibonacci';
+import { FIB_DIRECTION_TEXT, fibRetracement, fibSkipText } from '../shared/fibonacci';
 import { INDICATOR_MAP } from '../shared/indicators';
 import { maTrend, TREND_TEXT, type MaTrend } from '../shared/maTrend';
 import { MA_PERIODS, rangeStart, sma, type MaPeriod, type RangeKey } from '../shared/timeseries';
@@ -257,11 +257,16 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
     savePref('cm-fib-range', r);
   };
   // 費波那契回撤：波段高低點取自「波段」按鈕選的期間（不跟圖表區間走）
+  const fibRangeLabel = FIB_RANGES.find((r) => r.k === fibRange)?.label ?? '';
   const fib = useMemo(() => {
     const last = twBars.at(-1);
     if (!showFib || !last) return null;
     return fibRetracement(twBars, rangeStart(last[0], fibRange));
   }, [twBars, fibRange, showFib]);
+  const fibSkip = useMemo(() => {
+    const last = twBars.at(-1);
+    return !fib && last ? fibSkipText(twBars, rangeStart(last[0], fibRange), fibRangeLabel) : '';
+  }, [fib, twBars, fibRange, fibRangeLabel]);
   // 櫃買的費波那契：各自抓自己的高低點，波段期間與加權共用
   const subBars = useMemo(() => {
     const f = files[FIB_SUB_ID];
@@ -272,6 +277,10 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
     if (!showFib || !last) return null;
     return fibRetracement(subBars, rangeStart(last[0], fibRange));
   }, [subBars, fibRange, showFib]);
+  const subFibSkip = useMemo(() => {
+    const last = subBars.at(-1);
+    return !subFib && last ? fibSkipText(subBars, rangeStart(last[0], fibRange), fibRangeLabel) : '';
+  }, [subFib, subBars, fibRange, fibRangeLabel]);
 
   const panes = useMemo<PaneData[]>(() => {
     if (twBars.length === 0) return [];
@@ -626,8 +635,8 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         加權下方的狀態列（參考、不計分）：短線＝收盤與 MA10 都在 MA20 之上為「短多」、都在之下為「短空」；中期＝收盤與 MA60 對 MA120 同理（MA60＝季線）；不一致為「整理」。乖離＝收盤離該均線多少 %。均線落後價格，狀態列描述現況、不是預測。
         加權 K 棒下方的圓點是 CPI（藍）、就業報告（橘）、FOMC（黑）公布後台股第一個交易日：美東 08:30／14:00 公布時台股已收盤，反應落在隔天。
         動市場的是「實績 vs 預期」不是年增率本身，所以用標記不畫月線；2026-10 起有市場預期，點到該日圖例會列出驚喜值。標記只在 1 年以內的區間顯示（半年以內才附文字）。
-        費波那契回撤（參考、不計分）：取「波段」按鈕所選期間內加權的最高與最低價當波段（預設 1 年，不跟圖表區間走），高點在後＝多頭回撤、由高點往下畫 0.236／0.382／0.5／0.618（粗線）／0.786 當支撐；低點在後則由低點往上畫當壓力。3 個月看短波段、1 年看大波段；線上不標數字，比例與價位列在圖例。
-        它靠「大家都在看」才有效，單獨用勝率不高；守住 0.618 算趨勢延續、跌破要當趨勢可能反轉。高低點相隔不到 20 根 K 棒不畫。
+        費波那契回撤（參考、不計分）：取「波段」按鈕所選期間內加權的最高與最低價當波段（預設 1 年，不跟圖表區間走），高點在後＝多頭回撤、由高點往下畫 0.236／0.382／0.5／0.618（粗線）／0.786 當支撐；低點在後則由低點往上畫當壓力。3 個月看短波段、1 年看大波段；「波段」和圖表區間是兩排不同的按鈕，圖例開頭會標現在用的波段；線上不標數字，比例與價位列在圖例。
+        它靠「大家都在看」才有效，單獨用勝率不高；守住 0.618 算趨勢延續、跌破要當趨勢可能反轉。高低點相隔不到 20 根 K 棒不畫；若最低（高）點就是最新一根，表示還在創波段新低（高）、下方（上方）沒有費波位，圖例會直接說明。
         櫃買窗格用同一顆開關、同一個波段期間，但各自抓櫃買自己的高低點；窗格較矮，只畫 0.382／0.5／0.618 三條，價位列在圖例。
       </p>
         {stats && Number.isFinite(stats.normal.meanAbs) && (
@@ -726,7 +735,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
               {legend.trend && <TrendRow t={legend.trend} />}
               {showFib && (
                 <div className="cm-fib muted">
-                  📐{' '}
+                  📐 波段{fibRangeLabel}｜加權{' '}
                   {fib ? (
                     <>
                       {FIB_DIRECTION_TEXT[fib.direction]} {fmtNum(fib.lo, 0)}（{fib.loDate.slice(5)}）→{fmtNum(fib.hi, 0)}（{fib.hiDate.slice(5)}）｜已
@@ -745,7 +754,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
                       </span>
                     </>
                   ) : (
-                    '此區間高低點相隔不到 20 根 K 棒，不畫'
+                    fibSkip
                   )}
                 </div>
               )}
@@ -772,7 +781,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
                       </span>
                     </>
                   ) : (
-                    '此區間高低點相隔不到 20 根 K 棒，不畫'
+                    subFibSkip
                   )}
                 </div>
               )}

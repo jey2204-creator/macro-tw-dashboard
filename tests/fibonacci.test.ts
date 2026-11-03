@@ -41,3 +41,16 @@ describe('fibRetracement', () => {
     expect(fibRetracement(bars('2025-01-01', Array.from({ length: 30 }, () => 100)), null)).toBeNull();
   });
 });
+
+import { fibSkipText } from '../src/shared/fibonacci';
+describe('fibSkipText', () => {
+  const bar = (d: string, p: number): Bar => [d, p, p + 1, p - 1, p];
+  it('最低點是最新一根 → 創新低說明；否則相隔太近', () => {
+    const down = Array.from({ length: 10 }, (_, i) => bar(`2026-01-${String(i + 1).padStart(2, '0')}`, 100 - i));
+    expect(fibSkipText(down, null, '3個月')).toContain('創3個月新低');
+    const up = Array.from({ length: 10 }, (_, i) => bar(`2026-01-${String(i + 1).padStart(2, '0')}`, 100 + i));
+    expect(fibSkipText(up, null, '1年')).toContain('創1年新高');
+    const mid = [bar('2026-01-01', 100), bar('2026-01-02', 90), bar('2026-01-03', 110), bar('2026-01-04', 100)];
+    expect(fibSkipText(mid, null, '1年')).toContain('不到 20 根');
+  });
+});
