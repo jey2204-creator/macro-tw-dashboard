@@ -56,7 +56,7 @@ import {
   type EventKind,
   type MarkedEvent,
 } from '../shared/eventMarkers';
-import { FIB_DIRECTION_TEXT, fibRetracement, fibSkipText } from '../shared/fibonacci';
+import { FIB_DIRECTION_TEXT, type Fib, fibRetracement, fibSkipText } from '../shared/fibonacci';
 import { INDICATOR_MAP } from '../shared/indicators';
 import { maTrend, TREND_TEXT, type MaTrend } from '../shared/maTrend';
 import { MA_PERIODS, rangeStart, sma, type MaPeriod, type RangeKey } from '../shared/timeseries';
@@ -199,6 +199,9 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
   const twSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const fibLinesRef = useRef<IPriceLine[]>([]);
   const subSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  /** 波段高低點標記（加權、櫃買各一組，和公布日標記分開的 plugin） */
+  const fibMarkersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
+  const subFibMarkersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   const subFibLinesRef = useRef<IPriceLine[]>([]);
   const [showFib, setShowFib] = useState(() => loadPref('cm-fib', ['1', '0'] as const, '1') === '1');
   const [fibRange, setFibRange] = useState<RangeKey>(() => loadPref<RangeKey>('cm-fib-range', FIB_RANGE_KEYS, '1Y'));
@@ -387,6 +390,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
     const tw = chart.addSeries(CandlestickSeries, { ...candleOpts, priceFormat: { type: 'price', precision: 0, minMove: 1 } }, 0);
     tw.setData(twBars.map((b) => ({ time: b[0] as Time, open: b[1], high: b[2], low: b[3], close: b[4] })));
     markersRef.current = createSeriesMarkers(tw, []);
+    fibMarkersRef.current = createSeriesMarkers(tw, []);
     twSeriesRef.current = tw;
     addMas(0, twBars, twMa);
     watermark(0, `加權指數${maText}`);
@@ -412,7 +416,10 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
       } else {
         const s = chart.addSeries(CandlestickSeries, { ...candleOpts, priceFormat }, paneIndex);
         s.setData(p.bars.map((b) => ({ time: b[0] as Time, open: b[1], high: b[2], low: b[3], close: b[4] })));
-        if (p.id === FIB_SUB_ID) subSeriesRef.current = s;
+        if (p.id === FIB_SUB_ID) {
+          subSeriesRef.current = s;
+          subFibMarkersRef.current = createSeriesMarkers(s, []);
+        }
       }
       addMas(paneIndex, p.bars, p.ma);
       watermark(paneIndex, `${p.label}（${sessionText(p.session, aligned)}）`);
@@ -430,6 +437,8 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
       markersRef.current = null;
       twSeriesRef.current = null;
       subSeriesRef.current = null;
+      fibMarkersRef.current = null;
+      subFibMarkersRef.current = null;
     };
   }, [twBars, twMa, panes, aligned, mas, themeKey]);
 
@@ -499,6 +508,26 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         }),
       );
   }, [chartGen, subFib]);
+
+  // 波段高低點標記：高點那根上方「▼ 價位」、低點那根下方「▲ 價位」，顏色同費波線
+  useEffect(() => {
+    const color = cssVar('--text-3');
+    const apply = (m: ISeriesMarkersPluginApi<Time> | null, f: Fib | null, decimals: number) => {
+      if (!m) return;
+      if (!f) {
+        m.setMarkers([]);
+        return;
+      }
+      const markers: SeriesMarker<Time>[] = [
+        { time: f.hiDate as Time, position: 'aboveBar', shape: 'arrowDown', size: 0.8, color, text: `波段高 ${fmtNum(f.hi, decimals)}` },
+        { time: f.loDate as Time, position: 'belowBar', shape: 'arrowUp', size: 0.8, color, text: `波段低 ${fmtNum(f.lo, decimals)}` },
+      ];
+      markers.sort((a, b) => (a.time as string).localeCompare(b.time as string));
+      m.setMarkers(markers);
+    };
+    apply(fibMarkersRef.current, fib, 0);
+    apply(subFibMarkersRef.current, subFib, 2);
+  }, [chartGen, fib, subFib]);
 
   // 時間區間與重設：每個窗格 Y 軸自動縮放、高度比例設回預設
   useEffect(() => {
@@ -635,7 +664,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         加權下方的狀態列（參考、不計分）：短線＝收盤與 MA10 都在 MA20 之上為「短多」、都在之下為「短空」；中期＝收盤與 MA60 對 MA120 同理（MA60＝季線）；不一致為「整理」。乖離＝收盤離該均線多少 %。均線落後價格，狀態列描述現況、不是預測。
         加權 K 棒下方的圓點是 CPI（藍）、就業報告（橘）、FOMC（黑）公布後台股第一個交易日：美東 08:30／14:00 公布時台股已收盤，反應落在隔天。
         動市場的是「實績 vs 預期」不是年增率本身，所以用標記不畫月線；2026-10 起有市場預期，點到該日圖例會列出驚喜值。標記只在 1 年以內的區間顯示（半年以內才附文字）。
-        費波那契回撤（參考、不計分）：取「波段」按鈕所選期間內加權的最高與最低價當波段（預設 1 年，不跟圖表區間走），高點在後＝多頭回撤、由高點往下畫 0.236／0.382／0.5／0.618（粗線）／0.786 當支撐；低點在後則由低點往上畫當壓力。3 個月看短波段、1 年看大波段；「波段」和圖表區間是兩排不同的按鈕，圖例開頭會標現在用的波段；線上不標數字，比例與價位列在圖例。
+        費波那契回撤（參考、不計分）：取「波段」按鈕所選期間內加權的最高與最低價當波段（預設 1 年，不跟圖表區間走），高點在後＝多頭回撤、由高點往下畫 0.236／0.382／0.5／0.618（粗線）／0.786 當支撐；低點在後則由低點往上畫當壓力。3 個月看短波段、1 年看大波段；「波段」和圖表區間是兩排不同的按鈕，圖例開頭會標現在用的波段；線上不標數字，比例與價位列在圖例；波段高點那根 K 棒上方標「▼ 波段高」、低點下方標「▲ 波段低」，才知道費波是從哪兩根算的（波段點在畫面外時看圖例日期）。
         它靠「大家都在看」才有效，單獨用勝率不高；守住 0.618 算趨勢延續、跌破要當趨勢可能反轉。高低點相隔不到 20 根 K 棒不畫；若最低（高）點就是最新一根，表示還在創波段新低（高）、下方（上方）沒有費波位，圖例會直接說明。
         櫃買窗格用同一顆開關、同一個波段期間，但各自抓櫃買自己的高低點；窗格較矮，只畫 0.382／0.5／0.618 三條，價位列在圖例。
       </p>
