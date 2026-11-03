@@ -61,3 +61,23 @@ export function fibRetracement(bars: readonly Bar[], startDate: string | null, m
 }
 
 export const FIB_DIRECTION_TEXT = { up: '多頭回撤', down: '空頭反彈' } as const;
+
+/** fibRetracement 回 null 時的說明：區分「極值就是最新一根（還在創新高／新低）」與單純相隔太近 */
+export function fibSkipText(bars: readonly Bar[], startDate: string | null, rangeLabel: string, minGap = FIB_MIN_GAP): string {
+  let from = 0;
+  if (startDate) {
+    while (from < bars.length && bars[from]![0] < startDate) from++;
+  }
+  const seg = bars.slice(from);
+  if (seg.length < 2) return '資料不足，不畫';
+  let hiI = 0;
+  let loI = 0;
+  seg.forEach((b, i) => {
+    if (b[2] > seg[hiI]![2]) hiI = i;
+    if (b[3] < seg[loI]![3]) loI = i;
+  });
+  const last = seg.length - 1;
+  if (loI === last && hiI !== last) return `最低點就是最新一根（創${rangeLabel}新低），下方沒有費波支撐，不畫`;
+  if (hiI === last && loI !== last) return `最高點就是最新一根（創${rangeLabel}新高），上方沒有費波壓力，不畫`;
+  return `高低點相隔不到 ${minGap} 根 K 棒，不畫`;
+}
