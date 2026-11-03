@@ -908,6 +908,10 @@ th {
 .wide .cm-host {
   height: calc(240px + var(--cm-panes, 3) * 150px);
 }
+.cm-fib {
+  margin: 2px 0;
+  line-height: 1.5;
+}
 .cm-trend {
   display: flex;
   flex-wrap: wrap;
