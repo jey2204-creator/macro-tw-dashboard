@@ -1335,3 +1335,22 @@ th {
 .sh-sigs li {
   margin: 1px 0;
 }
+
+/* ===== 均線「全部」切換鈕：全開實心／部分開半透明／全關空心 ===== */
+.ma-chip.ma-all {
+  font-weight: 600;
+  opacity: 0.55;
+  border-style: dashed;
+}
+.ma-chip.ma-all[aria-pressed='mixed'] {
+  opacity: 0.8;
+  border-style: dashed;
+  border-color: var(--text-3);
+}
+.ma-chip.ma-all[aria-pressed='true'] {
+  opacity: 1;
+  border-style: solid;
+  background: var(--text-3);
+  color: var(--surface);
+  border-color: var(--text-3);
+}
