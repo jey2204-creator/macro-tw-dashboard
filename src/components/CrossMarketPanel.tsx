@@ -91,6 +91,9 @@ const FIB_RANGES: { k: RangeKey; label: string }[] = [
   { k: '5Y', label: '5年' },
 ];
 const FIB_RANGE_KEYS = FIB_RANGES.map((r) => r.k);
+/** 櫃買窗格較矮，只畫三條主要線（0.382／0.5／0.618），用同一顆開關與同一個波段設定 */
+const FIB_SUB_ID = 'tpex';
+const FIB_SUB_RATIOS: readonly number[] = [0.382, 0.5, 0.618];
 /** 波動統計起算日（通膨主題期） */
 const STATS_SINCE = '2022-01-01';
 
@@ -195,6 +198,8 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
   const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   const twSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const fibLinesRef = useRef<IPriceLine[]>([]);
+  const subSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const subFibLinesRef = useRef<IPriceLine[]>([]);
   const [showFib, setShowFib] = useState(() => loadPref('cm-fib', ['1', '0'] as const, '1') === '1');
   const [fibRange, setFibRange] = useState<RangeKey>(() => loadPref<RangeKey>('cm-fib-range', FIB_RANGE_KEYS, '1Y'));
   const [offMas, setOffMas] = useState<{ list: OffMa[]; paneH: number }>({ list: [], paneH: 0 });
@@ -257,6 +262,16 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
     if (!showFib || !last) return null;
     return fibRetracement(twBars, rangeStart(last[0], fibRange));
   }, [twBars, fibRange, showFib]);
+  // 櫃買的費波那契：各自抓自己的高低點，波段期間與加權共用
+  const subBars = useMemo(() => {
+    const f = files[FIB_SUB_ID];
+    return selected.includes(FIB_SUB_ID) && f?.status === 'ready' ? f.data.data : [];
+  }, [files, selected]);
+  const subFib = useMemo(() => {
+    const last = subBars.at(-1);
+    if (!showFib || !last) return null;
+    return fibRetracement(subBars, rangeStart(last[0], fibRange));
+  }, [subBars, fibRange, showFib]);
 
   const panes = useMemo<PaneData[]>(() => {
     if (twBars.length === 0) return [];
@@ -388,6 +403,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
       } else {
         const s = chart.addSeries(CandlestickSeries, { ...candleOpts, priceFormat }, paneIndex);
         s.setData(p.bars.map((b) => ({ time: b[0] as Time, open: b[1], high: b[2], low: b[3], close: b[4] })));
+        if (p.id === FIB_SUB_ID) subSeriesRef.current = s;
       }
       addMas(paneIndex, p.bars, p.ma);
       watermark(paneIndex, `${p.label}（${sessionText(p.session, aligned)}）`);
@@ -404,6 +420,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
       chartRef.current = null;
       markersRef.current = null;
       twSeriesRef.current = null;
+      subSeriesRef.current = null;
     };
   }, [twBars, twMa, panes, aligned, mas, themeKey]);
 
@@ -452,6 +469,27 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
       }),
     );
   }, [chartGen, fib]);
+
+  // 櫃買窗格的費波那契：只畫 0.382／0.5／0.618（窗格矮，五條會跟 K 棒疊在一起）
+  useEffect(() => {
+    const s = subSeriesRef.current;
+    if (!s) return;
+    for (const l of subFibLinesRef.current) s.removePriceLine(l);
+    subFibLinesRef.current = [];
+    if (!subFib) return;
+    const color = cssVar('--text-3');
+    subFibLinesRef.current = subFib.levels
+      .filter((l) => FIB_SUB_RATIOS.includes(l.ratio))
+      .map((l) =>
+        s.createPriceLine({
+          price: l.price,
+          color,
+          lineWidth: l.ratio === FIB_KEY_RATIO ? 2 : 1,
+          lineStyle: l.ratio === FIB_KEY_RATIO ? LineStyle.Solid : LineStyle.Dashed,
+          axisLabelVisible: false,
+        }),
+      );
+  }, [chartGen, subFib]);
 
   // 時間區間與重設：每個窗格 Y 軸自動縮放、高度比例設回預設
   useEffect(() => {
@@ -590,6 +628,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         動市場的是「實績 vs 預期」不是年增率本身，所以用標記不畫月線；2026-10 起有市場預期，點到該日圖例會列出驚喜值。標記只在 1 年以內的區間顯示（半年以內才附文字）。
         費波那契回撤（參考、不計分）：取「波段」按鈕所選期間內加權的最高與最低價當波段（預設 1 年，不跟圖表區間走），高點在後＝多頭回撤、由高點往下畫 0.236／0.382／0.5／0.618（粗線）／0.786 當支撐；低點在後則由低點往上畫當壓力。3 個月看短波段、1 年看大波段；線上不標數字，比例與價位列在圖例。
         它靠「大家都在看」才有效，單獨用勝率不高；守住 0.618 算趨勢延續、跌破要當趨勢可能反轉。高低點相隔不到 20 根 K 棒不畫。
+        櫃買窗格用同一顆開關、同一個波段期間，但各自抓櫃買自己的高低點；窗格較矮，只畫 0.382／0.5／0.618 三條，價位列在圖例。
       </p>
         {stats && Number.isFinite(stats.normal.meanAbs) && (
           <p className="small muted num cm-stats">
@@ -615,7 +654,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         <button type="button" className="ma-chip" aria-pressed={showEvents} onClick={toggleEvents} title="CPI／就業報告／FOMC 公布後台股第一個交易日">
           📌 公布日標記
         </button>
-        <button type="button" className="ma-chip" aria-pressed={showFib} onClick={toggleFib} title="以所選波段內的加權高低點畫 0.236／0.382／0.5／0.618／0.786">
+        <button type="button" className="ma-chip" aria-pressed={showFib} onClick={toggleFib} title="以所選波段內的加權高低點畫 0.236／0.382／0.5／0.618／0.786；櫃買窗格只畫 0.382／0.5／0.618">
           📐 費波那契回撤
         </button>
         {showFib && (
@@ -703,6 +742,33 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
                             {l.ratio === FIB_KEY_RATIO ? <b>{l.ratio}</b> : l.ratio} {fmtNum(l.price, 0)}
                           </span>
                         ))}
+                      </span>
+                    </>
+                  ) : (
+                    '此區間高低點相隔不到 20 根 K 棒，不畫'
+                  )}
+                </div>
+              )}
+              {showFib && subBars.length > 0 && (
+                <div className="cm-fib muted">
+                  📐 櫃買{' '}
+                  {subFib ? (
+                    <>
+                      {FIB_DIRECTION_TEXT[subFib.direction]} {fmtNum(subFib.lo, 2)}（{subFib.loDate.slice(5)}）→{fmtNum(subFib.hi, 2)}（{subFib.hiDate.slice(5)}）｜已
+                      {subFib.direction === 'up' ? '回撤' : '反彈'} <b className={subFib.direction === 'up' ? 'down' : 'up'}>{subFib.current.toFixed(3)}</b>
+                      {subFib.between && (
+                        <>
+                          ，在 {subFib.between[0]}～{subFib.between[1]} 之間
+                        </>
+                      )}
+                      <span className="cm-fib-levels">
+                        {subFib.levels
+                          .filter((l) => FIB_SUB_RATIOS.includes(l.ratio))
+                          .map((l) => (
+                            <span key={l.ratio}>
+                              {l.ratio === FIB_KEY_RATIO ? <b>{l.ratio}</b> : l.ratio} {fmtNum(l.price, 2)}
+                            </span>
+                          ))}
                       </span>
                     </>
                   ) : (

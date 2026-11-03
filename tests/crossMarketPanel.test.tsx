@@ -13,7 +13,7 @@ vi.mock('lightweight-charts', () => {
         chartLog.seriesPanes.push(paneIndex);
         chartLog.seriesOpts.push({ pane: paneIndex, opts });
         if (!panes.has(paneIndex)) panes.set(paneIndex, { setStretchFactor: () => {}, getHeight: () => 300 });
-        return { setData: () => {}, createPriceLine: () => {}, priceToCoordinate: () => 100, priceScale: () => ({ applyOptions: () => {} }) };
+        return { setData: () => {}, createPriceLine: () => ({}), removePriceLine: () => {}, priceToCoordinate: () => 100, priceScale: () => ({ applyOptions: () => {} }) };
       },
       panes: () => [...panes.keys()].sort((a, b) => a - b).map((k) => panes.get(k)!),
       priceScale: () => ({ applyOptions: () => {} }),
@@ -126,6 +126,11 @@ describe('跨市場對照面板', () => {
     expect(screen.getByRole('button', { name: '波段1年' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('button', { name: '3個月' }).getAttribute('aria-pressed')).toBe('true'); // 圖表區間
     expect(screen.getByText(/此區間高低點相隔不到 20 根 K 棒/)).toBeTruthy();
+    expect(screen.queryByText(/📐 櫃買/)).toBeNull();
+    // 選進櫃買後多一行櫃買圖例（共用同一顆開關與波段）
+    fireEvent.click(screen.getByRole('button', { name: '櫃買指數' }));
+    await waitFor(() => expect(screen.getByText(/📐 櫃買/)).toBeTruthy());
+    expect(screen.getAllByText(/此區間高低點相隔不到 20 根 K 棒/)).toHaveLength(2);
     fireEvent.click(screen.getByRole('button', { name: '波段3個月' }));
     expect(window.localStorage.getItem('cm-fib-range')).toBe('3M');
     expect(screen.getByRole('button', { name: '波段3個月' }).getAttribute('aria-pressed')).toBe('true');
@@ -133,6 +138,7 @@ describe('跨市場對照面板', () => {
     expect(window.localStorage.getItem('cm-fib')).toBe('0');
     expect(screen.queryByRole('button', { name: '波段3個月' })).toBeNull();
     expect(screen.queryByText(/此區間高低點相隔不到 20 根 K 棒/)).toBeNull();
+    expect(screen.queryByText(/📐 櫃買/)).toBeNull();
   });
 
   it('取消對齊後浮水印標示未對齊；新增序列會增加窗格並記住選擇', async () => {
