@@ -433,8 +433,8 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         color,
         lineWidth: l.ratio === FIB_KEY_RATIO ? 2 : 1,
         lineStyle: l.ratio === FIB_KEY_RATIO ? LineStyle.Solid : LineStyle.Dashed,
+        // 不在窗格內標文字（五個標籤會蓋住右側 K 棒）；比例與價位列在圖例，價格軸只標數值
         axisLabelVisible: true,
-        title: l.ratio.toFixed(3),
       }),
     );
   }, [chartGen, fib]);
@@ -672,6 +672,13 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
                           ，在 {fib.between[0]}～{fib.between[1]} 之間
                         </>
                       )}
+                      <span className="cm-fib-levels">
+                        {fib.levels.map((l) => (
+                          <span key={l.ratio}>
+                            {l.ratio === FIB_KEY_RATIO ? <b>{l.ratio}</b> : l.ratio} {fmtNum(l.price, 0)}
+                          </span>
+                        ))}
+                      </span>
                     </>
                   ) : (
                     '此區間高低點相隔不到 20 根 K 棒，不畫'

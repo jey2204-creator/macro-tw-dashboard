@@ -912,6 +912,11 @@ th {
   margin: 2px 0;
   line-height: 1.5;
 }
+.cm-fib-levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 10px;
+}
 .cm-trend {
   display: flex;
   flex-wrap: wrap;
