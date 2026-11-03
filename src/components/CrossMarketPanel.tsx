@@ -10,6 +10,7 @@ import {
   createSeriesMarkers,
   createTextWatermark,
   type IChartApi,
+  type IPriceLine,
   type ISeriesApi,
   type ISeriesMarkersPluginApi,
   type MouseEventParams,
@@ -54,6 +55,7 @@ import {
   type EventKind,
   type MarkedEvent,
 } from '../shared/eventMarkers';
+import { FIB_DIRECTION_TEXT, fibRetracement } from '../shared/fibonacci';
 import { INDICATOR_MAP } from '../shared/indicators';
 import { maTrend, TREND_TEXT, type MaTrend } from '../shared/maTrend';
 import { MA_PERIODS, rangeStart, sma, type MaPeriod, type RangeKey } from '../shared/timeseries';
@@ -78,6 +80,16 @@ const EVENT_COLOR_VAR: Record<EventKind, string> = { cpi: '--accent', jobs: '--w
 const EVENT_RANGES: RangeKey[] = ['3M', '6M', '1Y'];
 /** 文字標籤只在半年以內顯示（1 年約 36 個標記，加文字會互相蓋住） */
 const EVENT_TEXT_RANGES: RangeKey[] = ['3M', '6M'];
+/** 費波那契線：0.618 加粗；其餘細虛線 */
+const FIB_KEY_RATIO = 0.618;
+/** 費波那契波段長度：和圖表區間脫鉤（看 3 個月 K 線也能疊 1 年大波段），預設 1 年 */
+const FIB_RANGES: { k: RangeKey; label: string }[] = [
+  { k: '3M', label: '3個月' },
+  { k: '6M', label: '半年' },
+  { k: '1Y', label: '1年' },
+  { k: '5Y', label: '5年' },
+];
+const FIB_RANGE_KEYS = FIB_RANGES.map((r) => r.k);
 /** 波動統計起算日（通膨主題期） */
 const STATS_SINCE = '2022-01-01';
 
@@ -181,6 +193,9 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
   const chartRef = useRef<IChartApi | null>(null);
   const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   const twSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const fibLinesRef = useRef<IPriceLine[]>([]);
+  const [showFib, setShowFib] = useState(() => loadPref('cm-fib', ['1', '0'] as const, '1') === '1');
+  const [fibRange, setFibRange] = useState<RangeKey>(() => loadPref<RangeKey>('cm-fib-range', FIB_RANGE_KEYS, '1Y'));
   const [offMas, setOffMas] = useState<{ list: OffMa[]; paneH: number }>({ list: [], paneH: 0 });
   const [showEvents, setShowEvents] = useState(() => loadPref('cm-events', ['1', '0'] as const, '1') === '1');
   const near = useNearViewport(sectionRef);
@@ -227,6 +242,20 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
     setShowEvents(!showEvents);
     savePref('cm-events', showEvents ? '0' : '1');
   };
+  const toggleFib = () => {
+    setShowFib(!showFib);
+    savePref('cm-fib', showFib ? '0' : '1');
+  };
+  const pickFibRange = (r: RangeKey) => {
+    setFibRange(r);
+    savePref('cm-fib-range', r);
+  };
+  // 費波那契回撤：波段高低點取自「波段」按鈕選的期間（不跟圖表區間走）
+  const fib = useMemo(() => {
+    const last = twBars.at(-1);
+    if (!showFib || !last) return null;
+    return fibRetracement(twBars, rangeStart(last[0], fibRange));
+  }, [twBars, fibRange, showFib]);
 
   const panes = useMemo<PaneData[]>(() => {
     if (twBars.length === 0) return [];
@@ -403,6 +432,26 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
     m.setMarkers(markers);
   }, [chartGen, showEvents, range, eventsByDay]);
 
+  // 費波那契水平線：畫在加權窗格（價格線不參與自動縮放，不會撐開 Y 軸）
+  useEffect(() => {
+    const tw = twSeriesRef.current;
+    if (!tw) return;
+    for (const l of fibLinesRef.current) tw.removePriceLine(l);
+    fibLinesRef.current = [];
+    if (!fib) return;
+    const color = cssVar('--text-3');
+    fibLinesRef.current = fib.levels.map((l) =>
+      tw.createPriceLine({
+        price: Math.round(l.price),
+        color,
+        lineWidth: l.ratio === FIB_KEY_RATIO ? 2 : 1,
+        lineStyle: l.ratio === FIB_KEY_RATIO ? LineStyle.Solid : LineStyle.Dashed,
+        // 窗格內不標文字、價格軸也不標（五個標籤疊成一塊會蓋住 K 棒與刻度）；比例與價位列在圖例
+        axisLabelVisible: false,
+      }),
+    );
+  }, [chartGen, fib]);
+
   // 時間區間與重設：每個窗格 Y 軸自動縮放、高度比例設回預設
   useEffect(() => {
     const chart = chartRef.current;
@@ -538,6 +587,8 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         加權下方的狀態列（參考、不計分）：短線＝收盤與 MA10 都在 MA20 之上為「短多」、都在之下為「短空」；中期＝收盤與 MA60 對 MA120 同理（MA60＝季線）；不一致為「整理」。乖離＝收盤離該均線多少 %。均線落後價格，狀態列描述現況、不是預測。
         加權 K 棒下方的圓點是 CPI（藍）、就業報告（橘）、FOMC（黑）公布後台股第一個交易日：美東 08:30／14:00 公布時台股已收盤，反應落在隔天。
         動市場的是「實績 vs 預期」不是年增率本身，所以用標記不畫月線；2026-10 起有市場預期，點到該日圖例會列出驚喜值。標記只在 1 年以內的區間顯示（半年以內才附文字）。
+        費波那契回撤（參考、不計分）：取「波段」按鈕所選期間內加權的最高與最低價當波段（預設 1 年，不跟圖表區間走），高點在後＝多頭回撤、由高點往下畫 0.236／0.382／0.5／0.618（粗線）／0.786 當支撐；低點在後則由低點往上畫當壓力。3 個月看短波段、1 年看大波段；線上不標數字，比例與價位列在圖例。
+        它靠「大家都在看」才有效，單獨用勝率不高；守住 0.618 算趨勢延續、跌破要當趨勢可能反轉。高低點相隔不到 20 根 K 棒不畫。
       </p>
         {stats && Number.isFinite(stats.normal.meanAbs) && (
           <p className="small muted num cm-stats">
@@ -563,6 +614,19 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         <button type="button" className="ma-chip" aria-pressed={showEvents} onClick={toggleEvents} title="CPI／就業報告／FOMC 公布後台股第一個交易日">
           📌 公布日標記
         </button>
+        <button type="button" className="ma-chip" aria-pressed={showFib} onClick={toggleFib} title="以所選波段內的加權高低點畫 0.236／0.382／0.5／0.618／0.786">
+          📐 費波那契回撤
+        </button>
+        {showFib && (
+          <div className="seg cm-fib-seg" role="group" aria-label="費波那契波段長度">
+            <span className="small muted">波段</span>
+            {FIB_RANGES.map((r) => (
+              <button key={r.k} type="button" aria-label={`波段${r.label}`} aria-pressed={fibRange === r.k} onClick={() => pickFibRange(r.k)}>
+                {r.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="cp-mas" role="group" aria-label="對照序列">
@@ -619,6 +683,31 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
                 <span className={legend.twPct !== null ? (legend.twPct > 0 ? 'up' : legend.twPct < 0 ? 'down' : '') : ''}>{fmtPct(legend.twPct)}</span>
               </div>
               {legend.trend && <TrendRow t={legend.trend} />}
+              {showFib && (
+                <div className="cm-fib muted">
+                  📐{' '}
+                  {fib ? (
+                    <>
+                      {FIB_DIRECTION_TEXT[fib.direction]} {fmtNum(fib.lo, 0)}（{fib.loDate.slice(5)}）→{fmtNum(fib.hi, 0)}（{fib.hiDate.slice(5)}）｜已
+                      {fib.direction === 'up' ? '回撤' : '反彈'} <b className={fib.direction === 'up' ? 'down' : 'up'}>{fib.current.toFixed(3)}</b>
+                      {fib.between && (
+                        <>
+                          ，在 {fib.between[0]}～{fib.between[1]} 之間
+                        </>
+                      )}
+                      <span className="cm-fib-levels">
+                        {fib.levels.map((l) => (
+                          <span key={l.ratio}>
+                            {l.ratio === FIB_KEY_RATIO ? <b>{l.ratio}</b> : l.ratio} {fmtNum(l.price, 0)}
+                          </span>
+                        ))}
+                      </span>
+                    </>
+                  ) : (
+                    '此區間高低點相隔不到 20 根 K 棒，不畫'
+                  )}
+                </div>
+              )}
               {legend.events.map((e) => (
                 <div key={e.label} className="cm-event">
                   <i className="swatch" style={{ background: `var(${EVENT_COLOR_VAR[e.kind]})` }} />

@@ -119,6 +119,22 @@ describe('跨市場對照面板', () => {
     expect(screen.getByText(/加權資料 2026-10-13/)).toBeTruthy();
   });
 
+  it('費波那契：預設開、波段預設 1 年且與圖表區間脫鉤；資料太短時圖例說明不畫；關閉後波段按鈕收起', async () => {
+    render(<CrossMarketPanel version="v1" themeKey="auto-false-tw" mas={[60, 240]} onMas={() => {}} />);
+    await waitFor(() => expect(chartLog.watermarks.length).toBe(4));
+    expect(screen.getByRole('button', { name: /費波那契回撤/ }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: '波段1年' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: '3個月' }).getAttribute('aria-pressed')).toBe('true'); // 圖表區間
+    expect(screen.getByText(/此區間高低點相隔不到 20 根 K 棒/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '波段3個月' }));
+    expect(window.localStorage.getItem('cm-fib-range')).toBe('3M');
+    expect(screen.getByRole('button', { name: '波段3個月' }).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: /費波那契回撤/ }));
+    expect(window.localStorage.getItem('cm-fib')).toBe('0');
+    expect(screen.queryByRole('button', { name: '波段3個月' })).toBeNull();
+    expect(screen.queryByText(/此區間高低點相隔不到 20 根 K 棒/)).toBeNull();
+  });
+
   it('取消對齊後浮水印標示未對齊；新增序列會增加窗格並記住選擇', async () => {
     render(<CrossMarketPanel version="v1" themeKey="auto-false-tw" mas={[60, 240]} onMas={() => {}} />);
     await waitFor(() => expect(chartLog.watermarks.length).toBe(4));
