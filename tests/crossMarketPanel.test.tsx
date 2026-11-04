@@ -4,20 +4,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Bar, SeriesFile } from '../src/shared/types';
 
 // lightweight-charts 需要 canvas，jsdom 沒有：以假物件記錄呼叫，驗證窗格與序列的配置
-const chartLog = { seriesOpts: [] as { pane: number; opts: Record<string, unknown> }[], seriesPanes: [] as number[], watermarks: [] as string[], removed: 0, markers: [] as { time: string; text?: string }[] };
+const chartLog = { seriesOpts: [] as { pane: number; opts: Record<string, unknown> }[], seriesPanes: [] as number[], watermarks: [] as string[], removed: 0, markers: [] as { time: string; text?: string }[], fibMarkers: [] as { time: string; text?: string }[] };
+const markerOwners = new WeakSet<object>();
 vi.mock('lightweight-charts', () => {
   const makeChart = () => {
-    const panes = new Map<number, { setStretchFactor: () => void; getHeight: () => number }>();
+    const panes = new Map<number, { setStretchFactor: () => void; getHeight: () => number; getHTMLElement: () => null }>();
     return {
       addSeries: (_type: unknown, opts: Record<string, unknown>, paneIndex = 0) => {
         chartLog.seriesPanes.push(paneIndex);
         chartLog.seriesOpts.push({ pane: paneIndex, opts });
-        if (!panes.has(paneIndex)) panes.set(paneIndex, { setStretchFactor: () => {}, getHeight: () => 300 });
-        return { setData: () => {}, createPriceLine: () => ({}), removePriceLine: () => {}, priceToCoordinate: () => 100, priceScale: () => ({ applyOptions: () => {} }) };
+        if (!panes.has(paneIndex)) panes.set(paneIndex, { setStretchFactor: () => {}, getHeight: () => 300, getHTMLElement: () => null });
+        return { setData: () => {}, createPriceLine: () => ({}), removePriceLine: () => {}, priceToCoordinate: () => 100, priceScale: () => ({ applyOptions: () => {} }), getPane: () => ({ paneIndex: () => paneIndex }) };
       },
       panes: () => [...panes.keys()].sort((a, b) => a - b).map((k) => panes.get(k)!),
-      priceScale: () => ({ applyOptions: () => {} }),
-      timeScale: () => ({ fitContent: () => {}, setVisibleRange: () => {}, setVisibleLogicalRange: () => {}, applyOptions: () => {}, subscribeVisibleLogicalRangeChange: () => {}, unsubscribeVisibleLogicalRangeChange: () => {}, getVisibleRange: () => null, timeToCoordinate: () => null }),
+      priceScale: () => ({ applyOptions: () => {}, width: () => 60 }),
+      timeScale: () => ({ fitContent: () => {}, setVisibleRange: () => {}, setVisibleLogicalRange: () => {}, applyOptions: () => {}, subscribeVisibleLogicalRangeChange: () => {}, unsubscribeVisibleLogicalRangeChange: () => {}, getVisibleRange: () => null, getVisibleLogicalRange: () => null, timeToIndex: () => null, timeToCoordinate: () => null, width: () => 300 }),
       subscribeCrosshairMove: () => {},
       unsubscribeCrosshairMove: () => {},
       applyOptions: () => {},
@@ -28,11 +29,17 @@ vi.mock('lightweight-charts', () => {
   };
   return {
     createChart: () => makeChart(),
-    createSeriesMarkers: () => ({
-      setMarkers: (m: { time: string; text?: string }[]) => {
-        chartLog.markers = m;
-      },
-    }),
+    // 同一條序列上第一個 markers plugin 是公布日標記（記進 chartLog.markers），之後的是費波波段高低點（記進 fibMarkers）
+    createSeriesMarkers: (series: object) => {
+      const first = !markerOwners.has(series);
+      markerOwners.add(series);
+      return {
+        setMarkers: (m: { time: string; text?: string }[]) => {
+          if (first) chartLog.markers = m;
+          else chartLog.fibMarkers = m;
+        },
+      };
+    },
     createTextWatermark: (_pane: unknown, opts: { lines: { text: string }[] }) => {
       chartLog.watermarks.push(opts.lines[0]!.text);
       return { detach: () => {} };
