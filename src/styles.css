@@ -923,11 +923,18 @@ th {
   margin: 2px 0;
   line-height: 1.5;
 }
-.cm-fib-seg {
+.cm-ranges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
   align-items: center;
 }
-.cm-fib-seg > span {
+.cm-ranges .seg {
+  align-items: center;
+}
+.cm-ranges .seg > span {
   padding: 0 6px;
+  white-space: nowrap;
 }
 .cm-fib-levels {
   display: flex;

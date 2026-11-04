@@ -735,7 +735,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         加權下方的狀態列（參考、不計分）：短線＝收盤與 MA10 都在 MA20 之上為「短多」、都在之下為「短空」；中期＝收盤與 MA60 對 MA120 同理（MA60＝季線）；不一致為「整理」。乖離＝收盤離該均線多少 %。均線落後價格，狀態列描述現況、不是預測。
         加權 K 棒下方的圓點是 CPI（藍）、就業報告（橘）、FOMC（黑）公布後台股第一個交易日：美東 08:30／14:00 公布時台股已收盤，反應落在隔天。
         動市場的是「實績 vs 預期」不是年增率本身，所以用標記不畫月線；2026-10 起有市場預期，點到該日圖例會列出驚喜值。標記只在 1 年以內的區間顯示（半年以內才附文字）。
-        費波那契回撤（參考、不計分）：取「波段」按鈕所選期間內加權的最高與最低價當波段（預設 1 年，不跟圖表區間走），高點在後＝多頭回撤、由高點往下畫 0.236／0.382／0.5／0.618（粗線）／0.786 當支撐；低點在後則由低點往上畫當壓力。3 個月看短波段、1 年看大波段；「波段」和圖表區間是兩排不同的按鈕，圖例開頭會標現在用的波段；線上不標數字，比例與價位列在圖例；波段高點那根 K 棒上方標「▼ 波段高」、低點下方標「▲ 波段低」，才知道費波是從哪兩根算的；波段點貼近左右緣時文字改放 K 棒旁邊（波段點在畫面外時看圖例日期）。
+        費波那契回撤（參考、不計分）：取「波段」按鈕所選期間內加權的最高與最低價當波段（預設 1 年，不跟圖表區間走），高點在後＝多頭回撤、由高點往下畫 0.236／0.382／0.5／0.618（粗線）／0.786 當支撐；低點在後則由低點往上畫當壓力。3 個月看短波段、1 年看大波段；「📐波段」按鈕放在「區間」按鈕旁邊：區間＝圖看多長的 K 線、波段＝費波用哪段高低點，是兩個不同的設定，圖例開頭會標現在用的波段；線上不標數字，比例與價位列在圖例；波段高點那根 K 棒上方標「▼ 波段高」、低點下方標「▲ 波段低」，才知道費波是從哪兩根算的；波段點貼近左右緣時文字改放 K 棒旁邊（波段點在畫面外時看圖例日期）。
         它靠「大家都在看」才有效，單獨用勝率不高；守住 0.618 算趨勢延續、跌破要當趨勢可能反轉。高低點相隔不到 20 根 K 棒不畫；若最低（高）點就是最新一根，表示還在創波段新低（高）、下方（上方）沒有費波位，圖例會直接說明。
         櫃買、費半、KOSPI 窗格用同一顆開關、同一個波段期間，但各自抓自己的高低點（費半對齊後以台股交易日計）；櫃買窗格較矮只畫 0.382／0.5／0.618 三條，費半、KOSPI 比照加權畫全套五條，價位都列在圖例。
       </p>
@@ -766,16 +766,6 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         <button type="button" className="ma-chip" aria-pressed={showFib} onClick={toggleFib} title="以所選波段內的高低點畫 0.236／0.382／0.5／0.618／0.786（加權、費半、KOSPI）；櫃買窗格只畫 0.382／0.5／0.618">
           📐 費波那契回撤
         </button>
-        {showFib && (
-          <div className="seg cm-fib-seg" role="group" aria-label="費波那契波段長度">
-            <span className="small muted">波段</span>
-            {FIB_RANGES.map((r) => (
-              <button key={r.k} type="button" aria-label={`波段${r.label}`} aria-pressed={fibRange === r.k} onClick={() => pickFibRange(r.k)}>
-                {r.label}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       <div className="cp-mas" role="group" aria-label="對照序列">
@@ -807,15 +797,29 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         ))}
       </div>
 
-      <div className="seg" role="group" aria-label="時間區間">
-        {RANGES.map((r) => (
-          <button key={r.k} type="button" aria-pressed={range === r.k} onClick={() => pickRange(r.k)}>
-            {r.label}
+      {/* 時間區間（圖看多長）與費波波段（費波用哪段高低點）並排，兩排選項長得像、放一起才看得出是兩個設定 */}
+      <div className="cm-ranges">
+        <div className="seg" role="group" aria-label="時間區間">
+          <span className="small muted">區間</span>
+          {RANGES.map((r) => (
+            <button key={r.k} type="button" aria-pressed={range === r.k} onClick={() => pickRange(r.k)}>
+              {r.label}
+            </button>
+          ))}
+          <button type="button" onClick={() => setResetKey((k) => k + 1)} aria-label="重設圖表縮放" title="重設縮放">
+            ↺ 重設
           </button>
-        ))}
-        <button type="button" onClick={() => setResetKey((k) => k + 1)} aria-label="重設圖表縮放" title="重設縮放">
-          ↺ 重設
-        </button>
+        </div>
+        {showFib && (
+          <div className="seg cm-fib-seg" role="group" aria-label="費波那契波段長度">
+            <span className="small muted">📐波段</span>
+            {FIB_RANGES.map((r) => (
+              <button key={r.k} type="button" aria-label={`波段${r.label}`} aria-pressed={fibRange === r.k} onClick={() => pickFibRange(r.k)}>
+                {r.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {failed.length > 0 && <p className="small warn">載入失敗：{failed.join('；')}</p>}
