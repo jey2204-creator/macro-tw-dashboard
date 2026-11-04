@@ -4,8 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Bar, SeriesFile } from '../src/shared/types';
 
 // lightweight-charts 需要 canvas，jsdom 沒有：以假物件記錄呼叫，驗證窗格與序列的配置
-const chartLog = { seriesOpts: [] as { pane: number; opts: Record<string, unknown> }[], seriesPanes: [] as number[], watermarks: [] as string[], removed: 0, markers: [] as { time: string; text?: string }[], fibMarkers: [] as { time: string; text?: string }[] };
+const chartLog = { seriesOpts: [] as { pane: number; opts: Record<string, unknown> }[], seriesPanes: [] as number[], watermarks: [] as string[], removed: 0, markers: [] as { time: string; text?: string }[], fibMarkers: [] as { time: string; text?: string }[], markerPlugins: 0 };
 const markerOwners = new WeakSet<object>();
+let twMarkerSeries: object | null = null;
 vi.mock('lightweight-charts', () => {
   const makeChart = () => {
     const panes = new Map<number, { setStretchFactor: () => void; getHeight: () => number; getHTMLElement: () => null }>();
@@ -24,19 +25,25 @@ vi.mock('lightweight-charts', () => {
       applyOptions: () => {},
       remove: () => {
         chartLog.removed++;
+        chartLog.markerPlugins = 0;
       },
     };
   };
   return {
     createChart: () => makeChart(),
-    // 同一條序列上第一個 markers plugin 是公布日標記（記進 chartLog.markers），之後的是費波波段高低點（記進 fibMarkers）
+    // 加權序列上第一個 markers plugin 是公布日標記（記進 chartLog.markers）；加權第二個是費波波段高低點（記進 fibMarkers）；
+    // 對照窗格（櫃買、費半、KOSPI）各只有一個費波標記 plugin，不記
     createSeriesMarkers: (series: object) => {
-      const first = !markerOwners.has(series);
-      markerOwners.add(series);
+      // 每次重建圖表第一個拿到 plugin 的是加權序列
+      if (chartLog.markerPlugins === 0) twMarkerSeries = series;
+      chartLog.markerPlugins++;
+      const twSeries = series === twMarkerSeries;
+      const first = twSeries && !markerOwners.has(series);
+      if (first) markerOwners.add(series);
       return {
         setMarkers: (m: { time: string; text?: string }[]) => {
           if (first) chartLog.markers = m;
-          else chartLog.fibMarkers = m;
+          else if (twSeries) chartLog.fibMarkers = m;
         },
       };
     },
@@ -134,11 +141,16 @@ describe('跨市場對照面板', () => {
     expect(screen.getByRole('button', { name: '3個月' }).getAttribute('aria-pressed')).toBe('true'); // 圖表區間
     expect(screen.getByText(/📐 波段1年｜加權/)).toBeTruthy();
     expect(screen.getByText(/📐 波段1年｜加權/).textContent).toMatch(/不畫/);
+    // 費半、KOSPI 預設在對照裡，各自一行費波圖例；USD/TWD 不畫費波
+    expect(screen.getByText(/📐 費半SOX/)).toBeTruthy();
+    expect(screen.getByText(/📐 KOSPI/)).toBeTruthy();
+    expect(screen.queryByText(/📐 USD\/TWD/)).toBeNull();
     expect(screen.queryByText(/📐 櫃買/)).toBeNull();
+    expect(document.querySelectorAll('.cm-fib')).toHaveLength(3);
     // 選進櫃買後多一行櫃買圖例（共用同一顆開關與波段）
     fireEvent.click(screen.getByRole('button', { name: '櫃買指數' }));
     await waitFor(() => expect(screen.getByText(/📐 櫃買/)).toBeTruthy());
-    expect(document.querySelectorAll('.cm-fib')).toHaveLength(2);
+    expect(document.querySelectorAll('.cm-fib')).toHaveLength(4);
     fireEvent.click(screen.getByRole('button', { name: '波段3個月' }));
     expect(window.localStorage.getItem('cm-fib-range')).toBe('3M');
     expect(screen.getByText(/📐 波段3個月｜加權/)).toBeTruthy();
