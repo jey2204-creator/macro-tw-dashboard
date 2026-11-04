@@ -8,17 +8,17 @@ const chartLog = { seriesOpts: [] as { pane: number; opts: Record<string, unknow
 const markerOwners = new WeakSet<object>();
 vi.mock('lightweight-charts', () => {
   const makeChart = () => {
-    const panes = new Map<number, { setStretchFactor: () => void; getHeight: () => number }>();
+    const panes = new Map<number, { setStretchFactor: () => void; getHeight: () => number; getHTMLElement: () => null }>();
     return {
       addSeries: (_type: unknown, opts: Record<string, unknown>, paneIndex = 0) => {
         chartLog.seriesPanes.push(paneIndex);
         chartLog.seriesOpts.push({ pane: paneIndex, opts });
-        if (!panes.has(paneIndex)) panes.set(paneIndex, { setStretchFactor: () => {}, getHeight: () => 300 });
-        return { setData: () => {}, createPriceLine: () => ({}), removePriceLine: () => {}, priceToCoordinate: () => 100, priceScale: () => ({ applyOptions: () => {} }) };
+        if (!panes.has(paneIndex)) panes.set(paneIndex, { setStretchFactor: () => {}, getHeight: () => 300, getHTMLElement: () => null });
+        return { setData: () => {}, createPriceLine: () => ({}), removePriceLine: () => {}, priceToCoordinate: () => 100, priceScale: () => ({ applyOptions: () => {} }), getPane: () => ({ paneIndex: () => paneIndex }) };
       },
       panes: () => [...panes.keys()].sort((a, b) => a - b).map((k) => panes.get(k)!),
       priceScale: () => ({ applyOptions: () => {} }),
-      timeScale: () => ({ fitContent: () => {}, setVisibleRange: () => {}, setVisibleLogicalRange: () => {}, applyOptions: () => {}, subscribeVisibleLogicalRangeChange: () => {}, unsubscribeVisibleLogicalRangeChange: () => {}, getVisibleRange: () => null, timeToCoordinate: () => null }),
+      timeScale: () => ({ fitContent: () => {}, setVisibleRange: () => {}, setVisibleLogicalRange: () => {}, applyOptions: () => {}, subscribeVisibleLogicalRangeChange: () => {}, unsubscribeVisibleLogicalRangeChange: () => {}, getVisibleRange: () => null, getVisibleLogicalRange: () => null, timeToIndex: () => null, timeToCoordinate: () => null }),
       subscribeCrosshairMove: () => {},
       unsubscribeCrosshairMove: () => {},
       applyOptions: () => {},
