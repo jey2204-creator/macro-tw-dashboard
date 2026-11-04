@@ -81,6 +81,7 @@ const DATES = ['2026-10-01', '2026-10-02', '2026-10-05', '2026-10-06', '2026-10-
 const FILES: Record<string, SeriesFile> = {
   taiex: series('taiex', DATES.map((d, i) => flat(d, 46000 + i * 100))),
   sox: series('sox', DATES.map((d, i) => flat(d, 7000 + i * 10))),
+  nasdaq: series('nasdaq', DATES.map((d, i) => flat(d, 24000 + i * 20))),
   kospi: series('kospi', DATES.map((d, i) => flat(d, 3500 + i * 5))),
   usdtwd: series('usdtwd', DATES.map((d, i) => flat(d, 32 + i * 0.01))),
   us10y: series('us10y', DATES.map((d, i) => flat(d, 5 + i * 0.01)), true),
@@ -151,6 +152,10 @@ describe('跨市場對照面板', () => {
     fireEvent.click(screen.getByRole('button', { name: '櫃買指數' }));
     await waitFor(() => expect(screen.getByText(/📐 櫃買/)).toBeTruthy());
     expect(document.querySelectorAll('.cm-fib')).toHaveLength(4);
+    // NASDAQ 也畫費波（美股三指數比照費半）
+    fireEvent.click(screen.getByRole('button', { name: 'NASDAQ' }));
+    await waitFor(() => expect(screen.getByText(/📐 NASDAQ/)).toBeTruthy());
+    expect(document.querySelectorAll('.cm-fib')).toHaveLength(5);
     fireEvent.click(screen.getByRole('button', { name: '波段3個月' }));
     expect(window.localStorage.getItem('cm-fib-range')).toBe('3M');
     expect(screen.getByText(/📐 波段3個月｜加權/)).toBeTruthy();
