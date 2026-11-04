@@ -76,9 +76,9 @@ const TOP_STRETCH = 1.6;
 // 加權窗格：長均線不參與 Y 軸自動縮放（否則 MA240 把刻度拉寬、K 棒被壓扁）；超出畫面時在邊緣標距離
 const NO_AUTOSCALE_MAS: readonly MaPeriod[] = [120, 240];
 type OffMa = { p: MaPeriod; value: number; pct: number; side: 'above' | 'below' };
-type FibSideLabel = { key: string; text: string; x: number; y: number };
-/** 波段點距可視範圍左緣不到幾根 K 棒時，標記文字改放右側（置中文字會被左緣切掉） */
-const FIB_EDGE_BARS = 3;
+type FibSideLabel = { key: string; text: string; x: number; y: number; side: 'left' | 'right' };
+/** 波段點距圖表左／右緣不到幾 px 時，置中文字會被切掉 → 改放 K 棒右側／左側（約半個文字寬） */
+const FIB_EDGE_PX = 50;
 /** 公布日標記顏色（CSS 變數）；只在 1 年以內的區間顯示（5 年約 180 個點會蓋住 K 線、撐開 Y 軸） */
 const EVENT_COLOR_VAR: Record<EventKind, string> = { cpi: '--accent', jobs: '--warn', fomc: '--text-1' };
 const EVENT_RANGES: RangeKey[] = ['3M', '6M', '1Y'];
@@ -211,6 +211,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
   const [offMas, setOffMas] = useState<{ list: OffMa[]; paneH: number }>({ list: [], paneH: 0 });
   /** 波段高低點貼近左緣時，文字改以浮動標籤放在 K 棒右側（key＝'tw-lo' 等） */
   const [fibSide, setFibSide] = useState<FibSideLabel[]>([]);
+  const [priceAxisW, setPriceAxisW] = useState(0);
   const [showEvents, setShowEvents] = useState(() => loadPref('cm-events', ['1', '0'] as const, '1') === '1');
   const near = useNearViewport(sectionRef);
   const [selected, setSelected] = useState<string[]>(() => loadIdList('cm-ids', COMPARE_IDS, DEFAULT_COMPARE));
@@ -515,7 +516,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
   }, [chartGen, subFib]);
 
   // 波段高低點標記：高點那根上方「▼ 價位」、低點那根下方「▲ 價位」，顏色同費波線。
-  // 波段點在可視範圍最左 3 根以內時，置中文字會被切掉 → 標記不帶字，文字改成浮動標籤放在 K 棒右側
+  // 波段點貼近圖表左／右緣（50px 內）時，置中文字會被切掉 → 標記不帶字，文字改成浮動標籤放在 K 棒右側／左側
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
@@ -538,35 +539,36 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
         const ts = chart.timeScale();
-        const vis = ts.getVisibleLogicalRange();
+        const plotW = ts.width();
         const hostBox = host?.getBoundingClientRect();
         const side: FibSideLabel[] = [];
         for (const g of groups) {
           if (!g.m) continue;
           const markers: SeriesMarker<Time>[] = [];
           for (const a of g.anchors) {
-            const idx = ts.timeToIndex(a.time as Time, true);
-            const nearLeft = vis !== null && idx !== null && idx - vis.from < FIB_EDGE_BARS && idx >= vis.from - 0.5;
+            const x = ts.timeToCoordinate(a.time as Time);
+            const edge = x === null ? null : x < FIB_EDGE_PX ? 'right' : plotW - x < FIB_EDGE_PX ? 'left' : null;
             markers.push({
               time: a.time as Time,
               position: a.above ? 'aboveBar' : 'belowBar',
               shape: a.above ? 'arrowDown' : 'arrowUp',
               size: 0.8,
               color,
-              text: nearLeft ? undefined : a.text,
+              text: edge ? undefined : a.text,
             });
-            if (nearLeft && g.s && hostBox) {
-              const x = ts.timeToCoordinate(a.time as Time);
+            if (edge && x !== null && g.s && hostBox) {
               const y = g.s.priceToCoordinate(a.price);
               const paneEl = chart.panes()[g.s.getPane().paneIndex()]?.getHTMLElement();
               const paneTop = paneEl ? paneEl.getBoundingClientRect().top - hostBox.top : 0;
-              if (x !== null && y !== null) side.push({ key: a.key, text: a.text, x: x + 10, y: paneTop + y + (a.above ? -22 : 10) });
+              // side=right：標籤放 K 棒右側（left 定位）；side=left：放左側（right 定位，從繪圖區右緣算）
+              if (y !== null) side.push({ key: a.key, text: a.text, side: edge, x: edge === 'right' ? x + 10 : plotW - x + 10, y: paneTop + y + (a.above ? -22 : 10) });
             }
           }
           markers.sort((p, q) => (p.time as string).localeCompare(q.time as string));
           g.m.setMarkers(markers);
         }
         setFibSide((prev) => (JSON.stringify(prev) === JSON.stringify(side) ? prev : side));
+        setPriceAxisW(chart.priceScale('right').width());
       });
     };
     apply();
@@ -716,7 +718,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         加權下方的狀態列（參考、不計分）：短線＝收盤與 MA10 都在 MA20 之上為「短多」、都在之下為「短空」；中期＝收盤與 MA60 對 MA120 同理（MA60＝季線）；不一致為「整理」。乖離＝收盤離該均線多少 %。均線落後價格，狀態列描述現況、不是預測。
         加權 K 棒下方的圓點是 CPI（藍）、就業報告（橘）、FOMC（黑）公布後台股第一個交易日：美東 08:30／14:00 公布時台股已收盤，反應落在隔天。
         動市場的是「實績 vs 預期」不是年增率本身，所以用標記不畫月線；2026-10 起有市場預期，點到該日圖例會列出驚喜值。標記只在 1 年以內的區間顯示（半年以內才附文字）。
-        費波那契回撤（參考、不計分）：取「波段」按鈕所選期間內加權的最高與最低價當波段（預設 1 年，不跟圖表區間走），高點在後＝多頭回撤、由高點往下畫 0.236／0.382／0.5／0.618（粗線）／0.786 當支撐；低點在後則由低點往上畫當壓力。3 個月看短波段、1 年看大波段；「波段」和圖表區間是兩排不同的按鈕，圖例開頭會標現在用的波段；線上不標數字，比例與價位列在圖例；波段高點那根 K 棒上方標「▼ 波段高」、低點下方標「▲ 波段低」，才知道費波是從哪兩根算的；波段點貼近左緣時文字改放 K 棒右側（波段點在畫面外時看圖例日期）。
+        費波那契回撤（參考、不計分）：取「波段」按鈕所選期間內加權的最高與最低價當波段（預設 1 年，不跟圖表區間走），高點在後＝多頭回撤、由高點往下畫 0.236／0.382／0.5／0.618（粗線）／0.786 當支撐；低點在後則由低點往上畫當壓力。3 個月看短波段、1 年看大波段；「波段」和圖表區間是兩排不同的按鈕，圖例開頭會標現在用的波段；線上不標數字，比例與價位列在圖例；波段高點那根 K 棒上方標「▼ 波段高」、低點下方標「▲ 波段低」，才知道費波是從哪兩根算的；波段點貼近左右緣時文字改放 K 棒旁邊（波段點在畫面外時看圖例日期）。
         它靠「大家都在看」才有效，單獨用勝率不高；守住 0.618 算趨勢延續、跌破要當趨勢可能反轉。高低點相隔不到 20 根 K 棒不畫；若最低（高）點就是最新一根，表示還在創波段新低（高）、下方（上方）沒有費波位，圖例會直接說明。
         櫃買窗格用同一顆開關、同一個波段期間，但各自抓櫃買自己的高低點；窗格較矮，只畫 0.382／0.5／0.618 三條，價位列在圖例。
       </p>
@@ -904,7 +906,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
           <div className="cm-host-wrap">
             <div ref={hostRef} className="chart-host cm-host" style={hostStyle} />
             {fibSide.map((l) => (
-              <div key={l.key} className="cm-fibside num" style={{ left: l.x, top: l.y }}>
+              <div key={l.key} className="cm-fibside num" style={l.side === 'right' ? { left: l.x, top: l.y } : { right: l.x + priceAxisW, top: l.y }}>
                 {l.text}
               </div>
             ))}

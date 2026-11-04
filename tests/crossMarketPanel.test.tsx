@@ -17,8 +17,8 @@ vi.mock('lightweight-charts', () => {
         return { setData: () => {}, createPriceLine: () => ({}), removePriceLine: () => {}, priceToCoordinate: () => 100, priceScale: () => ({ applyOptions: () => {} }), getPane: () => ({ paneIndex: () => paneIndex }) };
       },
       panes: () => [...panes.keys()].sort((a, b) => a - b).map((k) => panes.get(k)!),
-      priceScale: () => ({ applyOptions: () => {} }),
-      timeScale: () => ({ fitContent: () => {}, setVisibleRange: () => {}, setVisibleLogicalRange: () => {}, applyOptions: () => {}, subscribeVisibleLogicalRangeChange: () => {}, unsubscribeVisibleLogicalRangeChange: () => {}, getVisibleRange: () => null, getVisibleLogicalRange: () => null, timeToIndex: () => null, timeToCoordinate: () => null }),
+      priceScale: () => ({ applyOptions: () => {}, width: () => 60 }),
+      timeScale: () => ({ fitContent: () => {}, setVisibleRange: () => {}, setVisibleLogicalRange: () => {}, applyOptions: () => {}, subscribeVisibleLogicalRangeChange: () => {}, unsubscribeVisibleLogicalRangeChange: () => {}, getVisibleRange: () => null, getVisibleLogicalRange: () => null, timeToIndex: () => null, timeToCoordinate: () => null, width: () => 300 }),
       subscribeCrosshairMove: () => {},
       unsubscribeCrosshairMove: () => {},
       applyOptions: () => {},
