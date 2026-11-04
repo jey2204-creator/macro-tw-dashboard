@@ -208,9 +208,11 @@ describe('跨市場對照面板', () => {
     expect(chartLog.seriesPanes).toEqual([0, 0, 1, 1, 2, 2]);
     expect(fetched.some((u) => u.includes('series/net_foreign.json'))).toBe(false);
     expect(fetched.some((u) => u.includes('foreign-chips.json'))).toBe(true);
-    const legend = document.querySelector('.cm-legend')!.textContent!;
-    expect(legend).toMatch(/台外資 -10\.0 億美元/);
-    expect(legend).toMatch(/韓外資 -9\.0 億美元/);
+    // 對照窗格的數值寫在各自窗格裡（.cm-pane-info），不在頂部圖例
+    const legend = [...document.querySelectorAll('.cm-pane-info')].map((e) => e.textContent).join('｜');
+    expect(legend).toMatch(/-10\.0 億美元/);
+    expect(legend).toMatch(/-9\.0 億美元/);
+    expect(document.querySelector('.cm-legend')!.textContent).not.toMatch(/億美元/);
     expect(screen.queryByText(/ρ60：/)).toBeNull();
   });
 

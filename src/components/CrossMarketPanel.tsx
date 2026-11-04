@@ -79,6 +79,8 @@ type OffMa = { p: MaPeriod; value: number; pct: number; side: 'above' | 'below' 
 type FibSideLabel = { key: string; text: string; x: number; y: number; side: 'left' | 'right' };
 /** 波段點距圖表左／右緣不到幾 px 時，置中文字會被切掉 → 改放 K 棒右側／左側（約半個文字寬） */
 const FIB_EDGE_PX = 50;
+/** 窗格內資訊列的頂緣：避開窗格左上角的標題浮水印（12px 字） */
+const PANE_INFO_TOP = 18;
 /** 公布日標記顏色（CSS 變數）；只在 1 年以內的區間顯示（5 年約 180 個點會蓋住 K 線、撐開 Y 軸） */
 const EVENT_COLOR_VAR: Record<EventKind, string> = { cpi: '--accent', jobs: '--warn', fomc: '--text-1' };
 const EVENT_RANGES: RangeKey[] = ['3M', '6M', '1Y'];
@@ -226,6 +228,8 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
   /** 波段高低點貼近左緣時，文字改以浮動標籤放在 K 棒右側（key＝'tw-lo' 等） */
   const [fibSide, setFibSide] = useState<FibSideLabel[]>([]);
   const [priceAxisW, setPriceAxisW] = useState(0);
+  /** 各對照窗格頂緣距圖表容器頂的 px（index＝窗格序號，0＝加權）；窗格內資訊列靠它定位 */
+  const [paneTops, setPaneTops] = useState<number[]>([]);
   const [showEvents, setShowEvents] = useState(() => loadPref('cm-events', ['1', '0'] as const, '1') === '1');
   const near = useNearViewport(sectionRef);
   const [selected, setSelected] = useState<string[]>(() => loadIdList('cm-ids', COMPARE_IDS, DEFAULT_COMPARE));
@@ -658,6 +662,38 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
     };
   }, [chartGen, range, resetKey, twBars, twMa, mas]);
 
+  // 對照窗格的資訊列（數值、ρ、費波）畫在各自窗格裡：追蹤每個窗格頂緣位置，窗格被拖高拖矮或重設時跟著動
+  useEffect(() => {
+    const chart = chartRef.current;
+    const host = hostRef.current;
+    if (!chart || !host) return;
+    let raf = 0;
+    const measure = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const hostTop = host.getBoundingClientRect().top;
+        const tops = chart.panes().map((p) => {
+          const el = p.getHTMLElement();
+          return el ? Math.round(el.getBoundingClientRect().top - hostTop) : 0;
+        });
+        setPaneTops((prev) => (prev.length === tops.length && prev.every((v, i) => v === tops[i]) ? prev : tops));
+      });
+    };
+    measure();
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    if (ro) {
+      ro.observe(host);
+      for (const p of chart.panes()) {
+        const el = p.getHTMLElement();
+        if (el) ro.observe(el);
+      }
+    }
+    return () => {
+      cancelAnimationFrame(raf);
+      ro?.disconnect();
+    };
+  }, [chartGen, resetKey]);
+
   // 圖例：十字線所在日期（沒有時各序列顯示自己最新一筆）
   const legend = useMemo(() => {
     if (twBars.length === 0) return null;
@@ -740,7 +776,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         動市場的是「實績 vs 預期」不是年增率本身，所以用標記不畫月線；2026-10 起有市場預期，點到該日圖例會列出驚喜值。標記只在 1 年以內的區間顯示（半年以內才附文字）。
         費波那契回撤（參考、不計分）：取「波段」按鈕所選期間內加權的最高與最低價當波段（預設 1 年，不跟圖表區間走），高點在後＝多頭回撤、由高點往下畫 0.236／0.382／0.5／0.618（粗線）／0.786 當支撐；低點在後則由低點往上畫當壓力。3 個月看短波段、1 年看大波段；「📐波段」按鈕放在「區間」按鈕旁邊：區間＝圖看多長的 K 線、波段＝費波用哪段高低點，是兩個不同的設定，圖例開頭會標現在用的波段；線上不標數字，比例與價位列在圖例；波段高點那根 K 棒上方標「▼ 波段高」、低點下方標「▲ 波段低」，才知道費波是從哪兩根算的；波段點貼近左右緣時文字改放 K 棒旁邊（波段點在畫面外時看圖例日期）。
         它靠「大家都在看」才有效，單獨用勝率不高；守住 0.618 算趨勢延續、跌破要當趨勢可能反轉。高低點相隔不到 20 根 K 棒不畫；若最低（高）點就是最新一根，表示還在創波段新低（高）、下方（上方）沒有費波位，圖例會直接說明。
-        櫃買、費半、NASDAQ、S&P 500、KOSPI、日經窗格用同一顆開關、同一個波段期間，但各自抓自己的高低點（美股對齊後以台股交易日計；KOSPI、日經與台股同時段，日期直接對得上）；櫃買窗格較矮只畫 0.382／0.5／0.618 三條，其餘比照加權畫全套五條，價位都列在圖例。
+        櫃買、費半、NASDAQ、S&P 500、KOSPI、日經窗格用同一顆開關、同一個波段期間，但各自抓自己的高低點（美股對齊後以台股交易日計；KOSPI、日經與台股同時段，日期直接對得上）；櫃買窗格較矮只畫 0.382／0.5／0.618 三條，其餘比照加權畫全套五條；對照窗格的數值、ρ 與費波價位直接寫在各自窗格的左上角（和圖放在一起對照），頂部圖例只留加權，圖才不會被推到很下面。
       </p>
         {stats && Number.isFinite(stats.normal.meanAbs) && (
           <p className="small muted num cm-stats">
@@ -865,33 +901,6 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
                   )}
                 </div>
               )}
-              {subFibs.map((sub) => (
-                <div key={sub.id} className="cm-fib muted">
-                  📐 {sub.label}{' '}
-                  {sub.fib ? (
-                    <>
-                      {FIB_DIRECTION_TEXT[sub.fib.direction]} {fmtNum(sub.fib.lo, sub.decimals)}（{sub.fib.loDate.slice(5)}）→{fmtNum(sub.fib.hi, sub.decimals)}（{sub.fib.hiDate.slice(5)}）｜已
-                      {sub.fib.direction === 'up' ? '回撤' : '反彈'} <b className={sub.fib.direction === 'up' ? 'down' : 'up'}>{sub.fib.current.toFixed(3)}</b>
-                      {sub.fib.between && (
-                        <>
-                          ，在 {sub.fib.between[0]}～{sub.fib.between[1]} 之間
-                        </>
-                      )}
-                      <span className="cm-fib-levels">
-                        {sub.fib.levels
-                          .filter((l) => sub.ratios.includes(l.ratio))
-                          .map((l) => (
-                            <span key={l.ratio}>
-                              {l.ratio === FIB_KEY_RATIO ? <b>{l.ratio}</b> : l.ratio} {fmtNum(l.price, sub.decimals)}
-                            </span>
-                          ))}
-                      </span>
-                    </>
-                  ) : (
-                    sub.skip
-                  )}
-                </div>
-              ))}
               {legend.events.map((e) => (
                 <div key={e.label} className="cm-event">
                   <i className="swatch" style={{ background: `var(${EVENT_COLOR_VAR[e.kind]})` }} />
@@ -909,22 +918,6 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
                   ))}
                 </div>
               )}
-              {legend.rows.map((r) =>
-                r.flowCum !== undefined ? (
-                  <div key={r.id}>
-                    {r.label} <b className={signClass(r.bar?.[4])}>{fmtSigned(r.bar?.[4], r.decimals)}</b> 億美元{' '}
-                    <span className="muted">{FLOW_CUM_DAYS}日</span> <span className={signClass(r.flowCum)}>{fmtSigned(r.flowCum, r.decimals)}</span>
-                  </div>
-                ) : (
-                <div key={r.id}>
-                  {r.label} <b>{fmtNum(r.bar?.[4], r.decimals)}</b>{' '}
-                  <span className={r.pct !== null ? (r.pct > 0 ? 'up' : r.pct < 0 ? 'down' : '') : ''}>{fmtPct(r.pct)}</span>{' '}
-                  <span className="muted">
-                    ρ20 {fmtRho(r.rho[20])} ρ60 {fmtRho(r.rho[60])}
-                  </span>
-                </div>
-                ),
-              )}
             </div>
           )}
           <div className="cm-host-wrap">
@@ -934,6 +927,56 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
                 {l.text}
               </div>
             ))}
+            {legend?.rows.map((r, k) => {
+              const top = paneTops[k + 1];
+              if (top === undefined) return null;
+              const sub = subFibs.find((f) => f.id === r.id);
+              return (
+                <div key={r.id} className="cm-pane-info num" style={{ top: top + PANE_INFO_TOP, maxWidth: `calc(100% - ${priceAxisW + 14}px)` }}>
+                  {r.flowCum !== undefined ? (
+                    <div>
+                      <b className={signClass(r.bar?.[4])}>{fmtSigned(r.bar?.[4], r.decimals)}</b> 億美元{' '}
+                      <span className="muted">{FLOW_CUM_DAYS}日</span> <span className={signClass(r.flowCum)}>{fmtSigned(r.flowCum, r.decimals)}</span>
+                    </div>
+                  ) : (
+                    <div>
+                      <b>{fmtNum(r.bar?.[4], r.decimals)}</b>{' '}
+                      <span className={r.pct !== null ? (r.pct > 0 ? 'up' : r.pct < 0 ? 'down' : '') : ''}>{fmtPct(r.pct)}</span>{' '}
+                      <span className="muted">
+                        ρ20 {fmtRho(r.rho[20])} ρ60 {fmtRho(r.rho[60])}
+                      </span>
+                    </div>
+                  )}
+                  {sub && (
+                    <div className="cm-fib muted">
+                      📐 {sub.label}{' '}
+                      {sub.fib ? (
+                        <>
+                          {FIB_DIRECTION_TEXT[sub.fib.direction]} {fmtNum(sub.fib.lo, sub.decimals)}（{sub.fib.loDate.slice(5)}）→{fmtNum(sub.fib.hi, sub.decimals)}（{sub.fib.hiDate.slice(5)}）｜已
+                          {sub.fib.direction === 'up' ? '回撤' : '反彈'} <b className={sub.fib.direction === 'up' ? 'down' : 'up'}>{sub.fib.current.toFixed(3)}</b>
+                          {sub.fib.between && (
+                            <>
+                              ，在 {sub.fib.between[0]}～{sub.fib.between[1]} 之間
+                            </>
+                          )}
+                          <span className="cm-fib-levels">
+                            {sub.fib.levels
+                              .filter((l) => sub.ratios.includes(l.ratio))
+                              .map((l) => (
+                                <span key={l.ratio}>
+                                  {l.ratio === FIB_KEY_RATIO ? <b>{l.ratio}</b> : l.ratio} {fmtNum(l.price, sub.decimals)}
+                                </span>
+                              ))}
+                          </span>
+                        </>
+                      ) : (
+                        sub.skip
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
             {offMas.list.map((o) => (
               <div
                 key={o.p}
