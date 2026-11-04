@@ -227,6 +227,8 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
   const [fibSide, setFibSide] = useState<FibSideLabel[]>([]);
   const [priceAxisW, setPriceAxisW] = useState(0);
   const [showEvents, setShowEvents] = useState(() => loadPref('cm-events', ['1', '0'] as const, '1') === '1');
+  /** 頂部圖例的細節（各窗格費波、各指數數值與 ρ）預設收起，加權 K 線才不會被推到很下面；開關狀態記住 */
+  const [legendOpen, setLegendOpen] = useState(() => loadPref('cm-legend-open', ['1', '0'] as const, '0') === '1');
   const near = useNearViewport(sectionRef);
   const [selected, setSelected] = useState<string[]>(() => loadIdList('cm-ids', COMPARE_IDS, DEFAULT_COMPARE));
   const [aligned, setAligned] = useState(() => loadPref('cm-align', ['1', '0'] as const, '1') === '1');
@@ -707,6 +709,15 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
   }, [twBars, twDates, twMa, trendMa, panes, hoverTime, mas, showEvents, eventsByDay, calendar, summary]);
 
   const latestRho = panes.filter((p) => !p.flow).map((p) => ({ label: p.label, rho60: p.corr[60].at(-1) ?? null }));
+  // 圖例摘要（收起時的一行）：費波哪些窗格有畫、哪些不畫；費波關閉時只說有幾個對照序列
+  const legendSummary = (() => {
+    const n = panes.length;
+    if (!showFib) return `${n} 個對照序列的數值與 ρ`;
+    const drawn = [...(fib ? ['加權'] : []), ...subFibs.filter((f) => f.fib).map((f) => f.label)];
+    const skipped = (fib ? 0 : 1) + subFibs.filter((f) => !f.fib).length;
+    const parts = [drawn.length ? `${drawn.join('、')} 有畫` : '沒有窗格有畫', ...(skipped ? [`${skipped} 個不畫`] : [])];
+    return `📐 波段${fibRangeLabel}：${parts.join('，')}｜${n} 個對照序列的數值與 ρ`;
+  })();
   const failed = COMPARE_SERIES.flatMap((s) => {
     const f = files[s.id];
     return selected.includes(s.id) && f && f.status === 'error' ? [`${specLabel(s.id)}：${f.error}`] : [];
@@ -840,6 +851,34 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
                 <span className={legend.twPct !== null ? (legend.twPct > 0 ? 'up' : legend.twPct < 0 ? 'down' : '') : ''}>{fmtPct(legend.twPct)}</span>
               </div>
               {legend.trend && <TrendRow t={legend.trend} />}
+              {legend.events.map((e) => (
+                <div key={e.label} className="cm-event">
+                  <i className="swatch" style={{ background: `var(${EVENT_COLOR_VAR[e.kind]})` }} />
+                  {e.label}
+                  {e.text && <span className="muted">：{e.text}</span>}
+                </div>
+              ))}
+              {mas.length > 0 && (
+                <div className="ma-legend">
+                  {mas.map((p) => (
+                    <span key={p}>
+                      <i className="swatch" style={{ background: `var(${MA_COLOR_VAR[p]})` }} />
+                      MA{p} {fmtNum(legend.ma[p], 0)}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <details
+                className="cm-legend-more"
+                open={legendOpen}
+                onToggle={(e) => {
+                  const open = (e.currentTarget as HTMLDetailsElement).open;
+                  if (open === legendOpen) return;
+                  setLegendOpen(open);
+                  savePref('cm-legend-open', open ? '1' : '0');
+                }}
+              >
+                <summary className="muted">{legendSummary}</summary>
               {showFib && (
                 <div className="cm-fib muted">
                   📐 波段{fibRangeLabel}｜加權{' '}
@@ -892,23 +931,6 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
                   )}
                 </div>
               ))}
-              {legend.events.map((e) => (
-                <div key={e.label} className="cm-event">
-                  <i className="swatch" style={{ background: `var(${EVENT_COLOR_VAR[e.kind]})` }} />
-                  {e.label}
-                  {e.text && <span className="muted">：{e.text}</span>}
-                </div>
-              ))}
-              {mas.length > 0 && (
-                <div className="ma-legend">
-                  {mas.map((p) => (
-                    <span key={p}>
-                      <i className="swatch" style={{ background: `var(${MA_COLOR_VAR[p]})` }} />
-                      MA{p} {fmtNum(legend.ma[p], 0)}
-                    </span>
-                  ))}
-                </div>
-              )}
               {legend.rows.map((r) =>
                 r.flowCum !== undefined ? (
                   <div key={r.id}>
@@ -925,6 +947,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
                 </div>
                 ),
               )}
+              </details>
             </div>
           )}
           <div className="cm-host-wrap">

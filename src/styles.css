@@ -978,6 +978,26 @@ th {
   min-height: 0;
   line-height: 1.5;
 }
+/* 圖例細節（費波、各指數 ρ）預設收起：摘要一行可點，展開後才列全部 */
+.cm-legend-more > summary {
+  cursor: pointer;
+  list-style: none;
+  margin: 2px 0;
+  padding: 1px 6px;
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  display: inline-block;
+  max-width: 100%;
+}
+.cm-legend-more > summary::-webkit-details-marker {
+  display: none;
+}
+.cm-legend-more > summary::after {
+  content: ' ▸';
+}
+.cm-legend-more[open] > summary::after {
+  content: ' ▾';
+}
 .cm-rho {
   margin: 2px 0 0;
 }
