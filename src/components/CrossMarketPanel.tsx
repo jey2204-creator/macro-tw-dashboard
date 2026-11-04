@@ -230,6 +230,8 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
   const [priceAxisW, setPriceAxisW] = useState(0);
   /** 各對照窗格頂緣距圖表容器頂的 px（index＝窗格序號，0＝加權）；窗格內資訊列靠它定位 */
   const [paneTops, setPaneTops] = useState<number[]>([]);
+  /** 各對照窗格的資訊列元素（key＝窗格序號），量高度用：波段高點文字落在資訊列範圍內時不標字 */
+  const paneInfoRefs = useRef(new Map<number, HTMLDivElement>());
   const [showEvents, setShowEvents] = useState(() => loadPref('cm-events', ['1', '0'] as const, '1') === '1');
   const near = useNearViewport(sectionRef);
   const [selected, setSelected] = useState<string[]>(() => loadIdList('cm-ids', COMPARE_IDS, DEFAULT_COMPARE));
@@ -569,20 +571,25 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         for (const g of groups) {
           if (!g.m) continue;
           const markers: SeriesMarker<Time>[] = [];
+          // 對照窗格左上角的資訊列（數值、ρ、費波）蓋住的範圍：波段高點的文字落在這裡會和資訊列重疊 → 只留箭頭不帶字（價位本來就列在資訊列）
+          const paneIndex = g.s?.getPane().paneIndex() ?? 0;
+          const infoH = paneIndex > 0 ? (paneInfoRefs.current.get(paneIndex)?.offsetHeight ?? 0) : 0;
+          const infoBottom = infoH > 0 ? PANE_INFO_TOP + infoH + 4 : 0;
           for (const a of g.anchors) {
             const x = ts.timeToCoordinate(a.time as Time);
             const edge = x === null ? null : x < FIB_EDGE_PX ? 'right' : plotW - x < FIB_EDGE_PX ? 'left' : null;
+            const y = g.s?.priceToCoordinate(a.price) ?? null;
+            const underInfo = a.above && y !== null && y - 22 < infoBottom;
             markers.push({
               time: a.time as Time,
               position: a.above ? 'aboveBar' : 'belowBar',
               shape: a.above ? 'arrowDown' : 'arrowUp',
               size: 0.8,
               color,
-              text: edge ? undefined : a.text,
+              text: edge || underInfo ? undefined : a.text,
             });
-            if (edge && x !== null && g.s && hostBox) {
-              const y = g.s.priceToCoordinate(a.price);
-              const paneEl = chart.panes()[g.s.getPane().paneIndex()]?.getHTMLElement();
+            if (edge && !underInfo && x !== null && g.s && hostBox) {
+              const paneEl = chart.panes()[paneIndex]?.getHTMLElement();
               const paneTop = paneEl ? paneEl.getBoundingClientRect().top - hostBox.top : 0;
               // side=right：標籤放 K 棒右側（left 定位）；side=left：放左側（right 定位，從繪圖區右緣算）
               if (y !== null) side.push({ key: a.key, text: a.text, side: edge, x: edge === 'right' ? x + 10 : plotW - x + 10, y: paneTop + y + (a.above ? -22 : 10) });
@@ -605,7 +612,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
       ts.unsubscribeVisibleLogicalRangeChange(apply);
       ro?.disconnect();
     };
-  }, [chartGen, fib, subFibs]);
+  }, [chartGen, fib, subFibs, paneTops]);
 
   // 時間區間與重設：每個窗格 Y 軸自動縮放、高度比例設回預設
   useEffect(() => {
@@ -932,7 +939,15 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
               if (top === undefined) return null;
               const sub = subFibs.find((f) => f.id === r.id);
               return (
-                <div key={r.id} className="cm-pane-info num" style={{ top: top + PANE_INFO_TOP, maxWidth: `calc(100% - ${priceAxisW + 14}px)` }}>
+                <div
+                  key={r.id}
+                  ref={(el) => {
+                    if (el) paneInfoRefs.current.set(k + 1, el);
+                    else paneInfoRefs.current.delete(k + 1);
+                  }}
+                  className="cm-pane-info num"
+                  style={{ top: top + PANE_INFO_TOP, maxWidth: `calc(100% - ${priceAxisW + 14}px)` }}
+                >
                   {r.flowCum !== undefined ? (
                     <div>
                       <b className={signClass(r.bar?.[4])}>{fmtSigned(r.bar?.[4], r.decimals)}</b> 億美元{' '}

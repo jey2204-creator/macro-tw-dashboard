@@ -968,7 +968,7 @@ th {
   color: var(--text-2);
   padding: 1px 5px;
   border-radius: 4px;
-  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
   pointer-events: none;
 }
 .cm-pane-info .cm-fib {
