@@ -96,7 +96,7 @@ const FIB_RANGES: { k: RangeKey; label: string }[] = [
 const FIB_RANGE_KEYS = FIB_RANGES.map((r) => r.k);
 /**
  * 對照窗格的費波那契：用同一顆開關與同一個波段設定，各自抓自己的高低點。
- * 櫃買窗格較矮只畫三條主要線（0.382／0.5／0.618）；費半、NASDAQ、S&P 500、KOSPI 比照加權畫全套五條。
+ * 櫃買窗格較矮只畫三條主要線（0.382／0.5／0.618）；費半、NASDAQ、S&P 500、KOSPI、日經比照加權畫全套五條。
  */
 const FIB_SUBS: { id: string; ratios: readonly number[] }[] = [
   { id: 'tpex', ratios: [0.382, 0.5, 0.618] },
@@ -104,6 +104,7 @@ const FIB_SUBS: { id: string; ratios: readonly number[] }[] = [
   { id: 'nasdaq', ratios: [...FIB_RATIOS] },
   { id: 'spx', ratios: [...FIB_RATIOS] },
   { id: 'kospi', ratios: [...FIB_RATIOS] },
+  { id: 'nikkei', ratios: [...FIB_RATIOS] },
 ];
 const FIB_SUB_IDS = FIB_SUBS.map((s) => s.id);
 const fibSubRatios = (id: string): readonly number[] => FIB_SUBS.find((s) => s.id === id)?.ratios ?? FIB_RATIOS;
@@ -739,7 +740,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         動市場的是「實績 vs 預期」不是年增率本身，所以用標記不畫月線；2026-10 起有市場預期，點到該日圖例會列出驚喜值。標記只在 1 年以內的區間顯示（半年以內才附文字）。
         費波那契回撤（參考、不計分）：取「波段」按鈕所選期間內加權的最高與最低價當波段（預設 1 年，不跟圖表區間走），高點在後＝多頭回撤、由高點往下畫 0.236／0.382／0.5／0.618（粗線）／0.786 當支撐；低點在後則由低點往上畫當壓力。3 個月看短波段、1 年看大波段；「📐波段」按鈕放在「區間」按鈕旁邊：區間＝圖看多長的 K 線、波段＝費波用哪段高低點，是兩個不同的設定，圖例開頭會標現在用的波段；線上不標數字，比例與價位列在圖例；波段高點那根 K 棒上方標「▼ 波段高」、低點下方標「▲ 波段低」，才知道費波是從哪兩根算的；波段點貼近左右緣時文字改放 K 棒旁邊（波段點在畫面外時看圖例日期）。
         它靠「大家都在看」才有效，單獨用勝率不高；守住 0.618 算趨勢延續、跌破要當趨勢可能反轉。高低點相隔不到 20 根 K 棒不畫；若最低（高）點就是最新一根，表示還在創波段新低（高）、下方（上方）沒有費波位，圖例會直接說明。
-        櫃買、費半、NASDAQ、S&P 500、KOSPI 窗格用同一顆開關、同一個波段期間，但各自抓自己的高低點（美股對齊後以台股交易日計）；櫃買窗格較矮只畫 0.382／0.5／0.618 三條，其餘比照加權畫全套五條，價位都列在圖例。
+        櫃買、費半、NASDAQ、S&P 500、KOSPI、日經窗格用同一顆開關、同一個波段期間，但各自抓自己的高低點（美股對齊後以台股交易日計；KOSPI、日經與台股同時段，日期直接對得上）；櫃買窗格較矮只畫 0.382／0.5／0.618 三條，其餘比照加權畫全套五條，價位都列在圖例。
       </p>
         {stats && Number.isFinite(stats.normal.meanAbs) && (
           <p className="small muted num cm-stats">
@@ -765,7 +766,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         <button type="button" className="ma-chip" aria-pressed={showEvents} onClick={toggleEvents} title="CPI／就業報告／FOMC 公布後台股第一個交易日">
           📌 公布日標記
         </button>
-        <button type="button" className="ma-chip" aria-pressed={showFib} onClick={toggleFib} title="以所選波段內的高低點畫 0.236／0.382／0.5／0.618／0.786（加權、費半、NASDAQ、S&P 500、KOSPI）；櫃買窗格只畫 0.382／0.5／0.618">
+        <button type="button" className="ma-chip" aria-pressed={showFib} onClick={toggleFib} title="以所選波段內的高低點畫 0.236／0.382／0.5／0.618／0.786（加權、費半、NASDAQ、S&P 500、KOSPI、日經）；櫃買窗格只畫 0.382／0.5／0.618">
           📐 費波那契回撤
         </button>
       </div>

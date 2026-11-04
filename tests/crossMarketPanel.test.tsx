@@ -156,6 +156,9 @@ describe('跨市場對照面板', () => {
     fireEvent.click(screen.getByRole('button', { name: 'NASDAQ' }));
     await waitFor(() => expect(screen.getByText(/📐 NASDAQ/)).toBeTruthy());
     expect(document.querySelectorAll('.cm-fib')).toHaveLength(5);
+    fireEvent.click(screen.getByRole('button', { name: '日經225' }));
+    await waitFor(() => expect(screen.getByText(/📐 日經/)).toBeTruthy());
+    expect(document.querySelectorAll('.cm-fib')).toHaveLength(6);
     fireEvent.click(screen.getByRole('button', { name: '波段3個月' }));
     expect(window.localStorage.getItem('cm-fib-range')).toBe('3M');
     expect(screen.getByText(/📐 波段3個月｜加權/)).toBeTruthy();
