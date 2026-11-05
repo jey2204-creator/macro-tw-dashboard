@@ -1,6 +1,7 @@
 import { addMonths, monthKey } from './dates';
 import { median } from './usValuation';
 import { valueAtOrBefore, type Point } from './timeseries';
+import type { Bar } from './types';
 
 /**
  * MSCI 台灣指數 factsheet 的月底估值紀錄（public/data/msci-tw.json）。
@@ -120,6 +121,19 @@ function monthsBetween(a: string, b: string): number {
   const [ay, am] = monthKey(a).split('-').map(Number) as [number, number];
   const [by, bm] = monthKey(b).split('-').map(Number) as [number, number];
   return (by - ay) * 12 + (bm - am);
+}
+
+/**
+ * 「台股預估 EPS 月變化」指標用：每期未來 12 月 EPS 預估與上一期相比（%），接不起來的期數略過。
+ * 2021 起 Wayback 存檔不連續（相隔 1～15 個月），之後每月一筆。
+ */
+export function fwdEpsChangeBars(file: MsciTwFile, usdTwd: readonly Point[]): Bar[] {
+  return fwdEpsPath(file, usdTwd)
+    .filter((p): p is FwdEpsPoint & { chg: number } => p.chg !== null)
+    .map((p) => {
+      const v = Math.round(p.chg * 100) / 100;
+      return [p.asOf, v, v, v, v];
+    });
 }
 
 export interface MsciSummary {

@@ -99,7 +99,9 @@ function Row({
       ? `${row.pairValue.toFixed(2)}–${last[1].toFixed(2)}%`
       : def.flow
         ? formatSigned(def, last?.[1] ?? null)
-        : formatValue(def, last?.[1]);
+        : def.signedValue && last && last[1] > 0
+          ? `+${formatValue(def, last[1])}`
+          : formatValue(def, last?.[1]);
   const tags = statusTags(row);
   const lampColor = last ? zoneAt(coloredZones(def), last[1])?.color : undefined;
   // 有官方日程時，「下次」改由 NextRelease 顯示（含門檻），避免重複

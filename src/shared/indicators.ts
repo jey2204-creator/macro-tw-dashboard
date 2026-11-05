@@ -23,7 +23,7 @@ export type SourceSpec =
   /** 證交所「證券市場統計概要」月報的大盤本益比、股價淨值比、殖利率（scripts/fetch-data/sources/twseValuation.ts） */
   | { provider: 'twse_val'; symbol: 'PE' | 'PB' | 'DY' }
   /** MSCI 台灣指數 factsheet 的預估本益比（scripts/fetch-data/sources/msciFactsheet.ts） */
-  | { provider: 'msci_tw'; symbol: 'FWD_PE' }
+  | { provider: 'msci_tw'; symbol: 'FWD_PE' | 'FWD_EPS' }
   /** multpl.com 的 Shiller S&P 500 月資料（本益比、月均價、CAPE；scripts/fetch-data/sources/multpl.ts） */
   | { provider: 'multpl'; symbol: 'SP500_PE' | 'SP500_PRICE' | 'SHILLER_PE' }
   /** FactSet Insight 週報的 S&P 500 預估本益比（scripts/fetch-data/sources/factset.ts） */
@@ -138,6 +138,8 @@ export interface IndicatorDef {
   derivedFrom?: string;
   /** 每日流量型（買賣超、增減）：近期方向看「N 日累計」 */
   flow?: boolean;
+  /** 數值本身是變化量（例如預估 EPS 月變化）：正值加「+」號 */
+  signedValue?: boolean;
   /** 圖表型式（非市場型預設依 transform 決定） */
   chart?: 'line' | 'histogram';
   /** 圖表參考線（例如融資維持率 130%／140%／170%） */
@@ -810,6 +812,25 @@ export const INDICATORS: IndicatorDef[] = [
     zoneStreak: true, rowReason: true,
     infoRule: '僅供參考，不判多空、不計分（2021 起只有 15 個月份，無法回測；看預估 EPS 每月是否下修）',
     note: 'MSCI 台灣指數（74 檔大中型股，台積電約占 54%）÷ 分析師未來 12 個月預估 EPS，月底值，每月初更新（MSCI 官方 factsheet）。與近 12 月本益比的差距＝市場押注的盈餘成長；預估 EPS 一下修，預估本益比就會變貴。與加權指數口徑不同（彭博的加權預估本益比通常較低），只跟自己的歷史比。2021 起 Wayback 存檔 14 個月份，之後每月累積。僅供參考不計分',
+  },
+  // 預估 EPS 月變化：預估本益比的分母。由各期 factsheet 反推（價格 ÷ 預估本益比 × 美元兌台幣），不另外抓取，
+  // 管線在抓完 msci_tw 與 usdtwd 後計算（scripts/fetch-data/pipeline.ts）。
+  {
+    id: 'tw_fwd_eps', name: '台股預估 EPS 月變化（MSCI 台灣，未來 12 月預估 EPS 與上期比）', short: '台股預估EPS', category: 'tw_equity', frequency: 'monthly',
+    subtitle: '台股估值｜未來12月預估EPS 與上期比',
+    unit: '%', decimals: 1, sources: [{ provider: 'msci_tw', symbol: 'FWD_EPS' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 75, chart: 'histogram',
+    // 未來 12 月的窗格每月往後滾，正常情況下預估值應小幅上升；持平到 -3% 已是偏弱，-3% 以下是明顯下修
+    zones: [
+      { max: -3, label: '下修', color: '--lamp-red' },
+      { max: 0, label: '偏弱', color: '--lamp-yellowred' },
+      { max: 3, label: '微幅上修', color: '--lamp-yellowblue' },
+      { max: Infinity, label: '上修', color: '--lamp-green' },
+    ],
+    refLines: [{ value: 0, label: '0%' }],
+    zoneStreak: true, rowReason: true, signedValue: true,
+    infoRule: '僅供參考，不判多空、不計分（2021 起只有 15 個月份，無法回測）。預估 EPS 連 2 個月下修＝預估本益比「合理」的前提鬆動，比本益比高低更早提醒',
+    note: '預估本益比的分母。由 MSCI 台灣 factsheet 反推：未來 12 月預估 EPS ∝ 指數價格 ÷ 預估本益比 × 美元兌台幣，每期與上一期相比。預估本益比下降可能是股價跌（健康修正），也可能是 EPS 被上修；本益比不變但 EPS 下修才是真正變貴——這個指標直接看分母。2021 起 Wayback 存檔不連續（相隔 1～15 個月，變化幅度較大），2025-12 起每月一筆。僅供參考不計分',
   },
   // 大盤殖利率：面板讀數用，不單獨顯示
   {
