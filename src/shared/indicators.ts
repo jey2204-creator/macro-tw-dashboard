@@ -138,6 +138,8 @@ export interface IndicatorDef {
   derivedFrom?: string;
   /** 每日流量型（買賣超、增減）：近期方向看「N 日累計」 */
   flow?: boolean;
+  /** 數值本身是變化量（例如預估 EPS 月變化）：正值加「+」號 */
+  signedValue?: boolean;
   /** 圖表型式（非市場型預設依 transform 決定） */
   chart?: 'line' | 'histogram';
   /** 圖表參考線（例如融資維持率 130%／140%／170%） */
@@ -826,7 +828,7 @@ export const INDICATORS: IndicatorDef[] = [
       { max: Infinity, label: '上修', color: '--lamp-green' },
     ],
     refLines: [{ value: 0, label: '0%' }],
-    zoneStreak: true, rowReason: true,
+    zoneStreak: true, rowReason: true, signedValue: true,
     infoRule: '僅供參考，不判多空、不計分（2021 起只有 15 個月份，無法回測）。預估 EPS 連 2 個月下修＝預估本益比「合理」的前提鬆動，比本益比高低更早提醒',
     note: '預估本益比的分母。由 MSCI 台灣 factsheet 反推：未來 12 月預估 EPS ∝ 指數價格 ÷ 預估本益比 × 美元兌台幣，每期與上一期相比。預估本益比下降可能是股價跌（健康修正），也可能是 EPS 被上修；本益比不變但 EPS 下修才是真正變貴——這個指標直接看分母。2021 起 Wayback 存檔不連續（相隔 1～15 個月，變化幅度較大），2025-12 起每月一筆。僅供參考不計分',
   },
