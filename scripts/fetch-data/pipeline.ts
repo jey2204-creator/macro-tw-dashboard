@@ -8,7 +8,8 @@ import type { Bar, SeriesFile, SourceRef, SummaryEntry, SummaryFile } from '../.
 import type { FetchLike, HttpOptions } from './http';
 import { fetchFactsetForwardPe } from './sources/factset';
 import { fetchFred } from './sources/fred';
-import { fetchMsciKorea, fetchMsciTaiwan } from './sources/msciFactsheet';
+import { fetchMsciKorea, fetchMsciTaiwan, parsedFactsheets } from './sources/msciFactsheet';
+import { fwdEpsChangeBars, mergeMsci, type MsciTwFile } from '../../src/shared/msciTw';
 import { fetchMultpl } from './sources/multpl';
 import { fetchNaverKrForeign } from './sources/naverKr';
 import { fetchNikkei } from './sources/nikkei';
@@ -235,7 +236,10 @@ export async function runPipeline(opts: PipelineOptions): Promise<SummaryFile> {
   const results = new Map<string, SeriesFile>();
   // 衍生指標（例如「淨未平倉增減」）不另外抓取，直接沿用來源指標的資料
   const derived = defs.filter((d) => d.derivedFrom);
-  const fetched = defs.filter((d) => !d.derivedFrom);
+  // 計算型指標：預估 EPS 月變化由 MSCI factsheet 與美元兌台幣反推，等兩者都抓完再算
+  const isComputed = (d: IndicatorDef) => d.sources[0]!.provider === 'msci_tw' && d.sources[0]!.symbol === 'FWD_EPS';
+  const computed = defs.filter((d) => !d.derivedFrom && isComputed(d));
+  const fetched = defs.filter((d) => !d.derivedFrom && !isComputed(d));
   // 依來源分組並行：不同網站同時抓，同一網站內循序以免觸發限流
   const groups = new Map<string, IndicatorDef[]>();
   for (const d of fetched) {
@@ -276,6 +280,52 @@ export async function runPipeline(opts: PipelineOptions): Promise<SummaryFile> {
       }
     }),
   );
+
+  for (const def of computed) {
+    const file = path.join(seriesDir, `${def.id}.json`);
+    const cached = await readJson<SeriesFile>(file);
+    let result: SeriesFile;
+    try {
+      const msciFile = await readJson<MsciTwFile>(path.join(opts.outDir, 'msci-tw.json'));
+      const msci = mergeMsci(msciFile?.schemaVersion === 1 ? msciFile : null, [...parsedFactsheets.values()], now);
+      const fx = results.get('usdtwd') ?? (await readJson<SeriesFile>(path.join(seriesDir, 'usdtwd.json')));
+      if (msci.records.length === 0) throw new Error('沒有 MSCI 台灣 factsheet 紀錄');
+      if (!fx || fx.data.length === 0) throw new Error('沒有美元兌台幣資料');
+      const data = fwdEpsChangeBars(msci, fx.data.map((b) => [b[0], b[4]]));
+      result = {
+        id: def.id,
+        source: toSourceRef(def.sources[0]!),
+        status: 'ok',
+        fetchedAt: now.toISOString(),
+        lastSuccessAt: now.toISOString(),
+        lastDate: data.at(-1)?.[0] ?? null,
+        closeOnly: true,
+        partial: false,
+        errors: [],
+        data,
+      };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      result = {
+        ...(cached ?? {
+          id: def.id,
+          source: toSourceRef(def.sources[0]!),
+          lastSuccessAt: null,
+          lastDate: null,
+          closeOnly: true,
+          partial: false,
+          data: [],
+        }),
+        status: cached?.data.length ? 'cached' : 'error',
+        fetchedAt: now.toISOString(),
+        errors: [msg],
+      };
+    }
+    await writeJsonAtomic(file, result);
+    results.set(def.id, result);
+    entries[def.id] = toSummaryEntry(def, result);
+    log(`${result.status.padEnd(8)} ${def.id.padEnd(10)} ← msci-tw.json × usdtwd last=${result.lastDate} n=${result.data.length}${result.errors.length ? ` errors=${result.errors.join(' | ')}` : ''}`);
+  }
 
   for (const def of derived) {
     const base = results.get(def.derivedFrom!);

@@ -115,3 +115,26 @@ describe('MSCI 台灣：讀數', () => {
     expect(msciSummary(null, fx, '2026-10-20')).toBeNull();
   });
 });
+
+describe('fwdEpsChangeBars', () => {
+  it('每期與上一期相比（%），第一期與接不起來的期略過', async () => {
+    const { fwdEpsChangeBars } = await import('../src/shared/msciTw');
+    const file = {
+      schemaVersion: 1 as const,
+      generatedAt: '2026-01-01T00:00:00Z',
+      records: [
+        { asOf: '2025-10-31', fwdPe: 20, pe: null, pbv: null, dy: 2, ret1m: null, ytd: 10, acwiFwdPe: null },
+        // 價格 +10%、預估本益比不變 → EPS +10%（扣殖利率近似後略低）
+        { asOf: '2025-11-28', fwdPe: 20, pe: null, pbv: null, dy: 2, ret1m: null, ytd: 21, acwiFwdPe: null },
+        // 價格不變、預估本益比升到 25 → EPS -20%
+        { asOf: '2025-12-31', fwdPe: 25, pe: null, pbv: null, dy: 2, ret1m: null, ytd: 21, acwiFwdPe: null },
+      ],
+      annual: {},
+    };
+    const fx: [string, number][] = [['2025-10-31', 30], ['2025-11-28', 30], ['2025-12-31', 30]];
+    const bars = fwdEpsChangeBars(file, fx);
+    expect(bars.map((b) => b[0])).toEqual(['2025-11-28', '2025-12-31']);
+    expect(bars[0]![4]).toBeCloseTo(9.8, 0);
+    expect(bars[1]![4]).toBeCloseTo(-20, 0);
+  });
+});
