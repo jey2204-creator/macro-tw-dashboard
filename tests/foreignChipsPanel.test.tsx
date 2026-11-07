@@ -67,8 +67,8 @@ describe('外資籌碼對照面板', () => {
       { pane: 3, type: 'Histogram', label: false, scale: 'chg-3' },
     ]);
     expect(chartLog.stretch.slice(0, 4)).toEqual([0.34, 0.22, 0.22, 0.22]);
-    // 事件相鄰 ≤ 6 根只有第一個帶字；再創極端小點不帶字
-    expect(chartLog.markers).toEqual(['OI空／散戶多', '(小點)']); // 同日事件合併一點；再創極端小點不帶字
+    // marker 只畫點（文字由 MarkerLabels 自繪）；同日事件合併一點；再創極端小點
+    expect(chartLog.markers).toEqual(['(點)', '(小點)']);
     const verdict = document.querySelector('.fc .verdict')!.textContent;
     expect(verdict).toBe('極端 2');
     expect(document.querySelector('.fc .score')!.textContent).toContain('外資期空單極端、散戶小台偏多極端');
