@@ -8,6 +8,7 @@ import {
   createSeriesMarkers,
   type AutoscaleInfo,
   type IChartApi,
+  type ISeriesApi,
   type MouseEventParams,
   type SeriesMarker,
   type Time,
@@ -25,6 +26,7 @@ import {
 } from '../shared/breadthStress';
 import { rangeStart, type RangeKey } from '../shared/timeseries';
 import { StatsRow } from './StatsRow';
+import { ChartSync } from '../lib/chartSync';
 import { BREADTH_MARKET, type BreadthMarket } from '../lib/breadthMarket';
 
 const RANGES: { k: RangeKey; label: string }[] = [
@@ -78,6 +80,8 @@ function BreadthChart({
   resetKey,
   indexLabel,
   pctRange,
+  sync,
+  syncKey,
 }: {
   data: BreadthStressFile;
   range: RangeKey;
@@ -87,9 +91,15 @@ function BreadthChart({
   indexLabel: string;
   /** 兩市共用的百分比 Y 範圍（同一個高度＝同一個 %）；只有一個市場時為 null，照常自動縮放 */
   pctRange: PctRange | null;
+  /** 兩市共用的同步器（拖曳／縮放／十字線） */
+  sync: ChartSync;
+  syncKey: string;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const priceRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const pctAtRef = useRef<(t: string) => number | null>(() => null);
+  const syncedRef = useRef<(t: string | null) => void>(() => {});
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const indexByDate = useMemo(() => new Map(data.rows.map((r, i) => [r[0], i])), [data]);
 
@@ -105,11 +115,13 @@ function BreadthChart({
     });
     attachTimeAxis(chart);
     chartRef.current = chart;
+    const off = sync.add(syncKey, { chart, series: () => priceRef.current, valueAt: (t) => pctAtRef.current(t), onSyncedTime: (t) => syncedRef.current(t) });
     return () => {
+      off();
       chart.remove();
       chartRef.current = null;
     };
-  }, []);
+  }, [sync, syncKey]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -124,7 +136,8 @@ function BreadthChart({
         panes: { separatorColor: cssVar('--border') },
       },
       grid: { vertLines: { color: grid }, horzLines: { color: grid } },
-      rightPriceScale: { borderColor: grid },
+      // 兩張圖右軸同寬，日期刻度上下對齊
+      rightPriceScale: { borderColor: grid, minimumWidth: 64 },
       timeScale: { borderColor: grid },
     });
     // 主圖改為「區間起點＝0%」的累計漲跌幅；指數點位看圖例
@@ -144,6 +157,11 @@ function BreadthChart({
     // Y 軸收緊：只依畫面內高低點縮放，上下各留約 6%（預設上方留 20%，手機上浪費一大截）
     price.priceScale().applyOptions({ scaleMargins: { top: 0.06, bottom: 0.06 } });
     price.setData(data.rows.map((r) => ({ time: r[0] as Time, value: pct(r[1]) })));
+    priceRef.current = price;
+    pctAtRef.current = (t) => {
+      const k = indexByDate.get(t);
+      return k == null ? null : pct(data.rows[k]![1]);
+    };
     price.createPriceLine({ price: 0, color: cssVar('--text-3'), lineWidth: 1, lineStyle: LineStyle.Dotted, axisLabelVisible: false, title: '' });
     const color: Record<BreadthEventType, string> = {
       panic: cssVar('--warn'),
@@ -183,9 +201,10 @@ function BreadthChart({
 
     resetPaneStretch(chart);
     return () => {
+      priceRef.current = null;
       for (const s of [price, ul, dl, adr]) chart.removeSeries(s);
     };
-  }, [data, mid, themeKey, range, pctRange]);
+  }, [data, mid, themeKey, range, pctRange, indexByDate]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -212,6 +231,7 @@ function BreadthChart({
       setHoverIdx(i ?? null);
     };
     chart.subscribeCrosshairMove(handler);
+    syncedRef.current = (t) => setHoverIdx(t ? (indexByDate.get(t) ?? null) : null);
     return () => chart.unsubscribeCrosshairMove(handler);
   }, [indexByDate]);
 
@@ -335,6 +355,7 @@ function MarketScore({ data, market }: { data: BreadthStressFile; market: Breadt
 /** 漲跌停家數監測：上市（加權）與上櫃（櫃買）同一個模組，共用時間區間、中格切換、說明；兩張圖上下排 */
 export function BreadthPanel({ twse, otc, themeKey }: { twse: BreadthStressFile | null; otc?: BreadthStressFile | null; themeKey: string }) {
   const [range, setRange] = useState<RangeKey>('3M');
+  const [sync] = useState(() => new ChartSync());
   const [mid, setMid] = useState<MidMode>('limit');
   const [resetKey, setResetKey] = useState(0);
   const [showEvents, setShowEvents] = useState<Record<BreadthMarket, boolean>>({ twse: false, tpex: false });
@@ -390,7 +411,7 @@ export function BreadthPanel({ twse, otc, themeKey }: { twse: BreadthStressFile 
         </div>
       </div>
       {markets.map((m) => (
-        <BreadthChart key={m.market} data={m.data} range={range} mid={mid} themeKey={themeKey} resetKey={resetKey} indexLabel={BREADTH_MARKET[m.market].index} pctRange={pctRange} />
+        <BreadthChart key={m.market} data={m.data} range={range} mid={mid} themeKey={themeKey} resetKey={resetKey} indexLabel={BREADTH_MARKET[m.market].index} pctRange={pctRange} sync={sync} syncKey={m.market} />
       ))}
 
       {markets.map((m) => (

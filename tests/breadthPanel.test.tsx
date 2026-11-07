@@ -21,7 +21,7 @@ vi.mock('lightweight-charts', () => {
     removeSeries: () => {},
     panes: () => [{ setStretchFactor: () => {} }, { setStretchFactor: () => {} }, { setStretchFactor: () => {} }],
     priceScale: () => ({ applyOptions: () => {} }),
-    timeScale: () => ({ setVisibleLogicalRange: () => {}, width: () => 0, applyOptions: () => {}, subscribeVisibleLogicalRangeChange: () => {}, unsubscribeVisibleLogicalRangeChange: () => {} }),
+    timeScale: () => ({ setVisibleLogicalRange: () => {}, width: () => 0, applyOptions: () => {}, subscribeVisibleLogicalRangeChange: () => {}, unsubscribeVisibleLogicalRangeChange: () => {}, subscribeVisibleTimeRangeChange: () => {}, unsubscribeVisibleTimeRangeChange: () => {} }),
     subscribeCrosshairMove: () => {},
     unsubscribeCrosshairMove: () => {},
     applyOptions: () => {},
