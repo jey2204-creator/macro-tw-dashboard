@@ -11,7 +11,6 @@ export const JUMP_TARGETS = [
   { id: 'sec-fc', label: '外資' },
   { id: 'sec-ms', label: '融資' },
   { id: 'sec-br', label: '漲跌停' },
-  { id: 'sec-bro', label: '上櫃漲跌停' },
   { id: 'sec-sh', label: '航運' },
 ] as const;
 

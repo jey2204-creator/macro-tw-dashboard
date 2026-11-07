@@ -214,8 +214,7 @@ export default function App() {
             <KrValuationPanel version={summary.generatedAt} themeKey={themeKey} />
             <ForeignChipsPanel data={foreignChips} themeKey={themeKey} />
             <MarginStressPanel data={marginStress} themeKey={themeKey} />
-            <BreadthPanel data={breadthStress} themeKey={themeKey} />
-            <BreadthPanel data={breadthStressOtc} themeKey={themeKey} market="tpex" />
+            <BreadthPanel twse={breadthStress} otc={breadthStressOtc} themeKey={themeKey} />
             <ShippingPanel version={summary.generatedAt} themeKey={themeKey} />
             <SourceStatus summary={summary} />
           </div>

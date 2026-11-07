@@ -58,10 +58,10 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-describe('BreadthPanel', () => {
-  it('上市：標題列顯示漲停／跌停與漲／跌家數，中格預設畫漲跌停', () => {
-    render(<BreadthPanel data={data} themeKey="light" />);
-    expect(screen.getByText('漲跌停家數監測（上市股票，參考）')).toBeTruthy();
+describe('BreadthPanel（上市＋上櫃同一模組）', () => {
+  it('上市：讀數列顯示漲停／跌停與漲／跌家數，中格預設畫漲跌停', () => {
+    render(<BreadthPanel twse={data} themeKey="light" />);
+    expect(screen.getByText('漲跌停家數監測（上市＋上櫃，參考）')).toBeTruthy();
     expect(screen.getAllByText(/漲 300/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/跌 529/).length).toBeGreaterThan(0);
     const mid = chartLog.series.filter((s) => s.pane === 1);
@@ -69,30 +69,35 @@ describe('BreadthPanel', () => {
     expect(mid[0]!.values.at(-1)).toBe(4); // 漲停
     expect(mid[1]!.values.at(-1)).toBe(-39); // 跌停（0 以下）
     expect(mid.every((s) => !s.label)).toBe(true);
+    // 只有上市資料：一張圖、一張回測表
+    expect(screen.getAllByText(/事件發生後/)).toHaveLength(1);
   });
 
-  it('切到「漲跌家數」：中格改畫上漲／下跌家數並標右軸現值', () => {
-    render(<BreadthPanel data={data} themeKey="light" />);
+  it('兩市都有：兩張圖共用一組區間與切換鈕，切到「漲跌家數」兩張圖一起換', () => {
+    render(<BreadthPanel twse={data} otc={data} themeKey="light" />);
+    expect(screen.getAllByText(/事件發生後加權指數表現/)).toHaveLength(1);
+    expect(screen.getAllByText(/事件發生後櫃買指數表現/)).toHaveLength(1);
+    expect(screen.getAllByRole('group', { name: '時間區間' })).toHaveLength(1);
+    expect(screen.getByText('上市')).toBeTruthy();
+    expect(screen.getByText('上櫃')).toBeTruthy();
     chartLog.series = [];
     fireEvent.click(screen.getByRole('button', { name: '漲跌家數' }));
     const mid = chartLog.series.filter((s) => s.pane === 1);
-    expect(mid[0]!.values.at(-1)).toBe(300);
-    expect(mid[1]!.values.at(-1)).toBe(-529);
+    expect(mid).toHaveLength(4);
+    expect(mid.map((s) => s.values.at(-1))).toEqual([300, -529, 300, -529]);
     expect(mid.every((s) => s.label)).toBe(true);
-    expect(screen.getByText(/上漲家數（0 以上）/)).toBeTruthy();
+    expect(screen.getAllByText(/上漲家數（0 以上）/)).toHaveLength(2);
   });
 
-  it('上櫃：id、標題、指數名稱與說明換成櫃買', () => {
-    const { container } = render(<BreadthPanel data={data} themeKey="light" market="tpex" />);
-    expect(container.querySelector('#sec-bro')).toBeTruthy();
-    expect(screen.getByText('上櫃漲跌停家數監測（上櫃股票，參考）')).toBeTruthy();
-    expect(screen.getByText(/事件發生後櫃買指數表現/)).toBeTruthy();
-    expect(screen.getByText(/上櫃沒有融資維持率可用/)).toBeTruthy();
-    expect(screen.queryByText(/上市股票，參考/)).toBeNull();
+  it('兩市的歷次事件各自展開', () => {
+    render(<BreadthPanel twse={data} otc={data} themeKey="light" />);
+    fireEvent.click(screen.getByRole('button', { name: /展開上櫃歷次事件/ }));
+    expect(screen.getByRole('button', { name: /收起上櫃歷次事件/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /展開上市歷次事件/ })).toBeTruthy();
   });
 
   it('沒有資料時不渲染', () => {
-    const { container } = render(<BreadthPanel data={null} themeKey="light" market="tpex" />);
+    const { container } = render(<BreadthPanel twse={null} otc={null} themeKey="light" />);
     expect(container.innerHTML).toBe('');
   });
 });

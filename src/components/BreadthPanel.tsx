@@ -189,69 +189,16 @@ function BreadthChart({
   );
 }
 
-export function BreadthPanel({ data, themeKey, market = 'twse' }: { data: BreadthStressFile | null; themeKey: string; market?: BreadthMarket }) {
+/** 單一市場的讀數列（標題下方）＋回測表＋歷次事件 */
+function MarketStats({ data, market, showEvents, onToggle }: { data: BreadthStressFile; market: BreadthMarket; showEvents: boolean; onToggle: () => void }) {
   const M = BREADTH_MARKET[market];
-  const [range, setRange] = useState<RangeKey>('3M');
-  const [mid, setMid] = useState<MidMode>('limit');
-  const [resetKey, setResetKey] = useState(0);
-  const [showEvents, setShowEvents] = useState(false);
-  if (!data || !data.latest) return null;
-  const { latest } = data;
-  const state = latest.panic ? 'zone' : latest.inEpisode ? 'warn' : 'normal';
-  const stateText = latest.panic ? '恐慌日' : latest.inEpisode ? '恐慌後觀察期' : '平靜';
-  const shortHistory = !data.start || data.start > (market === 'tpex' ? '2009-01-01' : '2011-01-01');
-  const lastRow = data.rows.at(-1);
+  const shortHistory = !data.start || data.start > M.historySince;
   return (
-    <section id={M.id} className="regime ms" aria-label={M.aria}>
-      <div className="regime-head">
-        <div className="regime-title">
-          <span className="label">{M.title}</span>
-          <span className={`verdict ms-${state}`}>{stateText}</span>
-          <span className="score num">
-            <span className="up">漲停 {latest.upLimit}</span>｜<span className="down">跌停 {latest.downLimit}</span>｜跌停占比 {f2(latest.downPct)}%
-            {latest.downPctile !== null && `（近一年第 ${latest.downPctile.toFixed(0)} 百分位）`}
-            {lastRow && (
-              <>
-                ｜<span className="up">漲 {lastRow[4]}</span>｜<span className="down">跌 {lastRow[5]}</span>
-              </>
-            )}
-            ｜10日漲跌比 {f2(latest.adRatio10)}
-          </span>
-        </div>
-        <span className="small muted num">資料 {latest.date}</span>
-      </div>
-
-      <PanelNote>
-        <p className="small muted ms-rule">
-        恐慌：跌停占比（跌停÷上漲＋下跌家數）達近 250 日第 98 百分位且 ≥ {PANIC_MIN_PCT}%；{M.capitulate}；背離：{M.index}跌破本波低點但跌停不到本波高峰一半；止跌：漲停 &gt; 跌停連續 2 日且{M.index} 3 日不破低。最後一個恐慌日後 {EPISODE_GAP} 個交易日內算同一波，每種事件每波只標一次。2015-06-01 前漲跌幅為 7%，因此用百分位而非固定家數。{M.extra}
-      </p>
-      </PanelNote>
-
-      <div className="cp-controls">
-        <div className="seg" role="group" aria-label="時間區間">
-          {RANGES.map((r) => (
-            <button key={r.k} type="button" aria-pressed={range === r.k} onClick={() => setRange(r.k)}>
-              {r.label}
-            </button>
-          ))}
-          <button type="button" onClick={() => setResetKey((k) => k + 1)} aria-label="重設圖表縮放" title="重設縮放">
-            ↺ 重設
-          </button>
-        </div>
-        <div className="seg" role="group" aria-label="中格顯示">
-          {MID_MODES.map((m) => (
-            <button key={m.k} type="button" aria-pressed={mid === m.k} onClick={() => setMid(m.k)} title="切換中間窗格顯示的內容">
-              {m.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      <BreadthChart data={data} range={range} mid={mid} themeKey={themeKey} resetKey={resetKey} indexLabel={M.index} />
-
+    <>
       <div className="table-wrap">
         <table className="bt-table num">
           <caption className="small muted">
-            事件發生後{M.index}指數表現（{data.start}～{data.end}）{shortHistory && '— 歷史回補中，樣本仍少'}
+            {M.name}：事件發生後{M.index}指數表現（{data.start}～{data.end}）{shortHistory && '— 歷史回補中，樣本仍少'}
           </caption>
           <thead>
             <tr>
@@ -272,9 +219,8 @@ export function BreadthPanel({ data, themeKey, market = 'twse' }: { data: Breadt
           </tbody>
         </table>
       </div>
-
-      <button type="button" className="linkbtn small" onClick={() => setShowEvents(!showEvents)} aria-expanded={showEvents}>
-        {showEvents ? '收起' : '展開'}歷次事件（{data.events.length}）
+      <button type="button" className="linkbtn small" onClick={onToggle} aria-expanded={showEvents}>
+        {showEvents ? '收起' : '展開'}{M.name}歷次事件（{data.events.length}）
       </button>
       {showEvents && (
         <div className="table-wrap">
@@ -308,10 +254,95 @@ export function BreadthPanel({ data, themeKey, market = 'twse' }: { data: Breadt
           </table>
         </div>
       )}
+    </>
+  );
+}
+
+function MarketScore({ data, market }: { data: BreadthStressFile; market: BreadthMarket }) {
+  const M = BREADTH_MARKET[market];
+  const { latest } = data;
+  if (!latest) return null;
+  const state = latest.panic ? 'zone' : latest.inEpisode ? 'warn' : 'normal';
+  const stateText = latest.panic ? '恐慌日' : latest.inEpisode ? '恐慌後觀察期' : '平靜';
+  const lastRow = data.rows.at(-1);
+  return (
+    <div className="br-score num">
+      <span className="br-mkt">{M.name}</span>
+      <span className={`verdict ms-${state}`}>{stateText}</span>
+      <span className="score">
+        <span className="up">漲停 {latest.upLimit}</span>｜<span className="down">跌停 {latest.downLimit}</span>｜占比 {f2(latest.downPct)}%
+        {latest.downPctile !== null && `（近一年第 ${latest.downPctile.toFixed(0)} 百分位）`}
+        {lastRow && (
+          <>
+            ｜<span className="up">漲 {lastRow[4]}</span>｜<span className="down">跌 {lastRow[5]}</span>
+          </>
+        )}
+        ｜10日漲跌比 {f2(latest.adRatio10)}
+      </span>
+    </div>
+  );
+}
+
+/** 漲跌停家數監測：上市（加權）與上櫃（櫃買）同一個模組，共用時間區間、中格切換、說明；兩張圖上下排 */
+export function BreadthPanel({ twse, otc, themeKey }: { twse: BreadthStressFile | null; otc?: BreadthStressFile | null; themeKey: string }) {
+  const [range, setRange] = useState<RangeKey>('3M');
+  const [mid, setMid] = useState<MidMode>('limit');
+  const [resetKey, setResetKey] = useState(0);
+  const [showEvents, setShowEvents] = useState<Record<BreadthMarket, boolean>>({ twse: false, tpex: false });
+  const markets: { market: BreadthMarket; data: BreadthStressFile }[] = [];
+  if (twse?.latest) markets.push({ market: 'twse', data: twse });
+  if (otc?.latest) markets.push({ market: 'tpex', data: otc });
+  if (!markets.length) return null;
+  const latestDate = markets.map((m) => m.data.latest!.date).sort().at(-1);
+  const toggle = (m: BreadthMarket) => setShowEvents((s) => ({ ...s, [m]: !s[m] }));
+  return (
+    <section id="sec-br" className="regime ms" aria-label="漲跌停家數監測">
+      <div className="regime-head">
+        <div className="regime-title">
+          <span className="label">漲跌停家數監測（上市＋上櫃，參考）</span>
+        </div>
+        <span className="small muted num">資料 {latestDate}</span>
+      </div>
+      {markets.map((m) => (
+        <MarketScore key={m.market} data={m.data} market={m.market} />
+      ))}
+
+      <PanelNote>
+        <p className="small muted ms-rule">
+          恐慌：跌停占比（跌停÷上漲＋下跌家數）達近 250 日第 98 百分位且 ≥ {PANIC_MIN_PCT}%；投降：連續 2 日恐慌（上市另加「恐慌日融資維持率 &lt; 140%」，上櫃沒有維持率可用）；背離：指數跌破本波低點但跌停不到本波高峰一半；止跌：漲停 &gt; 跌停連續 2 日且指數 3 日不破低。最後一個恐慌日後 {EPISODE_GAP} 個交易日內算同一波，每種事件每波只標一次。2015-06-01 前漲跌幅為 7%，因此用百分位而非固定家數。上市家數取自證交所「漲跌證券數合計」（2011 年中以前逐檔推算）；上櫃家數由櫃買中心每日收盤行情逐檔推算（只算普通股，不含 ETF、權證），歷史自 2008 年起。
+        </p>
+      </PanelNote>
+
+      <div className="cp-controls">
+        <div className="seg" role="group" aria-label="時間區間">
+          {RANGES.map((r) => (
+            <button key={r.k} type="button" aria-pressed={range === r.k} onClick={() => setRange(r.k)}>
+              {r.label}
+            </button>
+          ))}
+          <button type="button" onClick={() => setResetKey((k) => k + 1)} aria-label="重設圖表縮放" title="重設縮放">
+            ↺ 重設
+          </button>
+        </div>
+        <div className="seg" role="group" aria-label="中格顯示">
+          {MID_MODES.map((o) => (
+            <button key={o.k} type="button" aria-pressed={mid === o.k} onClick={() => setMid(o.k)} title="切換兩張圖中間窗格顯示的內容">
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {markets.map((m) => (
+        <BreadthChart key={m.market} data={m.data} range={range} mid={mid} themeKey={themeKey} resetKey={resetKey} indexLabel={BREADTH_MARKET[m.market].index} />
+      ))}
+
+      {markets.map((m) => (
+        <MarketStats key={m.market} data={m.data} market={m.market} showEvents={showEvents[m.market]} onToggle={() => toggle(m.market)} />
+      ))}
       <PanelNote label="ⓘ 用法">
         <p className="small muted ms-rule">
-        {M.usage}
-      </p>
+          用法：恐慌本身不是進場訊號（恐慌常持續 2–5 天）；背離、止跌再搭配上方「融資斷頭監測」的清洗完成與總經判斷，才考慮分批。上櫃以中小型股為主，恐慌通常比上市更早、更深；上櫃先止跌、上市還在跌，常是資金回流中小型股的開端。僅供參考，不計分。
+        </p>
       </PanelNote>
     </section>
   );
