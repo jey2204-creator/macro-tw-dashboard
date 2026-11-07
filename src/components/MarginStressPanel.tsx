@@ -152,8 +152,9 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
       sblLine.setData(sbl.map((r) => ({ time: r[0] as Time, value: r[1] })));
       sblChg = chart.addSeries(HistogramSeries, { priceFormat: { type: 'price', precision: 1, minMove: 0.1 }, priceScaleId: 'sbl-chg' }, 3);
       sblChg.setData(sbl.filter((r) => Number.isFinite(r[2])).map((r) => ({ time: r[0] as Time, value: r[2], color: r[2] >= 0 ? down : up })));
-      // 柱子只占窗格下方 1/3，不和餘額折線打架
-      chart.panes()[3]?.priceScale('sbl-chg')?.applyOptions({ scaleMargins: { top: 0.65, bottom: 0 }, visible: false });
+      // 柱子只占窗格下方 1/3、折線留在上方 2/3，兩者不重疊
+      chart.panes()[3]?.priceScale('sbl-chg')?.applyOptions({ scaleMargins: { top: 0.68, bottom: 0 }, visible: false });
+      sblLine.priceScale().applyOptions({ scaleMargins: { top: 0.08, bottom: 0.36 } });
     }
     resetPaneStretch(chart, sbl.length ? SBL_PANE_STRETCH : undefined);
     return () => {
