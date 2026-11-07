@@ -34,9 +34,27 @@ const RANGES: { k: RangeKey; label: string }[] = [
   { k: 'ALL', label: '全部' },
 ];
 const TYPES: BreadthEventType[] = ['panic', 'capitulate', 'divergence', 'stabilized'];
+/** 中格顯示：漲停／跌停家數，或上漲／下跌家數 */
+export type MidMode = 'limit' | 'ad';
+const MID_MODES: { k: MidMode; label: string }[] = [
+  { k: 'limit', label: '漲跌停' },
+  { k: 'ad', label: '漲跌家數' },
+];
 const MARKER_TEXT: Record<BreadthEventType, string> = { panic: '恐慌', capitulate: '投降', divergence: '背離', stabilized: '止跌' };
 
-function BreadthChart({ data, range, themeKey, resetKey }: { data: BreadthStressFile; range: RangeKey; themeKey: string; resetKey: number }) {
+function BreadthChart({
+  data,
+  range,
+  mid,
+  themeKey,
+  resetKey,
+}: {
+  data: BreadthStressFile;
+  range: RangeKey;
+  mid: MidMode;
+  themeKey: string;
+  resetKey: number;
+}) {
   const hostRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
@@ -97,21 +115,26 @@ function BreadthChart({ data, range, themeKey, resetKey }: { data: BreadthStress
     const down = cssVar('--down');
     const err = cssVar('--err');
     const fmt0 = { type: 'price' as const, precision: 0, minMove: 1 };
-    const ul = chart.addSeries(HistogramSeries, { priceFormat: fmt0, color: up, priceLineVisible: false, lastValueVisible: false }, 1);
-    ul.setData(data.rows.map((r) => ({ time: r[0] as Time, value: r[2] })));
-    // 跌停畫在 0 以下；恐慌日加深顏色
-    const dl = chart.addSeries(HistogramSeries, { priceFormat: fmt0, priceLineVisible: false, lastValueVisible: false }, 1);
-    dl.setData(data.rows.map((r, i) => ({ time: r[0] as Time, value: -r[3], color: data.panic[i] ? err : down })));
+    // 中格：漲停／跌停（0 以上／以下），或上漲／下跌家數；跌的那側恐慌日加深顏色
+    const ad = mid === 'ad';
+    const ul = chart.addSeries(
+      HistogramSeries,
+      { priceFormat: fmt0, color: up, priceLineVisible: false, lastValueVisible: ad },
+      1,
+    );
+    ul.setData(data.rows.map((r) => ({ time: r[0] as Time, value: ad ? r[4] : r[2] })));
+    const dl = chart.addSeries(HistogramSeries, { priceFormat: fmt0, priceLineVisible: false, lastValueVisible: ad }, 1);
+    dl.setData(data.rows.map((r, i) => ({ time: r[0] as Time, value: -(ad ? r[5] : r[3]), color: data.panic[i] ? err : down })));
 
-    const ad = chart.addSeries(LineSeries, { color: cssVar('--accent'), lineWidth: 2, priceFormat: { type: 'price', precision: 2, minMove: 0.01 } }, 2);
-    ad.setData(data.rows.flatMap((r, i) => (data.adRatio10[i] == null ? [] : [{ time: r[0] as Time, value: data.adRatio10[i]! }])));
-    ad.createPriceLine({ price: 1, color: cssVar('--text-3'), lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: '漲跌持平 1.0' });
+    const adr = chart.addSeries(LineSeries, { color: cssVar('--accent'), lineWidth: 2, priceFormat: { type: 'price', precision: 2, minMove: 0.01 } }, 2);
+    adr.setData(data.rows.flatMap((r, i) => (data.adRatio10[i] == null ? [] : [{ time: r[0] as Time, value: data.adRatio10[i]! }])));
+    adr.createPriceLine({ price: 1, color: cssVar('--text-3'), lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: '漲跌持平 1.0' });
 
     resetPaneStretch(chart);
     return () => {
-      for (const s of [price, ul, dl, ad]) chart.removeSeries(s);
+      for (const s of [price, ul, dl, adr]) chart.removeSeries(s);
     };
-  }, [data, themeKey]);
+  }, [data, mid, themeKey]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -127,7 +150,7 @@ function BreadthChart({ data, range, themeKey, resetKey }: { data: BreadthStress
     apply();
     const raf = requestAnimationFrame(apply);
     return () => cancelAnimationFrame(raf);
-  }, [data, range, themeKey, resetKey]);
+  }, [data, range, mid, themeKey, resetKey]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -148,12 +171,15 @@ function BreadthChart({ data, range, themeKey, resetKey }: { data: BreadthStress
       {row && (
         <div className="legend num" aria-live="off">
           <span className="muted">{row[0]}</span> 加權 <b>{row[1].toLocaleString('en-US', { maximumFractionDigits: 0 })}</b>{' '}
-          <span className="up">漲停 {row[2]}</span> <span className="down">跌停 {row[3]}</span>（占比 {f2(data.downPct[i])}%）
+          <span className="up">漲停 {row[2]}</span> <span className="down">跌停 {row[3]}</span>（占比 {f2(data.downPct[i])}%）{' '}
+          <span className="up">漲 {row[4]}</span> <span className="down">跌 {row[5]}</span>{' '}
           10日漲跌比 {f2(data.adRatio10[i])} {data.panic[i] && <span className="ms-state ms-zone">恐慌日</span>}
         </div>
       )}
       <div className="ms-pane-labels small muted" aria-hidden>
-        上：加權指數（▼恐慌 ■投降 ●背離 ▲止跌） ｜ 中：漲停（0 以上）／跌停（0 以下，恐慌日加深） ｜ 下：10 日上漲÷下跌家數
+        上：加權指數（▼恐慌 ■投降 ●背離 ▲止跌） ｜ 中：
+        {mid === 'ad' ? '上漲家數（0 以上）／下跌家數（0 以下，恐慌日加深）' : '漲停（0 以上）／跌停（0 以下，恐慌日加深）'} ｜
+        下：10 日上漲÷下跌家數
       </div>
       <div ref={hostRef} className="chart-host ms-host" />
     </div>
@@ -162,6 +188,7 @@ function BreadthChart({ data, range, themeKey, resetKey }: { data: BreadthStress
 
 export function BreadthPanel({ data, themeKey }: { data: BreadthStressFile | null; themeKey: string }) {
   const [range, setRange] = useState<RangeKey>('3M');
+  const [mid, setMid] = useState<MidMode>('limit');
   const [resetKey, setResetKey] = useState(0);
   const [showEvents, setShowEvents] = useState(false);
   if (!data || !data.latest) return null;
@@ -169,6 +196,7 @@ export function BreadthPanel({ data, themeKey }: { data: BreadthStressFile | nul
   const state = latest.panic ? 'zone' : latest.inEpisode ? 'warn' : 'normal';
   const stateText = latest.panic ? '恐慌日' : latest.inEpisode ? '恐慌後觀察期' : '平靜';
   const shortHistory = !data.start || data.start > '2011-01-01';
+  const lastRow = data.rows.at(-1);
   return (
     <section id="sec-br" className="regime ms" aria-label="漲跌停家數監測">
       <div className="regime-head">
@@ -177,7 +205,13 @@ export function BreadthPanel({ data, themeKey }: { data: BreadthStressFile | nul
           <span className={`verdict ms-${state}`}>{stateText}</span>
           <span className="score num">
             <span className="up">漲停 {latest.upLimit}</span>｜<span className="down">跌停 {latest.downLimit}</span>｜跌停占比 {f2(latest.downPct)}%
-            {latest.downPctile !== null && `（近一年第 ${latest.downPctile.toFixed(0)} 百分位）`}｜10日漲跌比 {f2(latest.adRatio10)}
+            {latest.downPctile !== null && `（近一年第 ${latest.downPctile.toFixed(0)} 百分位）`}
+            {lastRow && (
+              <>
+                ｜<span className="up">漲 {lastRow[4]}</span>｜<span className="down">跌 {lastRow[5]}</span>
+              </>
+            )}
+            ｜10日漲跌比 {f2(latest.adRatio10)}
           </span>
         </div>
         <span className="small muted num">資料 {latest.date}</span>
@@ -189,17 +223,26 @@ export function BreadthPanel({ data, themeKey }: { data: BreadthStressFile | nul
       </p>
       </PanelNote>
 
-      <div className="seg" role="group" aria-label="時間區間">
-        {RANGES.map((r) => (
-          <button key={r.k} type="button" aria-pressed={range === r.k} onClick={() => setRange(r.k)}>
-            {r.label}
+      <div className="cp-controls">
+        <div className="seg" role="group" aria-label="時間區間">
+          {RANGES.map((r) => (
+            <button key={r.k} type="button" aria-pressed={range === r.k} onClick={() => setRange(r.k)}>
+              {r.label}
+            </button>
+          ))}
+          <button type="button" onClick={() => setResetKey((k) => k + 1)} aria-label="重設圖表縮放" title="重設縮放">
+            ↺ 重設
           </button>
-        ))}
-        <button type="button" onClick={() => setResetKey((k) => k + 1)} aria-label="重設圖表縮放" title="重設縮放">
-          ↺ 重設
-        </button>
+        </div>
+        <div className="seg" role="group" aria-label="中格顯示">
+          {MID_MODES.map((m) => (
+            <button key={m.k} type="button" aria-pressed={mid === m.k} onClick={() => setMid(m.k)} title="切換中間窗格顯示的內容">
+              {m.label}
+            </button>
+          ))}
+        </div>
       </div>
-      <BreadthChart data={data} range={range} themeKey={themeKey} resetKey={resetKey} />
+      <BreadthChart data={data} range={range} mid={mid} themeKey={themeKey} resetKey={resetKey} />
 
       <div className="table-wrap">
         <table className="bt-table num">
