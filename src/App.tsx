@@ -94,6 +94,7 @@ export default function App() {
   const calendar = useCalendar(summary?.generatedAt ?? null);
   const marginStress = useMarginStress(summary?.generatedAt ?? null);
   const breadthStress = useBreadthStress(summary?.generatedAt ?? null);
+  const breadthStressOtc = useBreadthStress(summary?.generatedAt ?? null, 'breadth-stress-otc');
   const foreignChips = useForeignChips(summary?.generatedAt ?? null);
   const releases = useMemo(
     () => (summary ? releasesByIndicator(calendar, summary, new Date(nowMs)) : {}),
@@ -213,7 +214,7 @@ export default function App() {
             <KrValuationPanel version={summary.generatedAt} themeKey={themeKey} />
             <ForeignChipsPanel data={foreignChips} themeKey={themeKey} />
             <MarginStressPanel data={marginStress} themeKey={themeKey} />
-            <BreadthPanel data={breadthStress} themeKey={themeKey} />
+            <BreadthPanel twse={breadthStress} otc={breadthStressOtc} themeKey={themeKey} />
             <ShippingPanel version={summary.generatedAt} themeKey={themeKey} />
             <SourceStatus summary={summary} />
           </div>
