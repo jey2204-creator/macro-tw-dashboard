@@ -1,7 +1,7 @@
 import { readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { analyzeBreadth, combineBreadthRows, type BreadthHistoryRow, type BreadthStressFile } from '../../src/shared/breadthStress';
-import { analyzeMarginStress, combineStressRows, type MarginHistoryFile, type MarginStressFile } from '../../src/shared/marginStress';
+import { analyzeMarginStress, combineSblRows, combineStressRows, summarizeSbl, type MarginHistoryFile, type MarginStressFile, type PolicyEvent } from '../../src/shared/marginStress';
 import type { Bar, SeriesFile } from '../../src/shared/types';
 
 async function readJson<T>(file: string): Promise<T | null> {
@@ -35,7 +35,14 @@ export async function writeMarginStress(outDir: string, historyFile = path.resol
     { ratio: await series('margin_ratio'), balance: await series('margin_balance'), change: await series('margin_chg') },
     taiex,
   );
-  const out = analyzeMarginStress(rows, hist?.rows[0]?.[0] ?? null, now);
+  const policy = (await readJson<{ events: PolicyEvent[] }>(path.resolve('config/policy-events.json')))?.events ?? [];
+  const out = analyzeMarginStress(rows, hist?.rows[0]?.[0] ?? null, now, policy);
+  // 借券賣出（上市，萬張）：只有每日排程資料、沒有長期歷史；缺資料時面板不畫這一格
+  const sbl = combineSblRows({ balance: await series('sbl_sell_bal'), sell: await series('sbl_sell'), ret: await series('sbl_return') });
+  if (sbl.length) {
+    out.sbl = sbl;
+    out.latestSbl = summarizeSbl(sbl);
+  }
   // 漲跌停家數監測（同一份歷史檔）
   const breadthHist: BreadthHistoryRow[] = (hist?.schemaVersion === 2 ? hist.rows : []).flatMap((r) =>
     r[4] != null && r[5] != null && r[6] != null && r[7] != null

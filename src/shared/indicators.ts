@@ -48,7 +48,10 @@ export type SourceSpec =
         | 'LIMIT_UP'
         | 'LIMIT_DOWN'
         | 'ADVANCE'
-        | 'DECLINE';
+        | 'DECLINE'
+        | 'SBL_SELL_BAL'
+        | 'SBL_SELL'
+        | 'SBL_RETURN';
     };
 
 /** 原始資料 → 顯示用數列的轉換 */
@@ -114,7 +117,7 @@ export interface IndicatorDef {
   category: Category;
   frequency: Frequency;
   /** 顯示單位 */
-  unit: '%' | 'pp' | 'pt' | '分' | '倍' | 'USD' | 'TWD' | 'KRW' | 'JPY' | 'k' | '口' | '億' | '家';
+  unit: '%' | 'pp' | 'pt' | '分' | '倍' | 'USD' | 'TWD' | 'KRW' | 'JPY' | 'k' | '口' | '億' | '家' | '萬張';
   decimals: number;
   /** 依優先順序排列；第一個失敗會嘗試下一個 */
   sources: SourceSpec[];
@@ -934,6 +937,25 @@ export const INDICATORS: IndicatorDef[] = [
     unit: '億', decimals: 2, sources: [{ provider: 'twse_chips', symbol: 'MARGIN' }], transform: 'none',
     market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, flow: true, chart: 'histogram',
     note: '融資金額今日餘額 − 前日餘額（億元）；融資快速增加代表散戶槓桿升溫',
+  },
+  {
+    id: 'sbl_sell_bal', name: '借券賣出餘額（上市）', short: '借券賣出餘額', category: 'tw_chips', frequency: 'daily',
+    subtitle: '法人借股票放空、尚未回補的張數',
+    unit: '萬張', decimals: 1, sources: [{ provider: 'twse_chips', symbol: 'SBL_SELL_BAL' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, chart: 'line', bearish: true,
+    note: '證交所逐檔借券賣出當日餘額加總（上市，萬張）。借券放空者幾乎都是外資／法人；餘額在跌勢後段暴增代表空方追空，反彈時須回補、也是軋空燃料',
+  },
+  {
+    id: 'sbl_sell', name: '借券賣出（上市，當日）', short: '借券賣出', category: 'tw_chips', frequency: 'daily',
+    unit: '萬張', decimals: 1, sources: [{ provider: 'twse_chips', symbol: 'SBL_SELL' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true, flow: true, bearish: true,
+    note: '當日借券賣出張數（萬張）；限空令期間會被制度性壓低',
+  },
+  {
+    id: 'sbl_return', name: '借券還券（上市，當日）', short: '借券還券', category: 'tw_chips', frequency: 'daily',
+    unit: '萬張', decimals: 1, sources: [{ provider: 'twse_chips', symbol: 'SBL_RETURN' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true, flow: true,
+    note: '當日借券賣出還券張數（萬張）＝空方回補',
   },
   {
     id: 'limit_up', name: '漲停家數（上市股票）', short: '漲停家數', category: 'tw_chips', frequency: 'daily',

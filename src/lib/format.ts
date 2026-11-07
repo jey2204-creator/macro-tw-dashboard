@@ -21,6 +21,7 @@ export function formatValue(def: Pick<IndicatorDef, 'unit' | 'decimals'>, v: num
   if (def.unit === '億') return `${s}億`;
   if (def.unit === '口') return `${s}口`;
   if (def.unit === '家') return `${s}家`;
+  if (def.unit === '萬張') return `${s}萬張`;
   return s;
 }
 

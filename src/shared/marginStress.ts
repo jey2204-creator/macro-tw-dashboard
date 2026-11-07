@@ -15,6 +15,7 @@
  *
  * 僅供參考：事件少（台股 2010 年起約十幾波），不計入總經分數。
  */
+import { addDays } from './dates';
 import type { Bar } from './types';
 
 /**
@@ -49,7 +50,17 @@ export interface MarginHistoryFile {
 }
 
 export type StressState = 'normal' | 'warn' | 'zone';
-export type StressEventType = 'below150' | 'below140' | 'flush' | 'cleared';
+export type StressEventType = 'below150' | 'below140' | 'flush' | 'cleared' | 'delever' | 'shortBan' | 'nsf';
+/** 政策事件（config/policy-events.json） */
+export type PolicyEventType = 'shortBan' | 'nsf';
+export interface PolicyEvent {
+  /** 市場首個反應交易日（生效日或宣布後首個交易日）；非交易日則取其後第一個交易日 */
+  date: string;
+  announced?: string;
+  type: PolicyEventType;
+  note?: string;
+}
+export const EVENT_TYPES: StressEventType[] = ['below150', 'below140', 'flush', 'cleared', 'delever', 'shortBan', 'nsf'];
 
 export const WARN_RATIO = 160;
 export const ZONE_RATIO = 140;
@@ -58,12 +69,23 @@ export const WARN_DROP_5D = 15;
 export const CLEAR_REBOUND = 5;
 /** 斷頭潮另需單日減幅至少 0.5%（避免平淡期的小幅減少被當成極端值） */
 export const FLUSH_MIN_DROP_PCT = -0.5;
+/**
+ * 融資大減（主動去槓桿）：不限斷頭區，單日減幅占餘額比落在近 250 日最低 2% 且 ≤ −2%；
+ * 20 個交易日內只標一次（不用維持率的「波」，因為 160% 以上也會發生）。
+ * 2010 起約 26 次（每年 1～2 次）；用 5%／−1% 會到 73 次，太常出現沒有提醒效果。
+ */
+export const DELEVER_MIN_DROP_PCT = -2;
+export const DELEVER_PCTL = 0.02;
+export const DELEVER_COOLDOWN = 20;
 
 export const EVENT_LABEL: Record<StressEventType, string> = {
   below150: '跌破 150%',
   below140: '跌破 140%（斷頭區）',
   flush: '斷頭潮',
   cleared: '清洗完成',
+  delever: '融資大減（主動去槓桿）',
+  shortBan: '限空令生效',
+  nsf: '國安基金進場',
 };
 export const STATE_LABEL: Record<StressState, string> = { normal: '正常', warn: '警戒', zone: '斷頭區' };
 
@@ -80,6 +102,8 @@ export interface StressEvent {
   ret60: number | null;
   /** 之後 60 個交易日內最大跌幅（%，負值） */
   mdd60: number | null;
+  /** 政策事件的說明（措施內容） */
+  note?: string;
 }
 
 export interface EventStats {
@@ -104,6 +128,62 @@ export interface MarginStressFile {
   stateStats: Record<StressState, EventStats & { pct: number }>;
   baseline: EventStats;
   latest: { date: string; state: StressState; ratio: number; drop5: number | null; taiex: number } | null;
+  /** 借券賣出（上市，萬張）：[日期, 借券賣出餘額, 餘額增減, 當日賣出, 當日還券]；沒有資料時省略 */
+  sbl?: SblRow[];
+  latestSbl?: SblLatest | null;
+}
+
+export type SblRow = [date: string, balance: number, change: number, sell: number, ret: number];
+
+export interface SblLatest {
+  date: string;
+  /** 借券賣出餘額（萬張） */
+  balance: number;
+  /** 近 5 個交易日餘額增減（萬張）；資料不足為 null */
+  chg5: number | null;
+  /** 餘額連續增加（正）或減少（負）的交易日數 */
+  streak: number;
+  /** 餘額為近 N 個交易日（資料範圍內，最多 60）新高／新低 */
+  hi60: boolean;
+  lo60: boolean;
+}
+
+/** 合併借券賣出序列（萬張）：以餘額序列為主，增減＝與前一筆餘額之差（第一筆為 NaN） */
+export function combineSblRows(live: { balance?: Bar[]; sell?: Bar[]; ret?: Bar[] }): SblRow[] {
+  const sell = new Map((live.sell ?? []).map((b) => [b[0], b[4]] as const));
+  const ret = new Map((live.ret ?? []).map((b) => [b[0], b[4]] as const));
+  const out: SblRow[] = [];
+  let prev: number | null = null;
+  for (const b of live.balance ?? []) {
+    if (!Number.isFinite(b[4])) continue;
+    out.push([b[0], b[4], prev === null ? NaN : r2(b[4] - prev), sell.get(b[0]) ?? NaN, ret.get(b[0]) ?? NaN]);
+    prev = b[4];
+  }
+  return out;
+}
+
+export function summarizeSbl(rows: SblRow[]): SblLatest | null {
+  const last = rows.at(-1);
+  if (!last) return null;
+  const n = rows.length;
+  let streak = 0;
+  for (let i = n - 1; i >= 1; i--) {
+    const d = rows[i]![1] - rows[i - 1]![1];
+    if (d === 0) break;
+    const sign = d > 0 ? 1 : -1;
+    if (streak === 0) streak = sign;
+    else if (Math.sign(streak) !== sign) break;
+    else streak += sign;
+  }
+  const win = rows.slice(Math.max(0, n - 60), n - 1).map((r) => r[1]);
+  return {
+    date: last[0],
+    balance: last[1],
+    chg5: n > 5 ? r2(last[1] - rows[n - 6]![1]) : null,
+    streak,
+    hi60: win.length >= 5 && last[1] > Math.max(...win),
+    lo60: win.length >= 5 && last[1] < Math.min(...win),
+  };
 }
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
@@ -167,6 +247,18 @@ function flushFlags(rows: StressRow[]): boolean[] {
   });
 }
 
+/** 融資大減判定：近 250 日（至少 60 日）減幅第 2 百分位，不限斷頭區 */
+function deleverFlags(rows: StressRow[]): boolean[] {
+  const pcts = rows.map((_, i) => changePct(rows, i));
+  return rows.map((_, i) => {
+    const p = pcts[i];
+    if (p === null || p === undefined) return false;
+    const win = pcts.slice(Math.max(0, i - 250), i).filter((v): v is number => v !== null);
+    if (win.length < 60) return false;
+    return p <= DELEVER_MIN_DROP_PCT && p <= percentile([...win].sort((a, b) => a - b), DELEVER_PCTL);
+  });
+}
+
 /** 以第 2 欄（加權收盤）計算的列 */
 export type PriceRow = readonly [string, number, ...unknown[]];
 
@@ -183,15 +275,17 @@ export function mdd(rows: readonly PriceRow[], i: number, n: number): number | n
   return r2((low / rows[i]![1] - 1) * 100);
 }
 
-export function detectEvents(rows: StressRow[]): StressEvent[] {
+export function detectEvents(rows: StressRow[], policy: PolicyEvent[] = []): StressEvent[] {
   const flush = flushFlags(rows);
+  const delever = deleverFlags(rows);
   const events: StressEvent[] = [];
   const fired = new Set<StressEventType>();
   let waveLowRatio = Infinity;
   let waveLowTaiexIdx = -1;
   let lastZoneIdx = -Infinity;
   let lastFlushIdx = -Infinity;
-  const emit = (i: number, type: StressEventType) => {
+  let lastDeleverIdx = -Infinity;
+  const emit = (i: number, type: StressEventType, note?: string) => {
     fired.add(type);
     events.push({
       date: rows[i]![0],
@@ -201,10 +295,24 @@ export function detectEvents(rows: StressRow[]): StressEvent[] {
       ret20: forward(rows, i, 20),
       ret60: forward(rows, i, 60),
       mdd60: mdd(rows, i, 60),
+      ...(note ? { note } : {}),
     });
   };
+  // 政策事件：取事件日當天或其後第一個交易日；資料範圍外（更早或尚未發生）略過
+  const policyByIdx = new Map<number, PolicyEvent[]>();
+  for (const p of policy) {
+    const i = rows.findIndex((r) => r[0] >= p.date);
+    // 事件日之後 7 天內沒有交易日（事件早於資料起點、或尚未發生）→ 略過
+    if (i < 0 || rows[i]![0] > addDays(p.date, 7)) continue;
+    policyByIdx.set(i, [...(policyByIdx.get(i) ?? []), p]);
+  }
   for (let i = 0; i < rows.length; i++) {
     const [, taiex, ratio] = rows[i]!;
+    if (delever[i] && i - lastDeleverIdx > DELEVER_COOLDOWN) {
+      lastDeleverIdx = i;
+      emit(i, 'delever');
+    }
+    for (const p of policyByIdx.get(i) ?? []) emit(i, p.type, p.note);
     if (ratio >= RESET_RATIO) {
       fired.clear();
       waveLowRatio = Infinity;
@@ -252,11 +360,11 @@ export function stats(list: { ret20: number | null; ret60: number | null; mdd60:
   };
 }
 
-export function analyzeMarginStress(rows: StressRow[], historyFrom: string | null, now = new Date()): MarginStressFile {
+export function analyzeMarginStress(rows: StressRow[], historyFrom: string | null, now = new Date(), policy: PolicyEvent[] = []): MarginStressFile {
   const states = rows.map((_, i) => stateAt(rows, i));
-  const events = detectEvents(rows);
+  const events = detectEvents(rows, policy);
   const perDay = rows.map((_, i) => ({ ret20: forward(rows, i, 20), ret60: forward(rows, i, 60), mdd60: mdd(rows, i, 60) }));
-  const types: StressEventType[] = ['below150', 'below140', 'flush', 'cleared'];
+  const types = EVENT_TYPES;
   const eventStats = Object.fromEntries(types.map((t) => [t, stats(events.filter((e) => e.type === t))])) as Record<
     StressEventType,
     EventStats
