@@ -370,9 +370,6 @@ function ChipsChart({
           )}
         </div>
       )}
-      <div className="ms-pane-labels small muted" aria-hidden>
-        上：加權（● 事件、小● 再創極端，點一下看名稱） ｜ 二：外資買賣超（億）＋5日細／20日粗累計 ｜ 三：外資期淨OI（口）＋日增減 ｜ {showMargin ? '四：融資維持率（%，虛線＝160／140／130）＋融資增減（億，紅增綠減）' : '四：散戶小台淨OI（口）＋日增減'}
-      </div>
       <div ref={hostRef} className="chart-host fc-host" />
     </div>
   );
@@ -419,6 +416,11 @@ export function ForeignChipsPanel({ data, themeKey, margin = null }: { data: For
       </div>
 
       <PanelNote>
+        <p className="small muted ms-rule">
+          圖怎麼看：上格加權（● 事件、小● 再創極端，點一下看名稱）；二格外資買賣超（億，柱）＋5 日細／20 日粗累計線；三格外資期淨 OI（口，0 軸填色）＋日增減柱；四格{' '}
+          {pane4 === 'margin' && hasMargin ? '融資維持率（%，虛線＝警戒 160／斷頭區 140／追繳 130）＋融資增減（億，紅增綠減）' : '散戶小台淨 OI（口）＋日增減柱'}
+          ，可用區間列旁的按鈕切換。
+        </p>
         <p className="small muted ms-rule">
         買賣超是流量、淨未平倉是部位，兩者與當日漲跌幾乎同步，單看柱子不會比看 K 棒多知道什麼；要看的是<b>累計 vs 指數的背離</b>與<b>部位極端</b>。
         百分位＝該值在近 {PCTL_WINDOW} 個交易日中的位置；事件只在首次 ≤ 第 {EXTREME_LOW * 100}／≥ 第 {EXTREME_HIGH * 100} 百分位時標一次，回到第 {RESET_PCTL * 100} 百分位另一側才算新的一波。賣超不跌：20 日累計 ≤ 第 {DIVERGE_PCTL * 100} 百分位且加權 20 日不跌。賣壓衰竭：20 日累計在 0 以下、「5 日累計 × {PACE_RATIO}」由下往上穿過 20 日累計（最近一週的賣超步調慢過整月平均），再掉回去才可再標。
