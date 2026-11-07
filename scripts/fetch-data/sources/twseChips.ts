@@ -302,19 +302,30 @@ const wan = (v: number) => Math.round((v / 1e7) * 100) / 100; // 股 → 萬張�
  */
 export function parseTwt93u(json: Twt93u): SblDay | null {
   if (json.stat !== 'OK') return null;
-  const t = json.tables?.find((x) => x.fields?.some((f) => /當日餘額|借券/.test(f))) ?? json;
+  const t = json.tables?.find((x) => x.fields?.some((f) => /當日餘額|今日餘額|借券/.test(f))) ?? json;
   const f = t.fields ?? [];
-  const groups = t.groups ?? [];
-  const sblGroup = groups.find((g) => (g.title ?? '').includes('借券'));
-  const inSbl = (i: number) =>
-    f[i]!.includes('借券') || (sblGroup && sblGroup.start !== undefined && i >= sblGroup.start && i < sblGroup.start + (sblGroup.span ?? 0));
-  const find = (re: RegExp) => f.findIndex((name, i) => re.test(name) && (inSbl(i) || /當日/.test(name)));
-  let iSell = find(/當日賣出/);
-  let iRet = find(/當日還券/);
-  let iBal = find(/當日餘額/);
-  // 兩種寫法都對不上時，退回證交所固定欄序：代號、名稱、融券 6 欄、借券賣出 前日餘額／當日賣出／當日還券／當日調整／當日餘額
-  if ((iSell < 0 || iRet < 0 || iBal < 0) && f.length >= 13) [iSell, iRet, iBal] = [9, 10, 12];
-  if (iSell < 0 || iRet < 0 || iBal < 0) throw new Error(`TWT93U 欄位異常：${f.join(',')}`);
+  // groups 只有 span 沒有 start：依序累加算出「借券賣出」那組的欄位範圍
+  let gStart = -1;
+  let gEnd = -1;
+  let pos = 0;
+  for (const g of t.groups ?? []) {
+    const span = g.span ?? 0;
+    if ((g.title ?? '').includes('借券')) {
+      gStart = pos;
+      gEnd = pos + span;
+    }
+    pos += span;
+  }
+  const inSbl = (i: number) => f[i]!.includes('借券') || (gStart >= 0 && i >= gStart && i < gEnd);
+  const find = (re: RegExp) => f.findIndex((name, i) => re.test(name.replace(/^借券賣出/, '')) && (inSbl(i) || /當日/.test(name)));
+  // 現行格式（2012 年中起）：前日餘額／當日賣出／當日還券／當日調整／當日餘額／次一營業日可限額
+  // 舊格式（～2012 年上半）：前日餘額／賣出／庫存異動／今日餘額／可使用額度，沒有「還券」欄，還券＝前日＋賣出−今日（含調整）
+  let iBal = find(/^(當日|今日)餘額$/);
+  let iSell = find(/^(當日)?賣出$/);
+  let iRet = find(/^當日還券$/);
+  const iPrev = find(/^前日餘額$/);
+  if ((iBal < 0 || iSell < 0) && gStart < 0 && f.length >= 13) [iSell, iRet, iBal] = [9, 10, 12];
+  if (iBal < 0 || iSell < 0 || (iRet < 0 && iPrev < 0)) throw new Error(`TWT93U 欄位異常：${f.join(',')}`);
   let sell = 0;
   let ret = 0;
   let bal = 0;
@@ -324,8 +335,15 @@ export function parseTwt93u(json: Twt93u): SblDay | null {
     const b = num(r[iBal]);
     if (!Number.isFinite(b)) continue;
     bal += b;
-    sell += Number.isFinite(num(r[iSell])) ? num(r[iSell]) : 0;
-    ret += Number.isFinite(num(r[iRet])) ? num(r[iRet]) : 0;
+    const sv = num(r[iSell]);
+    sell += Number.isFinite(sv) ? sv : 0;
+    if (iRet >= 0) {
+      const rv = num(r[iRet]);
+      ret += Number.isFinite(rv) ? rv : 0;
+    } else {
+      const pv = num(r[iPrev]);
+      if (Number.isFinite(pv) && Number.isFinite(sv)) ret += Math.max(0, pv + sv - b);
+    }
     n++;
   }
   if (n === 0) return null;
