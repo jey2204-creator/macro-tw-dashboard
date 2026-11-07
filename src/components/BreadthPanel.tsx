@@ -6,6 +6,7 @@ import {
   LineStyle,
   createChart,
   createSeriesMarkers,
+  type AutoscaleInfo,
   type IChartApi,
   type MouseEventParams,
   type SeriesMarker,
@@ -43,6 +44,32 @@ const MID_MODES: { k: MidMode; label: string }[] = [
 ];
 const MARKER_TEXT: Record<BreadthEventType, string> = { panic: '恐慌', capitulate: '投降', divergence: '背離', stabilized: '止跌' };
 
+export type PctRange = { min: number; max: number };
+
+/** 區間起點（第一根可見 K 棒）與其收盤＝百分比基準 */
+function rangeBase(data: BreadthStressFile, range: RangeKey): { from: number; base: number } {
+  const last = data.rows.at(-1);
+  const start = last ? rangeStart(last[0], range) : null;
+  const from = start ? Math.max(0, data.rows.findIndex((r) => r[0] >= start)) : 0;
+  return { from, base: data.rows[from]?.[1] || 1 };
+}
+
+/** 兩市在目前區間內的累計漲跌幅高低點聯集 */
+function sharedPctRange(list: BreadthStressFile[], range: RangeKey): PctRange | null {
+  if (list.length < 2) return null;
+  let min = 0;
+  let max = 0;
+  for (const d of list) {
+    const { from, base } = rangeBase(d, range);
+    for (let i = from; i < d.rows.length; i++) {
+      const v = (d.rows[i]![1] / base - 1) * 100;
+      if (v < min) min = v;
+      if (v > max) max = v;
+    }
+  }
+  return { min, max };
+}
+
 function BreadthChart({
   data,
   range,
@@ -50,6 +77,7 @@ function BreadthChart({
   themeKey,
   resetKey,
   indexLabel,
+  pctRange,
 }: {
   data: BreadthStressFile;
   range: RangeKey;
@@ -57,6 +85,8 @@ function BreadthChart({
   themeKey: string;
   resetKey: number;
   indexLabel: string;
+  /** 兩市共用的百分比 Y 範圍（同一個高度＝同一個 %）；只有一個市場時為 null，照常自動縮放 */
+  pctRange: PctRange | null;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -97,10 +127,24 @@ function BreadthChart({
       rightPriceScale: { borderColor: grid },
       timeScale: { borderColor: grid },
     });
-    const price = chart.addSeries(LineSeries, { color: cssVar('--text-1'), lineWidth: 2, priceFormat: { type: 'price', precision: 0, minMove: 1 } }, 0);
+    // 主圖改為「區間起點＝0%」的累計漲跌幅；指數點位看圖例
+    const { base } = rangeBase(data, range);
+    const pct = (v: number) => (v / base - 1) * 100;
+    const price = chart.addSeries(
+      LineSeries,
+      {
+        color: cssVar('--text-1'),
+        lineWidth: 2,
+        priceFormat: { type: 'custom', minMove: 0.1, formatter: (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%` },
+        autoscaleInfoProvider: (orig: () => AutoscaleInfo | null) =>
+          pctRange ? { priceRange: { minValue: pctRange.min, maxValue: pctRange.max } } : orig(),
+      },
+      0,
+    );
     // Y 軸收緊：只依畫面內高低點縮放，上下各留約 6%（預設上方留 20%，手機上浪費一大截）
     price.priceScale().applyOptions({ scaleMargins: { top: 0.06, bottom: 0.06 } });
-    price.setData(data.rows.map((r) => ({ time: r[0] as Time, value: r[1] })));
+    price.setData(data.rows.map((r) => ({ time: r[0] as Time, value: pct(r[1]) })));
+    price.createPriceLine({ price: 0, color: cssVar('--text-3'), lineWidth: 1, lineStyle: LineStyle.Dotted, axisLabelVisible: false, title: '' });
     const color: Record<BreadthEventType, string> = {
       panic: cssVar('--warn'),
       capitulate: cssVar('--err'),
@@ -141,7 +185,7 @@ function BreadthChart({
     return () => {
       for (const s of [price, ul, dl, adr]) chart.removeSeries(s);
     };
-  }, [data, mid, themeKey]);
+  }, [data, mid, themeKey, range, pctRange]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -173,11 +217,17 @@ function BreadthChart({
 
   const i = hoverIdx ?? data.rows.length - 1;
   const row = data.rows[i];
+  const { base } = rangeBase(data, range);
+  const pctOf = (v: number) => {
+    const p = (v / base - 1) * 100;
+    return `${p > 0 ? '+' : ''}${p.toFixed(1)}%`;
+  };
   return (
     <div className="pricechart ms-chart">
       {row && (
         <div className="legend num" aria-live="off">
-          <span className="muted">{row[0]}</span> {indexLabel} <b>{row[1].toLocaleString('en-US', { maximumFractionDigits: 0 })}</b>{' '}
+          <span className="muted">{row[0]}</span> {indexLabel} <b>{row[1].toLocaleString('en-US', { maximumFractionDigits: 0 })}</b>
+          <span className="muted">（區間 {pctOf(row[1])}）</span>{' '}
           <span className="up">漲停 {row[2]}</span> <span className="down">跌停 {row[3]}</span>（占比 {f2(data.downPct[i])}%）{' '}
           <span className="up">漲 {row[4]}</span> <span className="down">跌 {row[5]}</span>{' '}
           10日漲跌比 {f2(data.adRatio10[i])} {data.panic[i] && <span className="ms-state ms-zone">恐慌日</span>}
@@ -293,6 +343,10 @@ export function BreadthPanel({ twse, otc, themeKey }: { twse: BreadthStressFile 
   if (otc?.latest) markets.push({ market: 'tpex', data: otc });
   if (!markets.length) return null;
   const latestDate = markets.map((m) => m.data.latest!.date).sort().at(-1);
+  const pctRange = sharedPctRange(
+    markets.map((m) => m.data),
+    range,
+  );
   const toggle = (m: BreadthMarket) => setShowEvents((s) => ({ ...s, [m]: !s[m] }));
   return (
     <section id="sec-br" className="regime ms" aria-label="漲跌停家數監測">
@@ -308,7 +362,7 @@ export function BreadthPanel({ twse, otc, themeKey }: { twse: BreadthStressFile 
 
       <PanelNote>
         <p className="small muted ms-rule">
-          圖怎麼看（上市、上櫃兩張圖相同）：上格指數線——▼ 恐慌、■ 投降、● 背離、▲ 止跌；中格
+          圖怎麼看（上市、上櫃兩張圖相同）：上格指數線（右軸＝區間起點起算的漲跌幅 %，兩張圖同一刻度：同一高度＝同一 %，可直接比誰跌得深；點位看圖例）——▼ 恐慌、■ 投降、● 背離、▲ 止跌；中格
           {mid === 'ad' ? '上漲家數（0 以上）／下跌家數（0 以下，恐慌日加深）' : '漲停（0 以上）／跌停（0 以下，恐慌日加深）'}；下格 10 日上漲÷下跌家數（虛線＝1.0 漲跌持平）。
         </p>
         <p className="small muted ms-rule">
@@ -336,7 +390,7 @@ export function BreadthPanel({ twse, otc, themeKey }: { twse: BreadthStressFile 
         </div>
       </div>
       {markets.map((m) => (
-        <BreadthChart key={m.market} data={m.data} range={range} mid={mid} themeKey={themeKey} resetKey={resetKey} indexLabel={BREADTH_MARKET[m.market].index} />
+        <BreadthChart key={m.market} data={m.data} range={range} mid={mid} themeKey={themeKey} resetKey={resetKey} indexLabel={BREADTH_MARKET[m.market].index} pctRange={pctRange} />
       ))}
 
       {markets.map((m) => (
