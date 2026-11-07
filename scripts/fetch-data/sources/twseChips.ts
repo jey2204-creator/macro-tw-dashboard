@@ -11,7 +11,7 @@ import type { SourceFetchResult } from './types';
  *
  * 漲跌家數：MI_INDEX 的「漲跌證券數合計」股票欄（2011 年中以前無此表，改由逐檔收盤行情推算）
  *
- * 借券賣出：融券借券賣出餘額 TWT93U（逐檔）：借券賣出「當日賣出／當日還券／當日餘額」加總（張→萬張）。
+ * 借券賣出：融券借券賣出餘額 TWT93U（逐檔，單位「股」）：借券賣出「當日賣出／當日還券／當日餘額」加總（股→萬張）。
  *   借券放空者幾乎都是外資／法人；全市場加總值與媒體引用的「外資借券放空總張數」同一口徑（上市）。
  *
  * 大盤融資維持率（推算，上市、含 ETF）＝ Σ(逐檔融資餘額張數 × 1000 × 收盤價) ÷ 融資金額餘額 × 100%
@@ -51,6 +51,8 @@ export const TWSE_CHIPS_BACKFILL_DAYS = 365;
 /** 維持率每天多一個大檔請求，回補較短 */
 export const MARGIN_RATIO_BACKFILL_DAYS = 183;
 export const BACKFILL_PER_RUN = 40;
+/** 借券（TWT93U）回應慢（約 10 秒／天，40 天約 8 分鐘）；首次抓 40 個工作日才看得到近兩個月 */
+export const SBL_BACKFILL_PER_RUN = 40;
 /**
  * 證交所對頻繁請求會暫時封鎖 IP（實測 GitHub Actions 上每 0.7 秒一次會被擋），
  * 所有證交所籌碼請求共用節流：兩次請求至少間隔 2 秒。
@@ -291,7 +293,7 @@ export interface SblDay {
   ret: number;
 }
 
-const wan = (v: number) => Math.round((v / 1e4) * 100) / 100; // 張 → 萬張，取 2 位
+const wan = (v: number) => Math.round((v / 1e7) * 100) / 100; // 股 → 萬張（÷1000 張 ÷10000 萬），取 2 位
 
 /**
  * 解析 TWT93U（融券借券賣出餘額，逐檔）：加總借券賣出的當日賣出／當日還券／當日餘額。
@@ -359,7 +361,11 @@ function sblDay(date: string, http: HttpOptions, fast: boolean): Promise<SblDay 
   if (!p) {
     p = (async () => {
       await throttle(fast);
-      const j = await getJson<Twt93u>(`https://www.twse.com.tw/rwd/zh/marginTrading/TWT93U?date=${date.replace(/-/g, '')}&response=json`, http);
+      // 整個市場逐檔約 1,300 列，證交所回應較慢，逾時放寬
+      const j = await getJson<Twt93u>(`https://www.twse.com.tw/rwd/zh/marginTrading/TWT93U?date=${date.replace(/-/g, '')}&response=json`, {
+        ...http,
+        timeoutMs: Math.max(http.timeoutMs ?? 0, 45_000),
+      });
       return parseTwt93u(j);
     })();
     sblCache.set(date, p);
@@ -447,19 +453,36 @@ export async function fetchTwseChips(
   const last = cached?.at(-1)?.[0] ?? null;
   // 最新：自上次最後一天（含）起；無快取則從今天往回
   // 為避免資料出現「中間缺洞」：最新段由舊到新、回補段由新到舊，遇到錯誤就停在該處，下次執行從斷點繼續。
-  const recent = (last ? weekdaysBackward(today, last, 30) : weekdaysBackward(today, target, BACKFILL_PER_RUN)).reverse();
-  const older = first && first > target ? weekdaysBackward(addDays(first, -1), target, BACKFILL_PER_RUN) : [];
+  const perRun = isSbl(symbol) ? SBL_BACKFILL_PER_RUN : BACKFILL_PER_RUN;
+  const recent = (last ? weekdaysBackward(today, last, 30) : weekdaysBackward(today, target, perRun)).reverse();
+  const older = first && first > target ? weekdaysBackward(addDays(first, -1), target, perRun) : [];
+  // 借券（TWT93U）：單日逾時（休市日或證交所暫時變慢）只略過該日、不停整段，否則一個壞日會永遠卡住最新段；
+  // 略過造成的缺洞由下一次執行補：快取範圍內不在快取的工作日（最多 10 天）排在最後補抓
+  const skipOnTimeout = isSbl(symbol);
+  const gaps: string[] = [];
+  if (skipOnTimeout && cached && first && last) {
+    const have = new Set(cached.map((b) => b[0]));
+    for (const d of weekdaysBackward(addDays(last, -1), addDays(first, 1), 10_000)) {
+      if (!have.has(d)) gaps.push(d);
+      if (gaps.length >= 10) break;
+    }
+  }
 
   const bars: Bar[] = [];
   let lastError: unknown = null;
-  for (const segment of [recent, older]) {
+  for (const segment of [recent, older, gaps]) {
     for (const d of segment) {
       try {
         const v = await dayValue(symbol, d, http, fast);
         if (v !== null && Number.isFinite(v)) bars.push([d, v, v, v, v]);
       } catch (e) {
         lastError = e;
-        console.warn(`  [twse_chips] ${symbol} ${d} 失敗，本段停止：${e instanceof Error ? e.message : String(e)}`);
+        const msg = e instanceof Error ? e.message : String(e);
+        if (skipOnTimeout && (segment === gaps || /abort/i.test(msg))) {
+          console.warn(`  [twse_chips] ${symbol} ${d} 失敗，略過該日：${msg}`);
+          continue;
+        }
+        console.warn(`  [twse_chips] ${symbol} ${d} 失敗，本段停止：${msg}`);
         break;
       }
     }
