@@ -907,6 +907,10 @@ th {
 .ms-pane-labels {
   margin: 2px 0 4px;
 }
+/* 漲跌停面板：兩張圖上下排，各自比其他面板矮約 15% */
+.br-host {
+  height: max(360px, 51vh);
+}
 /* 漲跌停家數監測：上市／上櫃各一行讀數 */
 .br-score {
   display: flex;
