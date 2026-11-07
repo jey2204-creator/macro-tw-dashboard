@@ -26,6 +26,7 @@ import {
 } from '../shared/marginStress';
 import { rangeStart, type RangeKey } from '../shared/timeseries';
 import { cssVar, f2, pctCell } from '../lib/stressFormat';
+import { LineLabels } from '../lib/lineLabels';
 import { StatsRow } from './StatsRow';
 
 const RANGES: { k: RangeKey; label: string }[] = [
@@ -102,13 +103,25 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
       1,
     );
     ratio.setData(data.rows.map((r) => ({ time: r[0] as Time, value: r[2] })));
-    for (const [v, t] of [
-      [WARN_RATIO, '警戒 160'],
-      [ZONE_RATIO, '斷頭區 140'],
-      [130, '追繳 130'],
-    ] as const) {
-      ratio.createPriceLine({ price: v, color: cssVar('--text-3'), lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: t });
+    // 門檻線只畫虛線，不開軸標籤（會和右軸的現值標籤打架）；名稱用 LineLabels 畫在窗格左側線上
+    const thresholds = [
+      { price: WARN_RATIO, text: `警戒 ${WARN_RATIO}` },
+      { price: ZONE_RATIO, text: `斷頭區 ${ZONE_RATIO}` },
+      { price: 130, text: '追繳 130' },
+    ];
+    const lineColor = cssVar('--text-3');
+    for (const t of thresholds) {
+      ratio.createPriceLine({ price: t.price, color: lineColor, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false, title: '' });
     }
+    ratio.attachPrimitive(
+      new LineLabels(thresholds, {
+        color: cssVar('--text-2'),
+        background: cssVar('--surface'),
+        border: lineColor,
+        fontSize: 11,
+        fontFamily: getComputedStyle(document.body).fontFamily,
+      }),
+    );
 
     const up = cssVar('--up');
     const down = cssVar('--down');
@@ -167,7 +180,7 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
         </div>
       )}
       <div className="ms-pane-labels small muted" aria-hidden>
-        上：加權指數（▼ 跌破 150／140、■ 斷頭潮、▲ 清洗完成） ｜ 中：維持率 ｜ 下：融資增減（億）
+        上：加權指數（▼ 跌破 150／140、■ 斷頭潮、▲ 清洗完成） ｜ 中：維持率（門檻線 160／140／130 在畫面外時不標） ｜ 下：融資增減（億）
       </div>
       <div ref={hostRef} className="chart-host ms-host" />
     </div>
