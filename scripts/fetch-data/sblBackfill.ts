@@ -80,6 +80,15 @@ async function probe(dates: string[], intervalMs: number) {
     try {
       const r = await fetchDay(d, intervalMs);
       console.log(`::notice title=probe ${d}::${JSON.stringify(r)}（${((Date.now() - t0) / 1000).toFixed(1)} 秒）`);
+      // 欄位格式（早期年份格式可能不同，印出來核對）
+      const j = await throttled(intervalMs, () =>
+        getJson<{ fields?: string[]; groups?: unknown; data?: string[][]; tables?: { fields?: string[]; groups?: unknown; data?: string[][] }[] }>(
+          `https://www.twse.com.tw/rwd/zh/marginTrading/TWT93U?date=${d.replace(/-/g, '')}&response=json`,
+          http,
+        ),
+      );
+      const t = j.tables?.[0] ?? j;
+      console.log(`::notice title=fields ${d}::${JSON.stringify({ fields: t.fields, groups: t.groups, first: t.data?.find((r) => /^\d{4}$/.test((r[0] ?? '').trim())) })}`);
     } catch (e) {
       console.log(`::warning title=probe ${d}::網路錯誤 ${e instanceof Error ? e.message : String(e)}`);
     }
