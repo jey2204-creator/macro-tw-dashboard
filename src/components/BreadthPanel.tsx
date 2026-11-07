@@ -98,6 +98,8 @@ function BreadthChart({
       timeScale: { borderColor: grid },
     });
     const price = chart.addSeries(LineSeries, { color: cssVar('--text-1'), lineWidth: 2, priceFormat: { type: 'price', precision: 0, minMove: 1 } }, 0);
+    // Y 軸收緊：只依畫面內高低點縮放，上下各留約 6%（預設上方留 20%，手機上浪費一大截）
+    price.priceScale().applyOptions({ scaleMargins: { top: 0.06, bottom: 0.06 } });
     price.setData(data.rows.map((r) => ({ time: r[0] as Time, value: r[1] })));
     const color: Record<BreadthEventType, string> = {
       panic: cssVar('--warn'),
@@ -128,9 +130,11 @@ function BreadthChart({
     ul.setData(data.rows.map((r) => ({ time: r[0] as Time, value: ad ? r[4] : r[2] })));
     const dl = chart.addSeries(HistogramSeries, { priceFormat: fmt0, priceLineVisible: false, lastValueVisible: ad }, 1);
     dl.setData(data.rows.map((r, i) => ({ time: r[0] as Time, value: -(ad ? r[5] : r[3]), color: data.panic[i] ? err : down })));
+    ul.priceScale().applyOptions({ scaleMargins: { top: 0.06, bottom: 0.06 } });
 
     const adr = chart.addSeries(LineSeries, { color: cssVar('--accent'), lineWidth: 2, priceFormat: { type: 'price', precision: 2, minMove: 0.01 } }, 2);
     adr.setData(data.rows.flatMap((r, i) => (data.adRatio10[i] == null ? [] : [{ time: r[0] as Time, value: data.adRatio10[i]! }])));
+    adr.priceScale().applyOptions({ scaleMargins: { top: 0.08, bottom: 0.08 } });
     adr.createPriceLine({ price: 1, color: cssVar('--text-3'), lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: '漲跌持平 1.0' });
 
     resetPaneStretch(chart);
@@ -179,12 +183,7 @@ function BreadthChart({
           10日漲跌比 {f2(data.adRatio10[i])} {data.panic[i] && <span className="ms-state ms-zone">恐慌日</span>}
         </div>
       )}
-      <div className="ms-pane-labels small muted" aria-hidden>
-        上：{indexLabel}指數（▼恐慌 ■投降 ●背離 ▲止跌） ｜ 中：
-        {mid === 'ad' ? '上漲家數（0 以上）／下跌家數（0 以下，恐慌日加深）' : '漲停（0 以上）／跌停（0 以下，恐慌日加深）'} ｜
-        下：10 日上漲÷下跌家數
-      </div>
-      <div ref={hostRef} className="chart-host ms-host" />
+      <div ref={hostRef} className="chart-host ms-host br-host" />
     </div>
   );
 }
@@ -308,6 +307,10 @@ export function BreadthPanel({ twse, otc, themeKey }: { twse: BreadthStressFile 
       ))}
 
       <PanelNote>
+        <p className="small muted ms-rule">
+          圖怎麼看（上市、上櫃兩張圖相同）：上格指數線——▼ 恐慌、■ 投降、● 背離、▲ 止跌；中格
+          {mid === 'ad' ? '上漲家數（0 以上）／下跌家數（0 以下，恐慌日加深）' : '漲停（0 以上）／跌停（0 以下，恐慌日加深）'}；下格 10 日上漲÷下跌家數（虛線＝1.0 漲跌持平）。
+        </p>
         <p className="small muted ms-rule">
           恐慌：跌停占比（跌停÷上漲＋下跌家數）達近 250 日第 98 百分位且 ≥ {PANIC_MIN_PCT}%；投降：連續 2 日恐慌（上市另加「恐慌日融資維持率 &lt; 140%」，上櫃沒有維持率可用）；背離：指數跌破本波低點但跌停不到本波高峰一半；止跌：漲停 &gt; 跌停連續 2 日且指數 3 日不破低。最後一個恐慌日後 {EPISODE_GAP} 個交易日內算同一波，每種事件每波只標一次。2015-06-01 前漲跌幅為 7%，因此用百分位而非固定家數。上市家數取自證交所「漲跌證券數合計」（2011 年中以前逐檔推算）；上櫃家數由櫃買中心每日收盤行情逐檔推算（只算普通股，不含 ETF、權證），歷史自 2008 年起。
         </p>

@@ -86,7 +86,8 @@ describe('BreadthPanel（上市＋上櫃同一模組）', () => {
     expect(mid).toHaveLength(4);
     expect(mid.map((s) => s.values.at(-1))).toEqual([300, -529, 300, -529]);
     expect(mid.every((s) => s.label)).toBe(true);
-    expect(screen.getAllByText(/上漲家數（0 以上）/)).toHaveLength(2);
+    // 圖例已收進 ⓘ 說明，兩張圖共用一段
+    expect(screen.getAllByText(/上漲家數（0 以上）/)).toHaveLength(1);
   });
 
   it('兩市的歷次事件各自展開', () => {
