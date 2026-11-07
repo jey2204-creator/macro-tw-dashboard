@@ -10,7 +10,7 @@
  *  - 時間預算 --budget-min 用完就存檔結束；網路連續失敗視為被擋，存檔後以代碼 2 結束
  *
  * 用法：
- *   tsx scripts/fetch-data/sblBackfill.ts [--file data/sbl-history.json] [--target 2013-01-02] [--budget-min 300]
+ *   tsx scripts/fetch-data/sblBackfill.ts [--file data/sbl-history.json] [--target 2010-01-04] [--budget-min 300]
  *   tsx scripts/fetch-data/sblBackfill.ts --probe 2010-03-02,2013-01-02,2020-03-19   # 只測試解析，不寫檔
  */
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
@@ -101,7 +101,7 @@ async function main() {
   if (probeArg) return probe(probeArg.split(','), intervalMs);
 
   const file = path.resolve(arg('file') ?? 'data/sbl-history.json');
-  const target = arg('target') ?? '2013-01-02';
+  const target = arg('target') ?? '2010-01-04';
   const budgetMs = Number(arg('budget-min') ?? 300) * 60_000;
   const started = Date.now();
   const f: SblHistoryFile = (await load(file)) ?? {
