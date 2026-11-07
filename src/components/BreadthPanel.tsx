@@ -24,6 +24,7 @@ import {
 } from '../shared/breadthStress';
 import { rangeStart, type RangeKey } from '../shared/timeseries';
 import { StatsRow } from './StatsRow';
+import { BREADTH_MARKET, type BreadthMarket } from '../lib/breadthMarket';
 
 const RANGES: { k: RangeKey; label: string }[] = [
   { k: '3M', label: '3個月' },
@@ -48,12 +49,14 @@ function BreadthChart({
   mid,
   themeKey,
   resetKey,
+  indexLabel,
 }: {
   data: BreadthStressFile;
   range: RangeKey;
   mid: MidMode;
   themeKey: string;
   resetKey: number;
+  indexLabel: string;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -170,14 +173,14 @@ function BreadthChart({
     <div className="pricechart ms-chart">
       {row && (
         <div className="legend num" aria-live="off">
-          <span className="muted">{row[0]}</span> 加權 <b>{row[1].toLocaleString('en-US', { maximumFractionDigits: 0 })}</b>{' '}
+          <span className="muted">{row[0]}</span> {indexLabel} <b>{row[1].toLocaleString('en-US', { maximumFractionDigits: 0 })}</b>{' '}
           <span className="up">漲停 {row[2]}</span> <span className="down">跌停 {row[3]}</span>（占比 {f2(data.downPct[i])}%）{' '}
           <span className="up">漲 {row[4]}</span> <span className="down">跌 {row[5]}</span>{' '}
           10日漲跌比 {f2(data.adRatio10[i])} {data.panic[i] && <span className="ms-state ms-zone">恐慌日</span>}
         </div>
       )}
       <div className="ms-pane-labels small muted" aria-hidden>
-        上：加權指數（▼恐慌 ■投降 ●背離 ▲止跌） ｜ 中：
+        上：{indexLabel}指數（▼恐慌 ■投降 ●背離 ▲止跌） ｜ 中：
         {mid === 'ad' ? '上漲家數（0 以上）／下跌家數（0 以下，恐慌日加深）' : '漲停（0 以上）／跌停（0 以下，恐慌日加深）'} ｜
         下：10 日上漲÷下跌家數
       </div>
@@ -186,7 +189,8 @@ function BreadthChart({
   );
 }
 
-export function BreadthPanel({ data, themeKey }: { data: BreadthStressFile | null; themeKey: string }) {
+export function BreadthPanel({ data, themeKey, market = 'twse' }: { data: BreadthStressFile | null; themeKey: string; market?: BreadthMarket }) {
+  const M = BREADTH_MARKET[market];
   const [range, setRange] = useState<RangeKey>('3M');
   const [mid, setMid] = useState<MidMode>('limit');
   const [resetKey, setResetKey] = useState(0);
@@ -195,13 +199,13 @@ export function BreadthPanel({ data, themeKey }: { data: BreadthStressFile | nul
   const { latest } = data;
   const state = latest.panic ? 'zone' : latest.inEpisode ? 'warn' : 'normal';
   const stateText = latest.panic ? '恐慌日' : latest.inEpisode ? '恐慌後觀察期' : '平靜';
-  const shortHistory = !data.start || data.start > '2011-01-01';
+  const shortHistory = !data.start || data.start > (market === 'tpex' ? '2009-01-01' : '2011-01-01');
   const lastRow = data.rows.at(-1);
   return (
-    <section id="sec-br" className="regime ms" aria-label="漲跌停家數監測">
+    <section id={M.id} className="regime ms" aria-label={M.aria}>
       <div className="regime-head">
         <div className="regime-title">
-          <span className="label">漲跌停家數監測（上市股票，參考）</span>
+          <span className="label">{M.title}</span>
           <span className={`verdict ms-${state}`}>{stateText}</span>
           <span className="score num">
             <span className="up">漲停 {latest.upLimit}</span>｜<span className="down">跌停 {latest.downLimit}</span>｜跌停占比 {f2(latest.downPct)}%
@@ -219,7 +223,7 @@ export function BreadthPanel({ data, themeKey }: { data: BreadthStressFile | nul
 
       <PanelNote>
         <p className="small muted ms-rule">
-        恐慌：跌停占比（跌停÷上漲＋下跌家數）達近 250 日第 98 百分位且 ≥ {PANIC_MIN_PCT}%；投降：連續 2 日恐慌或恐慌日融資維持率 &lt; 140%；背離：加權跌破本波低點但跌停不到本波高峰一半；止跌：漲停 &gt; 跌停連續 2 日且加權 3 日不破低。最後一個恐慌日後 {EPISODE_GAP} 個交易日內算同一波，每種事件每波只標一次。2015-06-01 前漲跌幅為 7%，因此用百分位而非固定家數。
+        恐慌：跌停占比（跌停÷上漲＋下跌家數）達近 250 日第 98 百分位且 ≥ {PANIC_MIN_PCT}%；{M.capitulate}；背離：{M.index}跌破本波低點但跌停不到本波高峰一半；止跌：漲停 &gt; 跌停連續 2 日且{M.index} 3 日不破低。最後一個恐慌日後 {EPISODE_GAP} 個交易日內算同一波，每種事件每波只標一次。2015-06-01 前漲跌幅為 7%，因此用百分位而非固定家數。{M.extra}
       </p>
       </PanelNote>
 
@@ -242,12 +246,12 @@ export function BreadthPanel({ data, themeKey }: { data: BreadthStressFile | nul
           ))}
         </div>
       </div>
-      <BreadthChart data={data} range={range} mid={mid} themeKey={themeKey} resetKey={resetKey} />
+      <BreadthChart data={data} range={range} mid={mid} themeKey={themeKey} resetKey={resetKey} indexLabel={M.index} />
 
       <div className="table-wrap">
         <table className="bt-table num">
           <caption className="small muted">
-            事件發生後加權指數表現（{data.start}～{data.end}）{shortHistory && '— 歷史回補中，樣本仍少'}
+            事件發生後{M.index}指數表現（{data.start}～{data.end}）{shortHistory && '— 歷史回補中，樣本仍少'}
           </caption>
           <thead>
             <tr>
@@ -281,7 +285,7 @@ export function BreadthPanel({ data, themeKey }: { data: BreadthStressFile | nul
                 <th>事件</th>
                 <th className="r">漲停</th>
                 <th className="r">跌停</th>
-                <th className="r">加權</th>
+                <th className="r">{M.index}</th>
                 <th className="r">20日</th>
                 <th className="r">60日</th>
                 <th className="r">最大跌幅</th>
@@ -306,7 +310,7 @@ export function BreadthPanel({ data, themeKey }: { data: BreadthStressFile | nul
       )}
       <PanelNote label="ⓘ 用法">
         <p className="small muted ms-rule">
-        用法：恐慌本身不是進場訊號（恐慌常持續 2–5 天）；背離、止跌再搭配上方「融資斷頭監測」的清洗完成與總經判斷，才考慮分批。僅供參考，不計分。
+        {M.usage}
       </p>
       </PanelNote>
     </section>
