@@ -152,6 +152,8 @@ function ChipsChart({
     // 上：加權指數＋事件標記
     const taiex = add(chart.addSeries(LineSeries, { color: text1, lineWidth: 2, priceFormat: lotsFmt }, 0));
     taiex.setData(data.rows.map((r) => ({ time: r[0] as Time, value: r[1] })));
+    // 圖表庫預設上 20%／下 10% 留白，加上事件標記再多留一層，加權窗格上面會空一大塊；收到 6%（與融資面板一致）
+    taiex.priceScale().applyOptions({ scaleMargins: { top: 0.06, bottom: 0.06 } });
     const markerColor: Record<ForeignEventType, string> = {
       oi_short: down,
       oi_long: up,
@@ -201,6 +203,8 @@ function ChipsChart({
     cum5.setData(data.rows.filter((r) => r[3] !== null).map((r) => ({ time: r[0] as Time, value: r[3]! })));
     const cum20 = add(chart.addSeries(LineSeries, { color: accent, lineWidth: 2, priceFormat: lotsFmt }, 1));
     cum20.setData(data.rows.filter((r) => r[4] !== null).map((r) => ({ time: r[0] as Time, value: r[4]! })));
+    // 累計線與 5 日線共用右軸：留白一樣收到 6%（單日柱在獨立刻度，不受影響）
+    cum20.priceScale().applyOptions({ scaleMargins: { top: 0.06, bottom: 0.06 } });
 
     // 下兩格：淨未平倉（0 軸填色）＋日增減柱（獨立小刻度，貼在窗格底部）
     const oiPane = (pane: number, oi: (r: ForeignChipsFile['rows'][number]) => number | null, chg: (r: ForeignChipsFile['rows'][number]) => number | null) => {
@@ -222,6 +226,7 @@ function ChipsChart({
         ),
       );
       s.setData(data.rows.filter((r) => oi(r) !== null).map((r) => ({ time: r[0] as Time, value: oi(r)! })));
+      s.priceScale().applyOptions({ scaleMargins: { top: 0.06, bottom: 0.3 } }); // 下方 28% 給日增減柱，上方不留大空白
       const h = add(
         chart.addSeries(HistogramSeries, { priceFormat: lotsFmt, priceScaleId: `chg-${pane}`, lastValueVisible: false, priceLineVisible: false }, pane),
       );
