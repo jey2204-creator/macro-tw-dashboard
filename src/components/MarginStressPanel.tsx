@@ -1,4 +1,5 @@
 import {
+  type AutoscaleInfo,
   ColorType,
   CrosshairMode,
   HistogramSeries,
@@ -97,9 +98,20 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
     }));
     createSeriesMarkers(series, markers);
 
+    // 警戒時（最新維持率 < 160）把斷頭區 140 線納入 Y 軸自動縮放，才看得到離斷頭區多遠；平常不擴 Y 軸
+    const inWarn = (data.rows.at(-1)?.[2] ?? Infinity) < WARN_RATIO;
     const ratio = chart.addSeries(
       LineSeries,
-      { color: cssVar('--accent'), lineWidth: 2, priceFormat: { type: 'price', precision: 1, minMove: 0.1 } },
+      {
+        color: cssVar('--accent'),
+        lineWidth: 2,
+        priceFormat: { type: 'price', precision: 1, minMove: 0.1 },
+        autoscaleInfoProvider: (original: () => AutoscaleInfo | null) => {
+          const info = original();
+          if (!inWarn || !info?.priceRange) return info;
+          return { ...info, priceRange: { minValue: Math.min(info.priceRange.minValue, ZONE_RATIO), maxValue: info.priceRange.maxValue } };
+        },
+      },
       1,
     );
     ratio.setData(data.rows.map((r) => ({ time: r[0] as Time, value: r[2] })));
@@ -180,7 +192,7 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
         </div>
       )}
       <div className="ms-pane-labels small muted" aria-hidden>
-        上：加權指數（▼ 跌破 150／140、■ 斷頭潮、▲ 清洗完成） ｜ 中：維持率（門檻線 160／140／130 在畫面外時不標） ｜ 下：融資增減（億）
+        上：加權指數（▼ 跌破 150／140、■ 斷頭潮、▲ 清洗完成） ｜ 中：維持率（警戒時 Y 軸含 140 線；門檻線在畫面外時不標） ｜ 下：融資增減（億）
       </div>
       <div ref={hostRef} className="chart-host ms-host" />
     </div>
