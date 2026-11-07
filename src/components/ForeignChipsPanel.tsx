@@ -37,6 +37,7 @@ import { rangeStart, type RangeKey } from '../shared/timeseries';
 import { StatsRow } from './StatsRow';
 import { STATE_LABEL, WARN_RATIO, ZONE_RATIO, type MarginStressFile } from '../shared/marginStress';
 import { LineLabels } from '../lib/lineLabels';
+import { MarkerLabels, type MarkerLabel } from '../lib/markerLabels';
 import { loadPref, savePref } from '../lib/storage';
 
 /** 第 4 格顯示：散戶小台淨 OI，或融資維持率＋融資增減（兩者都是散戶籌碼，切換對照） */
@@ -65,12 +66,13 @@ const RANGES: { k: RangeKey; label: string }[] = [
   { k: '10Y', label: '10年' },
   { k: 'ALL', label: '全部' },
 ];
-/** 事件文字最少相隔幾根 K 棒（依視圖長度），避免疊字 */
-const MARKER_GAP: Record<RangeKey, number> = { '3M': 6, '6M': 10, '1Y': 16, '5Y': 40, '10Y': 60, 'ALL': 60 };
 /** 四個窗格高度比例：加權／買賣超／外資期 OI／散戶小台 OI */
 const FC_PANE_STRETCH = [0.34, 0.22, 0.22, 0.22] as const;
 /** 第 4 格切到融資時（線＋柱兩層）略高一點，維持率線才不會被壓扁 */
 const FC_PANE_STRETCH_MARGIN = [0.32, 0.2, 0.2, 0.28] as const;
+
+/** 事件文字最少相隔幾根 K 棒（依視圖長度）：長視圖事件太密（衰竭幾乎每月都有），先稀疏再交給 MarkerLabels 防撞 */
+const MARKER_GAP: Record<RangeKey, number> = { '3M': 3, '6M': 5, '1Y': 8, '5Y': 40, '10Y': 60, 'ALL': 60 };
 
 const lots = (v: number | null | undefined) =>
   v === null || v === undefined || !Number.isFinite(v) ? '—' : `${v > 0 ? '+' : ''}${v.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
@@ -163,23 +165,21 @@ function ChipsChart({
       sell_no_fall: accent,
       sell_exhaust: up,
     };
-    // 同日事件合併成一個點（文字以「／」相連）；相鄰 ≤ MARKER_GAP 根 K 棒的事件只有第一個帶文字
+    // 同日事件合併成一個點（文字以「／」相連）；marker 只畫點，文字由 MarkerLabels 自繪、互相閃避並避開折線
     const byDate = new Map<string, ForeignEventType[]>();
     for (const e of data.events) byDate.set(e.date, [...(byDate.get(e.date) ?? []), e.type]);
     const markers: SeriesMarker<Time>[] = [];
+    const labels: MarkerLabel[] = [];
     let lastTextIdx = -Infinity;
     for (const [date, types] of byDate) {
-      const idx = indexByDate.get(date) ?? 0;
+      const idx = indexByDate.get(date);
       const above = types.some((t) => t === 'oi_long' || t === 'buy_extreme' || t === 'retail_long');
-      const withText = idx - lastTextIdx > MARKER_GAP[range];
+      markers.push({ time: date as Time, position: above ? 'aboveBar' : 'belowBar', shape: 'circle', color: markerColor[types[0]!] });
+      const withText = idx !== undefined && idx - lastTextIdx > MARKER_GAP[range];
       if (withText) lastTextIdx = idx;
-      markers.push({
-        time: date as Time,
-        position: above ? 'aboveBar' : 'belowBar',
-        shape: 'circle',
-        color: markerColor[types[0]!],
-        text: withText ? types.map((t) => FOREIGN_MARKER_TEXT[t]).join('／') : undefined,
-      });
+      if (idx !== undefined && withText) {
+        labels.push({ time: date as Time, value: data.rows[idx]![1], text: types.map((t) => FOREIGN_MARKER_TEXT[t]).join('／'), color: markerColor[types[0]!], above });
+      }
     }
     // 同一波內再創極端：小一號、不帶文字（圖例會顯示）
     for (const m of data.deeper) {
@@ -193,6 +193,7 @@ function ChipsChart({
     }
     markers.sort((a, b) => (a.time < b.time ? -1 : a.time > b.time ? 1 : 0));
     createSeriesMarkers(taiex, markers);
+    taiex.attachPrimitive(new MarkerLabels(labels, { background: cssVar('--surface'), fontSize: 11, fontFamily: getComputedStyle(document.body).fontFamily }));
 
     // 中：外資買賣超柱＋5／20 日累計線
     // 單日柱用獨立刻度貼在窗格底部，否則被 ±數千億的累計線壓得看不見
