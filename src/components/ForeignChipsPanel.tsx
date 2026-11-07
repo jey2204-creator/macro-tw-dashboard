@@ -1,9 +1,11 @@
 import {
+  type AutoscaleInfo,
   BaselineSeries,
   ColorType,
   CrosshairMode,
   HistogramSeries,
   LineSeries,
+  LineStyle,
   createChart,
   createSeriesMarkers,
   type IChartApi,
@@ -33,6 +35,17 @@ import {
 } from '../shared/foreignChips';
 import { rangeStart, type RangeKey } from '../shared/timeseries';
 import { StatsRow } from './StatsRow';
+import { STATE_LABEL, WARN_RATIO, ZONE_RATIO, type MarginStressFile } from '../shared/marginStress';
+import { LineLabels } from '../lib/lineLabels';
+import { loadPref, savePref } from '../lib/storage';
+
+/** 第 4 格顯示：散戶小台淨 OI，或融資維持率＋融資增減（兩者都是散戶籌碼，切換對照） */
+export type Pane4Mode = 'retail' | 'margin';
+const PANE4_MODES: { k: Pane4Mode; label: string }[] = [
+  { k: 'retail', label: '散戶小台' },
+  { k: 'margin', label: '融資維持率' },
+];
+const PANE4_KEY = 'fc-pane4';
 
 /** 右側留白（像素）：讓最新一天的事件文字（如「散戶多」約 40px）不被價格軸切掉，與縮放無關 */
 const FC_RIGHT_GAP_PX = 18;
@@ -64,11 +77,29 @@ const pctlText = (p: number | null | undefined) => (p === null || p === undefine
 const pctlClass = (p: number | null | undefined) =>
   p === null || p === undefined ? '' : p <= EXTREME_LOW || p >= EXTREME_HIGH ? 'fc-extreme' : '';
 
-function ChipsChart({ data, range, themeKey, resetKey }: { data: ForeignChipsFile; range: RangeKey; themeKey: string; resetKey: number }) {
+function ChipsChart({
+  data,
+  range,
+  themeKey,
+  resetKey,
+  margin,
+  pane4,
+}: {
+  data: ForeignChipsFile;
+  range: RangeKey;
+  themeKey: string;
+  resetKey: number;
+  margin: MarginStressFile | null;
+  pane4: Pane4Mode;
+}) {
   const hostRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const indexByDate = useMemo(() => new Map(data.rows.map((r, i) => [r[0], i])), [data]);
+  // 融資資料只取外資資料也有的交易日，X 軸（邏輯索引）才不會被多出來的日期撐開
+  const marginRows = useMemo(() => (margin?.rows ?? []).filter((r) => indexByDate.has(r[0])), [margin, indexByDate]);
+  const marginByDate = useMemo(() => new Map((margin?.rows ?? []).map((r, k) => [r[0], { row: r, state: margin!.states[k] }])), [margin]);
+  const showMargin = pane4 === 'margin' && marginRows.length > 0;
 
   useEffect(() => {
     const host = hostRef.current;
@@ -200,12 +231,59 @@ function ChipsChart({ data, range, themeKey, resetKey }: { data: ForeignChipsFil
       );
     };
     oiPane(2, (r) => r[5], (r) => r[6]);
-    oiPane(3, (r) => r[7], (r) => r[8]);
+    if (showMargin) {
+      // 第 4 格：融資維持率（線，上方 2/3）＋融資增減（柱，下方 30%），比照融資斷頭監測的版型
+      const inWarn = (marginRows.at(-1)?.[2] ?? Infinity) < WARN_RATIO;
+      const ratio = add(
+        chart.addSeries(
+          LineSeries,
+          {
+            color: accent,
+            lineWidth: 2,
+            priceFormat: { type: 'price', precision: 1, minMove: 0.1 },
+            autoscaleInfoProvider: (original: () => AutoscaleInfo | null) => {
+              const info = original();
+              if (!inWarn || !info?.priceRange) return info;
+              return { ...info, priceRange: { minValue: Math.min(info.priceRange.minValue, ZONE_RATIO), maxValue: info.priceRange.maxValue } };
+            },
+          },
+          3,
+        ),
+      );
+      ratio.setData(marginRows.map((r) => ({ time: r[0] as Time, value: r[2] })));
+      ratio.priceScale().applyOptions({ scaleMargins: { top: 0.08, bottom: 0.36 } });
+      const thresholds = [
+        { price: WARN_RATIO, text: `警戒 ${WARN_RATIO}` },
+        { price: ZONE_RATIO, text: `斷頭區 ${ZONE_RATIO}` },
+        { price: 130, text: '追繳 130' },
+      ];
+      const lineColor = cssVar('--text-3');
+      for (const t of thresholds) {
+        ratio.createPriceLine({ price: t.price, color: lineColor, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false, title: '' });
+      }
+      ratio.attachPrimitive(
+        new LineLabels(thresholds, {
+          color: cssVar('--text-2'),
+          background: cssVar('--surface'),
+          border: lineColor,
+          fontSize: 11,
+          fontFamily: getComputedStyle(document.body).fontFamily,
+          maxYFrac: 0.74,
+        }),
+      );
+      const mchg = add(
+        chart.addSeries(HistogramSeries, { priceFormat: { type: 'price', precision: 0, minMove: 1 }, priceScaleId: 'fc-mchg', priceLineVisible: false }, 3),
+      );
+      mchg.setData(marginRows.filter((r) => Number.isFinite(r[4])).map((r) => ({ time: r[0] as Time, value: r[4], color: r[4] >= 0 ? up : down })));
+      mchg.priceScale().applyOptions({ scaleMargins: { top: 0.7, bottom: 0 }, visible: false });
+    } else {
+      oiPane(3, (r) => r[7], (r) => r[8]);
+    }
     resetPaneStretch(chart, FC_PANE_STRETCH);
     return () => {
       for (const s of all.reverse()) chart.removeSeries(s);
     };
-  }, [data, themeKey, indexByDate, range]);
+  }, [data, themeKey, indexByDate, range, showMargin, marginRows]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -237,7 +315,7 @@ function ChipsChart({ data, range, themeKey, resetKey }: { data: ForeignChipsFil
       cancelAnimationFrame(raf);
       ts.unsubscribeVisibleLogicalRangeChange(clamp);
     };
-  }, [data, range, themeKey, resetKey]);
+  }, [data, range, themeKey, resetKey, showMargin]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -254,6 +332,7 @@ function ChipsChart({ data, range, themeKey, resetKey }: { data: ForeignChipsFil
   const i = hoverIdx ?? data.rows.length - 1;
   const row = data.rows[i];
   const sgn = (v: number | null) => (v === null ? '' : v > 0 ? 'up' : v < 0 ? 'down' : '');
+  const m = row && showMargin ? marginByDate.get(row[0]) : undefined;
   const dayEvents = row
     ? [
         ...data.events.filter((e) => e.date === row[0]).map((e) => FOREIGN_EVENT_LABEL[e.type]),
@@ -271,20 +350,40 @@ function ChipsChart({ data, range, themeKey, resetKey }: { data: ForeignChipsFil
           <b className={sgn(row[4])}>{f2(row[4], true)}</b> <span className={`muted ${pctlClass(data.pctl.cum20[i])}`}>（{pctlText(data.pctl.cum20[i])}）</span>
           <br />
           外資期淨OI <b className={sgn(row[5])}>{lots(row[5])}</b> 口 <span className={`muted ${pctlClass(data.pctl.foreignOi[i])}`}>（{pctlText(data.pctl.foreignOi[i])}）</span>
-          ｜散戶小台 <b className={sgn(row[7])}>{lots(row[7])}</b> 口{' '}
-          <span className={`muted ${pctlClass(data.pctl.retailOi[i])}`}>（{pctlText(data.pctl.retailOi[i])}）</span>
+          ｜
+          {showMargin ? (
+            m ? (
+              <>
+                維持率 <b>{f2(m.row[2])}%</b> 融資增減 <span className={sgn(m.row[4])}>{f2(m.row[4], true)} 億</span>{' '}
+                {m.state && <span className={`ms-state ms-${m.state}`}>{STATE_LABEL[m.state]}</span>}
+              </>
+            ) : (
+              <>維持率 —</>
+            )
+          ) : (
+            <>
+              散戶小台 <b className={sgn(row[7])}>{lots(row[7])}</b> 口{' '}
+              <span className={`muted ${pctlClass(data.pctl.retailOi[i])}`}>（{pctlText(data.pctl.retailOi[i])}）</span>
+            </>
+          )}
         </div>
       )}
       <div className="ms-pane-labels small muted" aria-hidden>
-        上：加權（● 事件、小● 再創極端，點一下看名稱） ｜ 二：外資買賣超（億）＋5日細／20日粗累計 ｜ 三：外資期淨OI（口）＋日增減 ｜ 四：散戶小台淨OI（口）＋日增減
+        上：加權（● 事件、小● 再創極端，點一下看名稱） ｜ 二：外資買賣超（億）＋5日細／20日粗累計 ｜ 三：外資期淨OI（口）＋日增減 ｜ {showMargin ? '四：融資維持率（%，虛線＝160／140／130）＋融資增減（億，紅增綠減）' : '四：散戶小台淨OI（口）＋日增減'}
       </div>
       <div ref={hostRef} className="chart-host fc-host" />
     </div>
   );
 }
 
-export function ForeignChipsPanel({ data, themeKey }: { data: ForeignChipsFile | null; themeKey: string }) {
+export function ForeignChipsPanel({ data, themeKey, margin = null }: { data: ForeignChipsFile | null; themeKey: string; margin?: MarginStressFile | null }) {
   const [range, setRange] = useState<RangeKey>('3M');
+  const [pane4, setPane4State] = useState<Pane4Mode>(() => loadPref(PANE4_KEY, ['retail', 'margin'] as const, 'retail'));
+  const setPane4 = (v: Pane4Mode) => {
+    setPane4State(v);
+    savePref(PANE4_KEY, v);
+  };
+  const hasMargin = !!margin?.rows.length;
   const [resetKey, setResetKey] = useState(0);
   const [showEvents, setShowEvents] = useState(false);
   if (!data || !data.latest) return null;
@@ -321,21 +420,32 @@ export function ForeignChipsPanel({ data, themeKey }: { data: ForeignChipsFile |
         <p className="small muted ms-rule">
         買賣超是流量、淨未平倉是部位，兩者與當日漲跌幾乎同步，單看柱子不會比看 K 棒多知道什麼；要看的是<b>累計 vs 指數的背離</b>與<b>部位極端</b>。
         百分位＝該值在近 {PCTL_WINDOW} 個交易日中的位置；事件只在首次 ≤ 第 {EXTREME_LOW * 100}／≥ 第 {EXTREME_HIGH * 100} 百分位時標一次，回到第 {RESET_PCTL * 100} 百分位另一側才算新的一波。賣超不跌：20 日累計 ≤ 第 {DIVERGE_PCTL * 100} 百分位且加權 20 日不跌。賣壓衰竭：20 日累計在 0 以下、「5 日累計 × {PACE_RATIO}」由下往上穿過 20 日累計（最近一週的賣超步調慢過整月平均），再掉回去才可再標。
-        同一波內外資期淨 OI 比前次標記再多 {DEEPER_STEP * 100}% 補一個小標記「OI空↓／OI多↑」，只畫在圖上不進回測。外資期空單多為現貨避險，空單極端不等於看空；散戶小台為法人反推值。
+        同一波內外資期淨 OI 比前次標記再多 {DEEPER_STEP * 100}% 補一個小標記「OI空↓／OI多↑」，只畫在圖上不進回測。外資期空單多為現貨避險，空單極端不等於看空；散戶小台為法人反推值。第 4 格可切換「融資維持率」：散戶小台是散戶的期貨部位、融資是散戶的現股槓桿，兩者都是散戶籌碼；外資連續賣超時看維持率是否逼近 160／140，判斷賣壓會不會擴大成斷頭（完整事件與回測在下方「融資斷頭監測」面板）。
       </p>
       </PanelNote>
 
-      <div className="seg" role="group" aria-label="時間區間">
-        {RANGES.map((r) => (
-          <button key={r.k} type="button" aria-pressed={range === r.k} onClick={() => setRange(r.k)}>
-            {r.label}
+      <div className="cp-controls">
+        <div className="seg" role="group" aria-label="時間區間">
+          {RANGES.map((r) => (
+            <button key={r.k} type="button" aria-pressed={range === r.k} onClick={() => setRange(r.k)}>
+              {r.label}
+            </button>
+          ))}
+          <button type="button" onClick={() => setResetKey((k) => k + 1)} aria-label="重設圖表縮放" title="重設縮放">
+            ↺ 重設
           </button>
-        ))}
-        <button type="button" onClick={() => setResetKey((k) => k + 1)} aria-label="重設圖表縮放" title="重設縮放">
-          ↺ 重設
-        </button>
+        </div>
+        {hasMargin && (
+          <div className="seg" role="group" aria-label="第四格顯示">
+            {PANE4_MODES.map((o) => (
+              <button key={o.k} type="button" aria-pressed={pane4 === o.k} onClick={() => setPane4(o.k)} title="切換最下方窗格：散戶期貨部位或散戶現股槓桿">
+                {o.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
-      <ChipsChart data={data} range={range} themeKey={themeKey} resetKey={resetKey} />
+      <ChipsChart data={data} range={range} themeKey={themeKey} resetKey={resetKey} margin={margin} pane4={hasMargin ? pane4 : 'retail'} />
 
       <div className="table-wrap">
         <table className="bt-table num">
