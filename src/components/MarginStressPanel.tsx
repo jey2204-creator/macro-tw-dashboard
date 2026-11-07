@@ -30,6 +30,7 @@ import {
 import { rangeStart, type RangeKey } from '../shared/timeseries';
 import { cssVar, f1, f2, pctCell } from '../lib/stressFormat';
 import { LineLabels } from '../lib/lineLabels';
+import { MarkerLabels } from '../lib/markerLabels';
 import { StatsRow } from './StatsRow';
 
 const RANGES: { k: RangeKey; label: string }[] = [
@@ -47,7 +48,7 @@ const MARKER_TEXT: Record<StressEventType, string> = {
   below140: '140',
   flush: '斷頭',
   cleared: '清洗完成',
-  delever: '', // 只畫方塊，文字太多會和 150／限空疊在一起；明細看事件表
+  delever: '去槓桿',
   shortBan: '限空',
   nsf: '國安',
 };
@@ -109,14 +110,20 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
     const below = new Set<StressEventType>(['cleared', 'delever', 'shortBan', 'nsf']);
     const shape = (t: StressEventType) =>
       t === 'cleared' ? 'arrowUp' : t === 'flush' || t === 'delever' ? 'square' : t === 'shortBan' || t === 'nsf' ? 'circle' : 'arrowDown';
+    // marker 只畫符號；文字由 MarkerLabels 自己畫（會互相閃避，見 lib/markerLabels.ts）
     const markers: SeriesMarker<Time>[] = data.events.map((e) => ({
       time: e.date as Time,
       position: below.has(e.type) ? 'belowBar' : 'aboveBar',
       shape: shape(e.type),
       color: color[e.type],
-      text: MARKER_TEXT[e.type],
     }));
     createSeriesMarkers(series, markers);
+    series.attachPrimitive(
+      new MarkerLabels(
+        data.events.map((e) => ({ time: e.date as Time, value: e.taiex, text: MARKER_TEXT[e.type], color: color[e.type], above: !below.has(e.type) })),
+        { background: cssVar('--surface'), fontSize: 10, fontFamily: getComputedStyle(document.body).fontFamily },
+      ),
+    );
 
     // 警戒時（最新維持率 < 160）把斷頭區 140 線納入 Y 軸自動縮放，才看得到離斷頭區多遠；平常不擴 Y 軸
     const inWarn = (data.rows.at(-1)?.[2] ?? Infinity) < WARN_RATIO;
