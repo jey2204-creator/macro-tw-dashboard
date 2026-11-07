@@ -69,6 +69,8 @@ const RANGES: { k: RangeKey; label: string }[] = [
 const MARKER_GAP: Record<RangeKey, number> = { '3M': 6, '6M': 10, '1Y': 16, '5Y': 40, '10Y': 60, 'ALL': 60 };
 /** 四個窗格高度比例：加權／買賣超／外資期 OI／散戶小台 OI */
 const FC_PANE_STRETCH = [0.34, 0.22, 0.22, 0.22] as const;
+/** 第 4 格切到融資時（線＋柱兩層）略高一點，維持率線才不會被壓扁 */
+const FC_PANE_STRETCH_MARGIN = [0.32, 0.2, 0.2, 0.28] as const;
 
 const lots = (v: number | null | undefined) =>
   v === null || v === undefined || !Number.isFinite(v) ? '—' : `${v > 0 ? '+' : ''}${v.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
@@ -279,7 +281,7 @@ function ChipsChart({
     } else {
       oiPane(3, (r) => r[7], (r) => r[8]);
     }
-    resetPaneStretch(chart, FC_PANE_STRETCH);
+    resetPaneStretch(chart, showMargin ? FC_PANE_STRETCH_MARGIN : FC_PANE_STRETCH);
     return () => {
       for (const s of all.reverse()) chart.removeSeries(s);
     };
@@ -306,7 +308,7 @@ function ChipsChart({
       ts.applyOptions({ rightOffset: gap });
       ts.setVisibleLogicalRange({ from, to: lastIdx + gap });
       resetPriceScales(chart);
-      resetPaneStretch(chart, FC_PANE_STRETCH);
+      resetPaneStretch(chart, showMargin ? FC_PANE_STRETCH_MARGIN : FC_PANE_STRETCH);
     };
     apply();
     const raf = requestAnimationFrame(apply);
