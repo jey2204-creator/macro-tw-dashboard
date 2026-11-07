@@ -41,8 +41,6 @@ const RANGES: { k: RangeKey; label: string }[] = [
   { k: '10Y', label: '10年' },
   { k: 'ALL', label: '全部' },
 ];
-/** 有借券窗格時的四格比例：加權／維持率／融資增減／借券賣出 */
-const SBL_PANE_STRETCH = [0.38, 0.27, 0.15, 0.2] as const;
 const MARKER_TEXT: Record<StressEventType, string> = {
   below150: '150',
   below140: '140',
@@ -142,7 +140,6 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
       1,
     );
     ratio.setData(data.rows.map((r) => ({ time: r[0] as Time, value: r[2] })));
-    ratio.priceScale().applyOptions({ scaleMargins: { top: 0.06, bottom: 0.06 } });
     // 門檻線只畫虛線，不開軸標籤（會和右軸的現值標籤打架）；名稱用 LineLabels 畫在窗格左側線上
     const thresholds = [
       { price: WARN_RATIO, text: `警戒 ${WARN_RATIO}` },
@@ -160,29 +157,33 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
         border: lineColor,
         fontSize: 11,
         fontFamily: getComputedStyle(document.body).fontFamily,
+        maxYFrac: 0.74, // 下方 30% 是融資增減柱，門檻標籤落在那裡就不畫（追繳 130 通常因此不標）
       }),
     );
 
     const up = cssVar('--up');
     const down = cssVar('--down');
-    const chg = chart.addSeries(HistogramSeries, { priceFormat: { type: 'price', precision: 0, minMove: 1 } }, 2);
+    // 融資增減柱併進維持率窗格下方 1/3（獨立隱藏軸），維持率線留在上方 2/3；少一格、手機少滑
+    ratio.priceScale().applyOptions({ scaleMargins: { top: 0.06, bottom: 0.36 } });
+    const chg = chart.addSeries(HistogramSeries, { priceFormat: { type: 'price', precision: 0, minMove: 1 }, priceScaleId: 'ms-chg', priceLineVisible: false }, 1);
     chg.setData(
       data.rows.filter((r) => Number.isFinite(r[4])).map((r) => ({ time: r[0] as Time, value: r[4], color: r[4] >= 0 ? up : down })),
     );
-    // 借券賣出（上市，萬張）：餘額折線 ＋ 日增減柱（增加＝空方加碼，用空方色）
+    chart.panes()[1]?.priceScale('ms-chg')?.applyOptions({ scaleMargins: { top: 0.7, bottom: 0 }, visible: false });
+    // 借券賣出（上市，萬張）：第 3 格，餘額折線 ＋ 日增減柱（增加＝空方加碼，用空方色）
     const sbl = data.sbl ?? [];
     let sblLine: ReturnType<typeof chart.addSeries> | null = null;
     let sblChg: ReturnType<typeof chart.addSeries> | null = null;
     if (sbl.length) {
-      sblLine = chart.addSeries(LineSeries, { color: cssVar('--text-1'), lineWidth: 2, priceFormat: { type: 'price', precision: 0, minMove: 1 } }, 3);
+      sblLine = chart.addSeries(LineSeries, { color: cssVar('--text-1'), lineWidth: 2, priceFormat: { type: 'price', precision: 0, minMove: 1 } }, 2);
       sblLine.setData(sbl.map((r) => ({ time: r[0] as Time, value: r[1] })));
-      sblChg = chart.addSeries(HistogramSeries, { priceFormat: { type: 'price', precision: 1, minMove: 0.1 }, priceScaleId: 'sbl-chg' }, 3);
+      sblChg = chart.addSeries(HistogramSeries, { priceFormat: { type: 'price', precision: 1, minMove: 0.1 }, priceScaleId: 'sbl-chg', priceLineVisible: false }, 2);
       sblChg.setData(sbl.filter((r) => Number.isFinite(r[2])).map((r) => ({ time: r[0] as Time, value: r[2], color: r[2] >= 0 ? down : up })));
       // 柱子只占窗格下方 1/3、折線留在上方 2/3，兩者不重疊
-      chart.panes()[3]?.priceScale('sbl-chg')?.applyOptions({ scaleMargins: { top: 0.68, bottom: 0 }, visible: false });
+      chart.panes()[2]?.priceScale('sbl-chg')?.applyOptions({ scaleMargins: { top: 0.68, bottom: 0 }, visible: false });
       sblLine.priceScale().applyOptions({ scaleMargins: { top: 0.08, bottom: 0.36 } });
     }
-    resetPaneStretch(chart, sbl.length ? SBL_PANE_STRETCH : undefined);
+    resetPaneStretch(chart);
     return () => {
       chart.removeSeries(series);
       chart.removeSeries(ratio);
@@ -202,7 +203,7 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
     const apply = () => {
       chart.timeScale().setVisibleLogicalRange({ from, to: data.rows.length + 1 });
       resetPriceScales(chart);
-      resetPaneStretch(chart, data.sbl?.length ? SBL_PANE_STRETCH : undefined);
+      resetPaneStretch(chart);
     };
     apply();
     const raf = requestAnimationFrame(apply);
@@ -243,11 +244,7 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
           )}
         </div>
       )}
-      <div className="ms-pane-labels small muted" aria-hidden>
-        上：加權指數（上方 ▼ 跌破 150／140、■ 斷頭潮；下方 ■ 去槓桿、▲ 清洗完成、● 限空令／國安基金） ｜ 維持率（警戒時 Y 軸含 140 線；門檻線在畫面外時不標） ｜ 融資增減（億）
-        {data.sbl?.length ? ' ｜ 下：借券賣出餘額（萬張，線）與日增減（柱，增加＝空方加碼）' : ''}
-      </div>
-      <div ref={hostRef} className={`chart-host ms-host${data.sbl?.length ? ' ms-host-4' : ''}`} />
+      <div ref={hostRef} className="chart-host ms-host" />
     </div>
   );
 }
@@ -285,6 +282,10 @@ export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile |
       )}
 
       <PanelNote>
+        <p className="small muted ms-rule">
+          圖怎麼看：上格加權指數——K 棒上方 ▼ 跌破 150／140、■ 斷頭潮；下方 ■ 去槓桿、▲ 清洗完成、● 限空令／國安基金。中格維持率（線，警戒時 Y 軸含 140 線；門檻線在畫面外時不標）＋融資增減（下方柱，億，紅增綠減）。
+          {data.sbl?.length ? '下格借券賣出餘額（線，萬張）＋日增減（柱，增加＝空方加碼）。' : ''}
+        </p>
         <p className="small muted ms-rule">
         警戒：維持率 &lt; {WARN_RATIO}% 或近 5 日降 &gt; {WARN_DROP_5D}pp；斷頭區：&lt; {ZONE_RATIO}%；斷頭潮：斷頭區內融資單日減幅為近 250
         日最大 5%（且 ≥ 0.5%）；清洗完成：近 20 日曾 &lt; 140%，維持率自低點回升 ≥ {CLEAR_REBOUND}pp、近 3 日無斷頭潮、加權 3 日不破低。每一波只標一次，回到 160% 以上才算新的一波。

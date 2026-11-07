@@ -32,6 +32,8 @@ export interface LineLabelStyle {
   /** 字級（px） */
   fontSize: number;
   fontFamily: string;
+  /** 只在窗格上方這個比例內畫（0～1）；下方留給疊在同一窗格的柱狀圖時用 */
+  maxYFrac?: number;
 }
 
 type DrawTarget = Parameters<IPrimitivePaneRenderer['draw']>[0];
@@ -76,7 +78,8 @@ export class LineLabels implements ISeriesPrimitive<Time> {
       for (const l of this.labels) {
         const y = s.priceToCoordinate(l.price);
         // 線在窗格外（含標籤會被切到）就不畫
-        if (y === null || y - h / 2 < 0 || y + h / 2 > mediaSize.height) continue;
+        const bottom = mediaSize.height * (this.style.maxYFrac ?? 1);
+        if (y === null || y - h / 2 < 0 || y + h / 2 > bottom) continue;
         const w = ctx.measureText(l.text).width + PAD_X * 2;
         const x = LEFT;
         const top = Math.round(y - h / 2) + 0.5;

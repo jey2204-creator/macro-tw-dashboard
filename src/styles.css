@@ -898,9 +898,6 @@ th {
 .ms-host {
   height: max(420px, 60vh);
 }
-.ms-host-4 {
-  height: max(520px, 72vh);
-}
 .ms-sbl-line {
   margin: 2px 0 0;
 }
