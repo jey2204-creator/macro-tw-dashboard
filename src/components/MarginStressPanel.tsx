@@ -165,7 +165,7 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
     const down = cssVar('--down');
     // 融資增減柱併進維持率窗格下方 1/3（獨立隱藏軸），維持率線留在上方 2/3；少一格、手機少滑
     ratio.priceScale().applyOptions({ scaleMargins: { top: 0.06, bottom: 0.36 } });
-    const chg = chart.addSeries(HistogramSeries, { priceFormat: { type: 'price', precision: 0, minMove: 1 }, priceScaleId: 'ms-chg', lastValueVisible: false, priceLineVisible: false }, 1);
+    const chg = chart.addSeries(HistogramSeries, { priceFormat: { type: 'price', precision: 0, minMove: 1 }, priceScaleId: 'ms-chg', priceLineVisible: false }, 1);
     chg.setData(
       data.rows.filter((r) => Number.isFinite(r[4])).map((r) => ({ time: r[0] as Time, value: r[4], color: r[4] >= 0 ? up : down })),
     );
@@ -177,7 +177,7 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
     if (sbl.length) {
       sblLine = chart.addSeries(LineSeries, { color: cssVar('--text-1'), lineWidth: 2, priceFormat: { type: 'price', precision: 0, minMove: 1 } }, 2);
       sblLine.setData(sbl.map((r) => ({ time: r[0] as Time, value: r[1] })));
-      sblChg = chart.addSeries(HistogramSeries, { priceFormat: { type: 'price', precision: 1, minMove: 0.1 }, priceScaleId: 'sbl-chg', lastValueVisible: false, priceLineVisible: false }, 2);
+      sblChg = chart.addSeries(HistogramSeries, { priceFormat: { type: 'price', precision: 1, minMove: 0.1 }, priceScaleId: 'sbl-chg', priceLineVisible: false }, 2);
       sblChg.setData(sbl.filter((r) => Number.isFinite(r[2])).map((r) => ({ time: r[0] as Time, value: r[2], color: r[2] >= 0 ? down : up })));
       // 柱子只占窗格下方 1/3、折線留在上方 2/3，兩者不重疊
       chart.panes()[2]?.priceScale('sbl-chg')?.applyOptions({ scaleMargins: { top: 0.68, bottom: 0 }, visible: false });
