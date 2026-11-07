@@ -36,6 +36,8 @@ export type SourceSpec =
   | { provider: 'kosis'; symbol: 'KOSPI_PBR' }
   /** MSCI 韓國指數 factsheet 的預估本益比、近 12 月本益比、淨值比（與 msci_tw 同一個解析器） */
   | { provider: 'msci_kr'; symbol: 'FWD_PE' | 'PE' | 'PBV' }
+  /** 櫃買中心上櫃每日收盤行情推算的漲跌家數（scripts/fetch-data/sources/tpexBreadth.ts） */
+  | { provider: 'tpex_breadth'; symbol: 'LIMIT_UP' | 'LIMIT_DOWN' | 'ADVANCE' | 'DECLINE' }
   | {
       provider: 'twse_chips';
       symbol:
@@ -981,6 +983,31 @@ export const INDICATORS: IndicatorDef[] = [
     market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true, bearish: true,
     note: '下跌的上市普通股家數（含跌停）',
   },
+  // 上櫃（櫃買中心每日收盤行情推算；全部隱藏，只供「上櫃漲跌停家數監測」面板）
+  {
+    id: 'otc_limit_up', name: '漲停家數（上櫃股票）', short: '上櫃漲停', category: 'tw_chips', frequency: 'daily',
+    unit: '家', decimals: 0, sources: [{ provider: 'tpex_breadth', symbol: 'LIMIT_UP' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true, flow: true,
+    note: '收盤漲停的上櫃普通股家數（逐檔推算，不含 ETF、權證）',
+  },
+  {
+    id: 'otc_limit_down', name: '跌停家數（上櫃股票）', short: '上櫃跌停', category: 'tw_chips', frequency: 'daily',
+    unit: '家', decimals: 0, sources: [{ provider: 'tpex_breadth', symbol: 'LIMIT_DOWN' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true, flow: true, bearish: true,
+    note: '收盤跌停的上櫃普通股家數（逐檔推算）；中小型股恐慌比上市更早、更劇烈',
+  },
+  {
+    id: 'otc_advance', name: '上漲家數（上櫃股票）', short: '上櫃上漲', category: 'tw_chips', frequency: 'daily',
+    unit: '家', decimals: 0, sources: [{ provider: 'tpex_breadth', symbol: 'ADVANCE' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true,
+    note: '上漲的上櫃普通股家數（含漲停）',
+  },
+  {
+    id: 'otc_decline', name: '下跌家數（上櫃股票）', short: '上櫃下跌', category: 'tw_chips', frequency: 'daily',
+    unit: '家', decimals: 0, sources: [{ provider: 'tpex_breadth', symbol: 'DECLINE' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true, bearish: true,
+    note: '下跌的上櫃普通股家數（含跌停）',
+  },
   // ── 台灣景氣（僅供參考，權重 0）──────────────────────
   // 回測（2026-10，claude/台灣景氣回測紀錄）：加進綜合分數都沒有增量；燈號含股價指數與 M1B，有循環論證 → 只看不計分
   {
@@ -1094,6 +1121,8 @@ export function sourceUrl(spec: SourceSpec): string {
       return 'https://www.taifex.com.tw/cht/3/futContractsDate';
     case 'twse_chips':
       return 'https://www.twse.com.tw/zh/';
+    case 'tpex_breadth':
+      return 'https://www.tpex.org.tw/zh-tw/mainboard/trading/info/mi-pricing.html';
     case 'naver_kr':
       return 'https://m.stock.naver.com/domestic/index/KOSPI/total';
     case 'tw_gov':
@@ -1153,6 +1182,7 @@ export const PROVIDER_LABEL: Record<SourceSpec['provider'], string> = {
   twse: '臺灣證交所 TWSE',
   taifex: '臺灣期交所 TAIFEX',
   twse_chips: '臺灣證交所 TWSE',
+  tpex_breadth: '櫃買中心 TPEx（上櫃每日收盤行情）',
   naver_kr: 'Naver Pay 證券（韓國交易所資料）',
   tw_gov: '政府資料開放平台（國發會／財政部／經濟部／央行）',
   multpl: 'multpl.com（Robert Shiller S&P 500 月資料）',

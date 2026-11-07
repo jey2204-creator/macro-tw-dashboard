@@ -10,7 +10,7 @@ import { writeBacktest } from './writeBacktest';
 import { writeIcs } from './writeIcs';
 import { writeFactsetEps } from './writeFactsetEps';
 import { writeForeignChips } from './writeForeignChips';
-import { lastBreadth, writeMarginStress } from './writeMarginStress';
+import { lastBreadth, lastBreadthOtc, writeMarginStress } from './writeMarginStress';
 import { writeMsciTw } from './writeMsciTw';
 import { runPipeline } from './pipeline';
 
@@ -63,6 +63,7 @@ async function main() {
     const ms = await writeMarginStress(outDir);
     console.log(`[margin-stress] ${ms.start}～${ms.end}，${ms.rows.length} 天，事件 ${ms.events.length} 筆，最新 ${JSON.stringify(ms.latest)}`);
     console.log(`[breadth-stress] ${lastBreadth?.start}～${lastBreadth?.end}，事件 ${lastBreadth?.events.length}，最新 ${JSON.stringify(lastBreadth?.latest)}`);
+    if (lastBreadthOtc) console.log(`[breadth-stress-otc] ${lastBreadthOtc.start}～${lastBreadthOtc.end}，事件 ${lastBreadthOtc.events.length}，最新 ${JSON.stringify(lastBreadthOtc.latest)}`);
   } catch (e) {
     console.warn('[margin-stress] 略過：', e instanceof Error ? e.message : e);
   }

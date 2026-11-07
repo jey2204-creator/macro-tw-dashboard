@@ -19,6 +19,7 @@ import { fetchTaifex } from './sources/taifex';
 import { fetchTpex, fetchTwse } from './sources/twExchanges';
 import { fetchTwGov } from './sources/twGov';
 import { fetchTwseChips } from './sources/twseChips';
+import { fetchTpexBreadth } from './sources/tpexBreadth';
 import { fetchTwseValuation } from './sources/twseValuation';
 import type { SourceFetchResult } from './sources/types';
 import { fetchYahoo, fetchYahooAdjusted } from './sources/yahoo';
@@ -109,6 +110,8 @@ async function fetchFromSource(
       return fetchTaifex(spec.symbol, cacheLast, today, http, fast);
     case 'twse_chips':
       return fetchTwseChips(spec.symbol, cacheLast ? cached!.data : null, today, http, fast);
+    case 'tpex_breadth':
+      return fetchTpexBreadth(spec.symbol, cacheLast ? cached!.data : null, today, http, fast);
     case 'naver_kr':
       return fetchNaverKrForeign(cacheLast ? cached!.data : null, today, http, fast);
     case 'tw_gov':
