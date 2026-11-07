@@ -77,6 +77,18 @@ export interface BreadthStressFile {
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
 
+/** 上櫃漲跌家數長期歷史（data/otc-breadth-history.json，由 otcBackfill.ts 產生）：[日期, 上漲, 漲停, 下跌, 跌停, 持平] */
+export type OtcBreadthHistoryRow = [date: string, up: number, upLimit: number, down: number, downLimit: number, flat: number];
+export interface OtcBreadthHistoryFile {
+  schemaVersion: 1;
+  note: string;
+  target: string;
+  cursor: string;
+  updatedAt: string;
+  parseErrors: string[];
+  rows: OtcBreadthHistoryRow[];
+}
+
 export interface BreadthHistoryRow {
   date: string;
   up: number;

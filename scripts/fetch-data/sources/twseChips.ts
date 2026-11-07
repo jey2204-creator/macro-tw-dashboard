@@ -190,7 +190,7 @@ export function parseOfficialBreadth(json: MiIndex): Breadth | null {
 }
 
 /** 升降單位（2015 年以前與現行相同的六級距，足以判斷漲跌停價） */
-function tickSize(p: number): number {
+export function tickSize(p: number): number {
   if (p < 10) return 0.01;
   if (p < 50) return 0.05;
   if (p < 100) return 0.1;

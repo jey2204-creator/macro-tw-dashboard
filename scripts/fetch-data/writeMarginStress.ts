@@ -1,6 +1,6 @@
 import { readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { analyzeBreadth, combineBreadthRows, type BreadthHistoryRow, type BreadthStressFile } from '../../src/shared/breadthStress';
+import { analyzeBreadth, combineBreadthRows, type BreadthHistoryRow, type BreadthStressFile, type OtcBreadthHistoryFile } from '../../src/shared/breadthStress';
 import { analyzeMarginStress, combineSblRows, combineStressRows, summarizeSbl, type MarginHistoryFile, type MarginStressFile, type PolicyEvent, type SblHistoryFile } from '../../src/shared/marginStress';
 import type { Bar, SeriesFile } from '../../src/shared/types';
 
@@ -19,6 +19,8 @@ async function writeAtomic(file: string, data: unknown): Promise<void> {
 
 /** 最近一次產生的漲跌停家數監測結果（供直接執行時印出） */
 export let lastBreadth: BreadthStressFile | null = null;
+/** 最近一次產生的上櫃漲跌停家數監測結果 */
+export let lastBreadthOtc: BreadthStressFile | null = null;
 
 /**
  * 讀取 repo 內的長期歷史（data/margin-history.json）與每日排程資料（outDir/series），
@@ -69,6 +71,27 @@ export async function writeMarginStress(outDir: string, historyFile = path.resol
   );
   await writeAtomic(path.join(outDir, 'breadth-stress.json'), breadth);
   lastBreadth = breadth;
+  // 上櫃漲跌停家數監測：櫃買指數 × 上櫃家數（櫃買中心每日收盤行情推算）；沒有上櫃融資維持率，投降只看連續恐慌
+  const tpex = await series('tpex');
+  const otcHist = await readJson<OtcBreadthHistoryFile>(path.resolve('data/otc-breadth-history.json'));
+  if (tpex?.length) {
+    const otcRows = combineBreadthRows(
+      (otcHist?.rows ?? []).map((r) => ({ date: r[0], up: r[1], upLimit: r[2], down: r[3], downLimit: r[4] })),
+      {
+        upLimit: await series('otc_limit_up'),
+        downLimit: await series('otc_limit_down'),
+        up: await series('otc_advance'),
+        down: await series('otc_decline'),
+      },
+      tpex,
+      new Map(),
+    );
+    if (otcRows.length) {
+      const otc = analyzeBreadth(otcRows, now);
+      await writeAtomic(path.join(outDir, 'breadth-stress-otc.json'), otc);
+      lastBreadthOtc = otc;
+    }
+  }
   await writeAtomic(path.join(outDir, 'margin-stress.json'), out);
   return out;
 }
@@ -86,6 +109,10 @@ if (process.argv[1]?.endsWith('writeMarginStress.ts')) {
         console.log(`漲跌停：${lastBreadth.start}～${lastBreadth.end}，最新 ${JSON.stringify(lastBreadth.latest)}`);
         console.table(lastBreadth.eventStats);
         console.table(lastBreadth.events);
+      }
+      if (lastBreadthOtc) {
+        console.log(`上櫃漲跌停：${lastBreadthOtc.start}～${lastBreadthOtc.end}，最新 ${JSON.stringify(lastBreadthOtc.latest)}`);
+        console.table(lastBreadthOtc.eventStats);
       }
     })
     .catch((e) => {
