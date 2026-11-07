@@ -17,7 +17,9 @@ import { CHART_INTERACTION, resetPaneStretch, resetPriceScales, attachTimeAxis, 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CLEAR_REBOUND,
+  DELEVER_MIN_DROP_PCT,
   EVENT_LABEL,
+  EVENT_TYPES,
   STATE_LABEL,
   WARN_DROP_5D,
   WARN_RATIO,
@@ -40,8 +42,15 @@ const RANGES: { k: RangeKey; label: string }[] = [
 ];
 /** 有借券窗格時的四格比例：加權／維持率／融資增減／借券賣出 */
 const SBL_PANE_STRETCH = [0.38, 0.27, 0.15, 0.2] as const;
-const EVENT_TYPES: StressEventType[] = ['below150', 'below140', 'flush', 'cleared'];
-const MARKER_TEXT: Record<StressEventType, string> = { below150: '150', below140: '140', flush: '斷頭', cleared: '清洗完成' };
+const MARKER_TEXT: Record<StressEventType, string> = {
+  below150: '150',
+  below140: '140',
+  flush: '斷頭',
+  cleared: '清洗完成',
+  delever: '', // 只畫方塊，文字太多會和 150／限空疊在一起；明細看事件表
+  shortBan: '限空',
+  nsf: '國安',
+};
 
 function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFile; range: RangeKey; themeKey: string; resetKey: number }) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -85,16 +94,25 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
     });
     const series = chart.addSeries(LineSeries, { color: cssVar('--text-1'), lineWidth: 2, priceFormat: { type: 'price', precision: 0, minMove: 1 } }, 0);
     series.setData(data.rows.map((r) => ({ time: r[0] as Time, value: r[1] })));
+    // 圖表庫預設上 20%／下 10% 留白，加上標記再多留一層；收到 6%，加權窗格才不會上面空一大塊
+    series.priceScale().applyOptions({ scaleMargins: { top: 0.06, bottom: 0.06 } });
     const color: Record<StressEventType, string> = {
       below150: cssVar('--warn'),
       below140: cssVar('--err'),
       flush: cssVar('--err'),
       cleared: cssVar('--accent'),
+      delever: cssVar('--warn'),
+      shortBan: cssVar('--text-2'),
+      nsf: cssVar('--text-2'),
     };
+    // 維持率事件在 K 棒上方（▼▼■）、清洗完成與政策事件在下方（▲●●）、去槓桿方塊在下方
+    const below = new Set<StressEventType>(['cleared', 'delever', 'shortBan', 'nsf']);
+    const shape = (t: StressEventType) =>
+      t === 'cleared' ? 'arrowUp' : t === 'flush' || t === 'delever' ? 'square' : t === 'shortBan' || t === 'nsf' ? 'circle' : 'arrowDown';
     const markers: SeriesMarker<Time>[] = data.events.map((e) => ({
       time: e.date as Time,
-      position: e.type === 'cleared' ? 'belowBar' : 'aboveBar',
-      shape: e.type === 'cleared' ? 'arrowUp' : e.type === 'flush' ? 'square' : 'arrowDown',
+      position: below.has(e.type) ? 'belowBar' : 'aboveBar',
+      shape: shape(e.type),
       color: color[e.type],
       text: MARKER_TEXT[e.type],
     }));
@@ -117,6 +135,7 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
       1,
     );
     ratio.setData(data.rows.map((r) => ({ time: r[0] as Time, value: r[2] })));
+    ratio.priceScale().applyOptions({ scaleMargins: { top: 0.06, bottom: 0.06 } });
     // 門檻線只畫虛線，不開軸標籤（會和右軸的現值標籤打架）；名稱用 LineLabels 畫在窗格左側線上
     const thresholds = [
       { price: WARN_RATIO, text: `警戒 ${WARN_RATIO}` },
@@ -218,7 +237,7 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
         </div>
       )}
       <div className="ms-pane-labels small muted" aria-hidden>
-        上：加權指數（▼ 跌破 150／140、■ 斷頭潮、▲ 清洗完成） ｜ 維持率（警戒時 Y 軸含 140 線；門檻線在畫面外時不標） ｜ 融資增減（億）
+        上：加權指數（上方 ▼ 跌破 150／140、■ 斷頭潮；下方 ■ 去槓桿、▲ 清洗完成、● 限空令／國安基金） ｜ 維持率（警戒時 Y 軸含 140 線；門檻線在畫面外時不標） ｜ 融資增減（億）
         {data.sbl?.length ? ' ｜ 下：借券賣出餘額（萬張，線）與日增減（柱，增加＝空方加碼）' : ''}
       </div>
       <div ref={hostRef} className={`chart-host ms-host${data.sbl?.length ? ' ms-host-4' : ''}`} />
@@ -262,6 +281,9 @@ export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile |
         <p className="small muted ms-rule">
         警戒：維持率 &lt; {WARN_RATIO}% 或近 5 日降 &gt; {WARN_DROP_5D}pp；斷頭區：&lt; {ZONE_RATIO}%；斷頭潮：斷頭區內融資單日減幅為近 250
         日最大 5%（且 ≥ 0.5%）；清洗完成：近 20 日曾 &lt; 140%，維持率自低點回升 ≥ {CLEAR_REBOUND}pp、近 3 日無斷頭潮、加權 3 日不破低。每一波只標一次，回到 160% 以上才算新的一波。
+      </p>
+      <p className="small muted ms-rule">
+        融資大減（主動去槓桿）：不限斷頭區，融資單日減幅占餘額比為近 250 日最大 2% 且 ≥ {-DELEVER_MIN_DROP_PCT}%，20 個交易日內只標一次——散戶在 140% 以上就自己砍的型態，斷頭潮規則抓不到。限空令／國安基金：人工維護的政策日期表（市場首個反應交易日），回答「政府出手後到底有沒有用」；同一天兩者都有時標兩個。
       </p>
       {data.sbl?.length ? (
         <p className="small muted ms-rule">
@@ -358,7 +380,10 @@ export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile |
               {[...data.events].reverse().map((e) => (
                 <tr key={`${e.date}-${e.type}`}>
                   <td>{e.date}</td>
-                  <td>{EVENT_LABEL[e.type]}</td>
+                  <td>
+                    {EVENT_LABEL[e.type]}
+                    {e.note && <div className="small muted">{e.note}</div>}
+                  </td>
                   <td className="r">{e.ratio.toFixed(1)}%</td>
                   <td className="r">{e.taiex.toLocaleString('en-US', { maximumFractionDigits: 0 })}</td>
                   <td className="r">{pctCell(e.ret20)}</td>

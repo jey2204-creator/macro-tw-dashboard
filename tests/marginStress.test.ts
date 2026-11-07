@@ -61,7 +61,10 @@ describe('marginStress', () => {
   });
 
   it('事件：每一波各觸發一次，順序為 150 → 140 → 斷頭潮 → 清洗完成', () => {
-    const ev = detectEvents(wave());
+    const all = detectEvents(wave());
+    // 同一天的大減也會標「去槓桿」（不限斷頭區），和斷頭潮同日
+    expect(all.filter((e) => e.type === 'delever').map((e) => e.date)).toEqual([all.find((e) => e.type === 'flush')!.date]);
+    const ev = all.filter((e) => e.type !== 'delever');
     expect(ev.map((e) => e.type)).toEqual(['below150', 'below140', 'flush', 'cleared']);
     const cleared = ev.at(-1)!;
     expect(cleared.ratio).toBeGreaterThanOrEqual(135);
@@ -80,5 +83,46 @@ describe('marginStress', () => {
     expect(out.eventStats.below140.n).toBe(1);
     expect(out.baseline.n).toBe(400);
     expect(out.stateStats.zone.pct).toBeGreaterThan(0);
+  });
+});
+
+describe('融資大減與政策事件', () => {
+  it('主動去槓桿：不限斷頭區、20 日內只標一次', () => {
+    const rows: StressRow[] = [];
+    let bal = 3000;
+    for (let i = 0; i < 400; i++) {
+      // 平常 ±0.2%；第 300、305、350 天各減 2.5%
+      const chg = i === 300 || i === 305 || i === 350 ? -bal * 0.025 : i % 2 ? bal * 0.002 : -bal * 0.002;
+      bal += chg;
+      rows.push([day(i), 10000, 175, bal, chg]);
+    }
+    const ev = detectEvents(rows).filter((e) => e.type === 'delever');
+    expect(ev.map((e) => e.date)).toEqual([day(300), day(350)]); // 305 在 20 日冷卻內
+    expect(ev[0]!.ratio).toBe(175); // 維持率 175，不在斷頭區也會標
+  });
+
+  it('政策事件：取當天或之後第一個交易日；資料範圍外略過；說明帶進事件', () => {
+    const rows: StressRow[] = [];
+    for (let i = 0; i < 100; i++) {
+      if (i % 7 === 5 || i % 7 === 6) continue; // 週末
+      rows.push([day(i), 10000 + i * 10, 175, 3000, 0]);
+    }
+    const policy = [
+      { date: day(5), type: 'shortBan' as const, note: '平盤下禁空' }, // 週末 → day(7)
+      { date: day(7), type: 'nsf' as const },
+      { date: day(500), type: 'nsf' as const }, // 尚未發生
+      { date: '2000-01-01', type: 'shortBan' as const }, // 早於資料 7 天以上 → 略過
+    ];
+    const ev = detectEvents(rows, policy).filter((e) => e.type === 'shortBan' || e.type === 'nsf');
+    expect(ev.map((e) => [e.date, e.type])).toEqual([
+      [day(7), 'shortBan'],
+      [day(7), 'nsf'],
+    ]);
+    expect(ev.find((e) => e.type === 'shortBan' && e.date === day(7))!.note).toBe('平盤下禁空');
+    expect(ev.find((e) => e.date === day(7) && e.type === 'nsf')!.ret20).not.toBeNull();
+    const out = analyzeMarginStress(rows, null, new Date(), policy);
+    expect(out.eventStats.nsf.n).toBe(1);
+    expect(out.eventStats.shortBan.n).toBe(1);
+    expect(out.eventStats.delever.n).toBe(0);
   });
 });
