@@ -1,12 +1,13 @@
-import type {
-  IChartApiBase,
-  IPrimitivePaneRenderer,
-  IPrimitivePaneView,
-  ISeriesApi,
-  ISeriesPrimitive,
-  SeriesAttachedParameter,
-  SeriesType,
-  Time,
+import {
+  MismatchDirection,
+  type IChartApiBase,
+  type IPrimitivePaneRenderer,
+  type IPrimitivePaneView,
+  type ISeriesApi,
+  type ISeriesPrimitive,
+  type SeriesAttachedParameter,
+  type SeriesType,
+  type Time,
 } from 'lightweight-charts';
 
 /**
@@ -39,12 +40,22 @@ export interface MarkerLabelStyle {
  * 直到不重疊。回傳每個標籤的中心 y。
  * 和單純「行號」不同：相鄰兩根 K 棒高度不同時，同一行的字也可能疊，所以用實際矩形判斷。
  */
-export function layoutStacked(items: { x: number; w: number; y: number }[], h: number, dir: 1 | -1, gap = 2): number[] {
+export function layoutStacked(
+  items: { x: number; w: number; y: number }[],
+  h: number,
+  dir: 1 | -1,
+  gap = 2,
+  /** 障礙物（折線）：回傳 x 範圍內線的 y 區間，標籤矩形碰到就再往外推 */
+  lineBand?: (x0: number, x1: number) => { lo: number; hi: number } | null,
+): number[] {
   const order = items.map((it, i) => ({ ...it, i })).sort((a, b) => a.x - b.x);
   const placed: { x: number; w: number; cy: number }[] = [];
   const out = new Array<number>(items.length).fill(0);
-  const hits = (x: number, w: number, cy: number) =>
-    placed.some((p) => Math.abs(p.x - x) < (p.w + w) / 2 + gap && Math.abs(p.cy - cy) < h + gap);
+  const hits = (x: number, w: number, cy: number) => {
+    if (placed.some((p) => Math.abs(p.x - x) < (p.w + w) / 2 + gap && Math.abs(p.cy - cy) < h + gap)) return true;
+    const band = lineBand?.(x - w / 2, x + w / 2);
+    return !!band && cy + h / 2 + gap > band.lo && cy - h / 2 - gap < band.hi;
+  };
   for (const it of order) {
     let cy = it.y;
     let guard = 0;
@@ -101,6 +112,23 @@ export class MarkerLabels implements ISeriesPrimitive<Time> {
       const h = fontSize + PAD_Y * 2;
       const ts = chart.timeScale();
       type Placed = { l: MarkerLabel; x: number; y: number; w: number };
+      // 折線在 x 範圍內的高低：每 3px 取一根 K 棒的收盤換成 y
+      const lineBand = (x0: number, x1: number): { lo: number; hi: number } | null => {
+        let lo = Infinity;
+        let hi = -Infinity;
+        for (let x = x0; x <= x1 + 3; x += 3) {
+          const logical = ts.coordinateToLogical(Math.min(x, x1));
+          if (logical === null) continue;
+          const d = s.dataByIndex(Math.round(logical), MismatchDirection.NearestLeft) as { value?: number; close?: number } | null;
+          const v = d?.value ?? d?.close;
+          if (v === undefined) continue;
+          const y = s.priceToCoordinate(v);
+          if (y === null) continue;
+          lo = Math.min(lo, Number(y));
+          hi = Math.max(hi, Number(y));
+        }
+        return lo === Infinity ? null : { lo, hi };
+      };
       const collect = (above: boolean, extra: Placed[]): Placed[] => {
         const vis: Placed[] = [...extra];
         for (const l of this.labels) {
@@ -116,7 +144,7 @@ export class MarkerLabels implements ISeriesPrimitive<Time> {
       };
       const draw = (vis: Placed[], above: boolean): Placed[] => {
         const base = vis.map((p) => ({ x: p.x, w: p.w, y: above ? p.y - SHAPE_OFFSET - h / 2 : p.y + SHAPE_OFFSET + h / 2 }));
-        const cys = layoutStacked(base, h, above ? -1 : 1);
+        const cys = layoutStacked(base, h, above ? -1 : 1, 2, lineBand);
         const overflow: Placed[] = [];
         vis.forEach((p, i) => {
           const cy = cys[i]!;
