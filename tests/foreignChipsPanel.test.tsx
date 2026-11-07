@@ -12,7 +12,7 @@ vi.mock('lightweight-charts', () => {
       addSeries: (type: string, opts: { lastValueVisible?: boolean; priceScaleId?: string }, paneIndex = 0) => {
         chartLog.series.push({ pane: paneIndex, type, label: opts.lastValueVisible !== false, scale: opts.priceScaleId });
         if (!panes.has(paneIndex)) panes.set(paneIndex, { setStretchFactor: (f) => chartLog.stretch.push(f) });
-        return { setData: () => {}, priceScale: () => ({ applyOptions: () => {} }) };
+        return { setData: () => {}, priceScale: () => ({ applyOptions: () => {} }), createPriceLine: () => {}, attachPrimitive: () => {} };
       },
       removeSeries: () => {},
       panes: () => [...panes.keys()].sort((a, b) => a - b).map((k) => panes.get(k)!),
@@ -99,5 +99,21 @@ describe('rightGapBars', () => {
     expect(rightGapBars(340, 62)).toBeCloseTo(18 / (340 / 64), 5);
     expect(rightGapBars(340, 250)).toBeGreaterThan(13);
     expect(rightGapBars(2000, 20)).toBe(2);
+  });
+
+  it('第 4 格切換成融資維持率：畫維持率線＋融資增減柱，圖例顯示維持率，選擇記在 localStorage', () => {
+    window.localStorage.removeItem('fc-pane4');
+    const mrows = rows.map((r, i) => [r[0], r[1], 170 - i * 0.1, 3000, i % 2 ? 5 : -5] as [string, number, number, number, number]);
+    const margin = { rows: mrows, states: mrows.map(() => 'normal') } as unknown as import('../src/shared/marginStress').MarginStressFile;
+    render(<ForeignChipsPanel data={data} themeKey="auto-false-tw" margin={margin} />);
+    expect(screen.getByRole('button', { name: '散戶小台' }).getAttribute('aria-pressed')).toBe('true');
+    chartLog.series = [];
+    fireEvent.click(screen.getByRole('button', { name: '融資維持率' }));
+    expect(chartLog.series.filter((x) => x.pane === 3)).toEqual([
+      { pane: 3, type: 'Line', label: true, scale: undefined },
+      { pane: 3, type: 'Histogram', label: true, scale: 'fc-mchg' },
+    ]);
+    expect(document.querySelector('.fc-legend')!.textContent).toContain('維持率 150.10%');
+    expect(window.localStorage.getItem('fc-pane4')).toBe('margin');
   });
 });
