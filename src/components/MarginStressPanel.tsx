@@ -51,6 +51,8 @@ const RANGES: { k: RangeKey; label: string }[] = [
 ];
 /** 四格：加權／維持率＋融資增減／去槓桿完成度／借券 */
 const MS_STRETCH = [0.38, 0.28, 0.17, 0.17] as const;
+/** 右側留白（根） */
+const MS_RIGHT_GAP = 2;
 const MARKER_TEXT: Record<StressEventType, string> = {
   below150: '150',
   below140: '140',
@@ -75,7 +77,8 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
       autoSize: true,
       crosshair: { mode: CrosshairMode.Normal },
       localization: { locale: 'zh-TW', dateFormat: 'yyyy-MM-dd' },
-      timeScale: { ...TIME_AXIS, rightOffset: 2, fixLeftEdge: true, fixRightEdge: true, minBarSpacing: 0.1 },
+      // fixRightEdge 會把最後一根卡在右緣（半根在畫面外），右軸現值標籤因此停在前一天；改成自己限制右側留白
+      timeScale: { ...TIME_AXIS, rightOffset: 2, fixLeftEdge: true, fixRightEdge: false, minBarSpacing: 0.1 },
       ...CHART_INTERACTION,
     });
     attachTimeAxis(chart);
@@ -223,14 +226,27 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
     // 以 K 棒索引設定可視範圍（不受圖表初次排版時寬度為 0 的影響）
     const start = rangeStart(last[0], range);
     const from = start ? Math.max(0, data.rows.findIndex((r) => r[0] >= start)) : 0;
+    const ts = chart.timeScale();
+    // 時間軸的邏輯索引是所有序列日期的聯集（借券有幾天融資沒有），不能直接用 rows 的索引，要換算
+    const logical = (date: string, fallback: number) => ts.timeToIndex(date as Time, true) ?? fallback;
+    // 右側最多留 MS_RIGHT_GAP 根空白，往左滑不會拉出更多（取代 fixRightEdge）
+    let maxTo = Infinity;
+    const clamp = (r: { from: number; to: number } | null) => {
+      if (r && r.to > maxTo + 0.01) ts.setVisibleLogicalRange({ from: r.from - (r.to - maxTo), to: maxTo });
+    };
     const apply = () => {
-      chart.timeScale().setVisibleLogicalRange({ from, to: data.rows.length + 1 });
+      maxTo = logical(last[0], data.rows.length - 1) + MS_RIGHT_GAP;
+      ts.setVisibleLogicalRange({ from: logical(data.rows[from]![0], from), to: maxTo });
       resetPriceScales(chart);
       resetPaneStretch(chart, MS_STRETCH);
     };
     apply();
     const raf = requestAnimationFrame(apply);
-    return () => cancelAnimationFrame(raf);
+    ts.subscribeVisibleLogicalRangeChange(clamp);
+    return () => {
+      cancelAnimationFrame(raf);
+      ts.unsubscribeVisibleLogicalRangeChange(clamp);
+    };
   }, [data, range, themeKey, resetKey]);
 
   useEffect(() => {
