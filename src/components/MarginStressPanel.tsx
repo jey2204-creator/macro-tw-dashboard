@@ -26,7 +26,7 @@ import {
   type StressEventType,
 } from '../shared/marginStress';
 import { rangeStart, type RangeKey } from '../shared/timeseries';
-import { cssVar, f2, pctCell } from '../lib/stressFormat';
+import { cssVar, f1, f2, pctCell } from '../lib/stressFormat';
 import { LineLabels } from '../lib/lineLabels';
 import { StatsRow } from './StatsRow';
 
@@ -38,6 +38,8 @@ const RANGES: { k: RangeKey; label: string }[] = [
   { k: '10Y', label: '10年' },
   { k: 'ALL', label: '全部' },
 ];
+/** 有借券窗格時的四格比例：加權／維持率／融資增減／借券賣出 */
+const SBL_PANE_STRETCH = [0.38, 0.27, 0.15, 0.2] as const;
 const EVENT_TYPES: StressEventType[] = ['below150', 'below140', 'flush', 'cleared'];
 const MARKER_TEXT: Record<StressEventType, string> = { below150: '150', below140: '140', flush: '斷頭', cleared: '清洗完成' };
 
@@ -141,11 +143,25 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
     chg.setData(
       data.rows.filter((r) => Number.isFinite(r[4])).map((r) => ({ time: r[0] as Time, value: r[4], color: r[4] >= 0 ? up : down })),
     );
-    resetPaneStretch(chart);
+    // 借券賣出（上市，萬張）：餘額折線 ＋ 日增減柱（增加＝空方加碼，用空方色）
+    const sbl = data.sbl ?? [];
+    let sblLine: ReturnType<typeof chart.addSeries> | null = null;
+    let sblChg: ReturnType<typeof chart.addSeries> | null = null;
+    if (sbl.length) {
+      sblLine = chart.addSeries(LineSeries, { color: cssVar('--text-1'), lineWidth: 2, priceFormat: { type: 'price', precision: 0, minMove: 1 } }, 3);
+      sblLine.setData(sbl.map((r) => ({ time: r[0] as Time, value: r[1] })));
+      sblChg = chart.addSeries(HistogramSeries, { priceFormat: { type: 'price', precision: 1, minMove: 0.1 }, priceScaleId: 'sbl-chg' }, 3);
+      sblChg.setData(sbl.filter((r) => Number.isFinite(r[2])).map((r) => ({ time: r[0] as Time, value: r[2], color: r[2] >= 0 ? down : up })));
+      // 柱子只占窗格下方 1/3，不和餘額折線打架
+      chart.panes()[3]?.priceScale('sbl-chg')?.applyOptions({ scaleMargins: { top: 0.65, bottom: 0 }, visible: false });
+    }
+    resetPaneStretch(chart, sbl.length ? SBL_PANE_STRETCH : undefined);
     return () => {
       chart.removeSeries(series);
       chart.removeSeries(ratio);
       chart.removeSeries(chg);
+      if (sblLine) chart.removeSeries(sblLine);
+      if (sblChg) chart.removeSeries(sblChg);
     };
   }, [data, themeKey]);
 
@@ -159,7 +175,7 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
     const apply = () => {
       chart.timeScale().setVisibleLogicalRange({ from, to: data.rows.length + 1 });
       resetPriceScales(chart);
-      resetPaneStretch(chart);
+      resetPaneStretch(chart, data.sbl?.length ? SBL_PANE_STRETCH : undefined);
     };
     apply();
     const raf = requestAnimationFrame(apply);
@@ -181,6 +197,8 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
   const i = hoverIdx ?? data.rows.length - 1;
   const row = data.rows[i];
   const state = data.states[i];
+  const sblByDate = useMemo(() => new Map((data.sbl ?? []).map((r) => [r[0], r])), [data]);
+  const sblRow = row ? sblByDate.get(row[0]) : undefined;
   return (
     <div className="pricechart ms-chart">
       {row && (
@@ -189,12 +207,20 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
           維持率 <b>{f2(row[2])}%</b> 融資增減{' '}
           <span className={row[4] > 0 ? 'up' : row[4] < 0 ? 'down' : ''}>{f2(row[4], true)} 億</span>{' '}
           {state && <span className={`ms-state ms-${state}`}>{STATE_LABEL[state]}</span>}
+          {sblRow && (
+            <>
+              {' '}
+              借券賣出 <b>{f1(sblRow[1])}</b>萬張{' '}
+              <span className={sblRow[2] > 0 ? 'down' : sblRow[2] < 0 ? 'up' : ''}>{f1(sblRow[2], true)}</span>
+            </>
+          )}
         </div>
       )}
       <div className="ms-pane-labels small muted" aria-hidden>
-        上：加權指數（▼ 跌破 150／140、■ 斷頭潮、▲ 清洗完成） ｜ 中：維持率（警戒時 Y 軸含 140 線；門檻線在畫面外時不標） ｜ 下：融資增減（億）
+        上：加權指數（▼ 跌破 150／140、■ 斷頭潮、▲ 清洗完成） ｜ 維持率（警戒時 Y 軸含 140 線；門檻線在畫面外時不標） ｜ 融資增減（億）
+        {data.sbl?.length ? ' ｜ 下：借券賣出餘額（萬張，線）與日增減（柱，增加＝空方加碼）' : ''}
       </div>
-      <div ref={hostRef} className="chart-host ms-host" />
+      <div ref={hostRef} className={`chart-host ms-host${data.sbl?.length ? ' ms-host-4' : ''}`} />
     </div>
   );
 }
@@ -220,12 +246,27 @@ export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile |
         </div>
         <span className="small muted num">資料 {latest.date}</span>
       </div>
+      {data.latestSbl && (
+        <div className="small num ms-sbl-line">
+          借券賣出餘額 <b>{f1(data.latestSbl.balance)}</b> 萬張｜近5日{' '}
+          <span className={(data.latestSbl.chg5 ?? 0) > 0 ? 'down' : (data.latestSbl.chg5 ?? 0) < 0 ? 'up' : ''}>{f1(data.latestSbl.chg5, true)}</span> 萬張｜
+          {data.latestSbl.streak > 0 ? `連增 ${data.latestSbl.streak} 日` : data.latestSbl.streak < 0 ? `連減 ${-data.latestSbl.streak} 日` : '持平'}
+          {data.latestSbl.hi60 && <span className="ms-sbl-tag down">近 60 日新高（空方追空）</span>}
+          {data.latestSbl.lo60 && <span className="ms-sbl-tag up">近 60 日新低（空方回補）</span>}
+          <span className="muted">（上市，{data.latestSbl.date}）</span>
+        </div>
+      )}
 
       <PanelNote>
         <p className="small muted ms-rule">
         警戒：維持率 &lt; {WARN_RATIO}% 或近 5 日降 &gt; {WARN_DROP_5D}pp；斷頭區：&lt; {ZONE_RATIO}%；斷頭潮：斷頭區內融資單日減幅為近 250
         日最大 5%（且 ≥ 0.5%）；清洗完成：近 20 日曾 &lt; 140%，維持率自低點回升 ≥ {CLEAR_REBOUND}pp、近 3 日無斷頭潮、加權 3 日不破低。每一波只標一次，回到 160% 以上才算新的一波。
       </p>
+      {data.sbl?.length ? (
+        <p className="small muted ms-rule">
+          借券賣出餘額（上市）＝證交所逐檔「借券賣出當日餘額」加總，借券放空者幾乎都是外資／法人，可視為法人空單；融資是散戶槓桿（多方）。餘額在跌勢後段暴增＝空方追空、也是反彈時的軋空燃料；餘額連續下降＝空方回補。限空令期間當日賣出會被制度性壓低，判斷看餘額增減、不看當日賣出量。只有每日排程資料（回補約半年），不進回測。
+        </p>
+      ) : null}
       </PanelNote>
 
       <div className="seg" role="group" aria-label="時間區間">

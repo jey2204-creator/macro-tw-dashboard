@@ -104,6 +104,62 @@ export interface MarginStressFile {
   stateStats: Record<StressState, EventStats & { pct: number }>;
   baseline: EventStats;
   latest: { date: string; state: StressState; ratio: number; drop5: number | null; taiex: number } | null;
+  /** 借券賣出（上市，萬張）：[日期, 借券賣出餘額, 餘額增減, 當日賣出, 當日還券]；沒有資料時省略 */
+  sbl?: SblRow[];
+  latestSbl?: SblLatest | null;
+}
+
+export type SblRow = [date: string, balance: number, change: number, sell: number, ret: number];
+
+export interface SblLatest {
+  date: string;
+  /** 借券賣出餘額（萬張） */
+  balance: number;
+  /** 近 5 個交易日餘額增減（萬張）；資料不足為 null */
+  chg5: number | null;
+  /** 餘額連續增加（正）或減少（負）的交易日數 */
+  streak: number;
+  /** 餘額為近 N 個交易日（資料範圍內，最多 60）新高／新低 */
+  hi60: boolean;
+  lo60: boolean;
+}
+
+/** 合併借券賣出序列（萬張）：以餘額序列為主，增減＝與前一筆餘額之差（第一筆為 NaN） */
+export function combineSblRows(live: { balance?: Bar[]; sell?: Bar[]; ret?: Bar[] }): SblRow[] {
+  const sell = new Map((live.sell ?? []).map((b) => [b[0], b[4]] as const));
+  const ret = new Map((live.ret ?? []).map((b) => [b[0], b[4]] as const));
+  const out: SblRow[] = [];
+  let prev: number | null = null;
+  for (const b of live.balance ?? []) {
+    if (!Number.isFinite(b[4])) continue;
+    out.push([b[0], b[4], prev === null ? NaN : r2(b[4] - prev), sell.get(b[0]) ?? NaN, ret.get(b[0]) ?? NaN]);
+    prev = b[4];
+  }
+  return out;
+}
+
+export function summarizeSbl(rows: SblRow[]): SblLatest | null {
+  const last = rows.at(-1);
+  if (!last) return null;
+  const n = rows.length;
+  let streak = 0;
+  for (let i = n - 1; i >= 1; i--) {
+    const d = rows[i]![1] - rows[i - 1]![1];
+    if (d === 0) break;
+    const sign = d > 0 ? 1 : -1;
+    if (streak === 0) streak = sign;
+    else if (Math.sign(streak) !== sign) break;
+    else streak += sign;
+  }
+  const win = rows.slice(Math.max(0, n - 60), n - 1).map((r) => r[1]);
+  return {
+    date: last[0],
+    balance: last[1],
+    chg5: n > 5 ? r2(last[1] - rows[n - 6]![1]) : null,
+    streak,
+    hi60: win.length >= 5 && last[1] > Math.max(...win),
+    lo60: win.length >= 5 && last[1] < Math.min(...win),
+  };
 }
 
 const r2 = (v: number) => Math.round(v * 100) / 100;

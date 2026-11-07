@@ -11,6 +11,9 @@ import type { SourceFetchResult } from './types';
  *
  * 漲跌家數：MI_INDEX 的「漲跌證券數合計」股票欄（2011 年中以前無此表，改由逐檔收盤行情推算）
  *
+ * 借券賣出：融券借券賣出餘額 TWT93U（逐檔）：借券賣出「當日賣出／當日還券／當日餘額」加總（張→萬張）。
+ *   借券放空者幾乎都是外資／法人；全市場加總值與媒體引用的「外資借券放空總張數」同一口徑（上市）。
+ *
  * 大盤融資維持率（推算，上市、含 ETF）＝ Σ(逐檔融資餘額張數 × 1000 × 收盤價) ÷ 融資金額餘額 × 100%
  *   無收盤價（暫停交易等）的個股略過，影響通常 < 0.1 個百分點；
  *   2026-10-12 試算 196.16%，與愛玩股公布值一致。
@@ -30,12 +33,19 @@ export type TwseChipSymbol =
   | 'LIMIT_UP'
   | 'LIMIT_DOWN'
   | 'ADVANCE'
-  | 'DECLINE';
+  | 'DECLINE'
+  | 'SBL_SELL_BAL'
+  | 'SBL_SELL'
+  | 'SBL_RETURN';
 
 /** 由每日收盤行情（MI_INDEX）取得的漲跌家數類指標 */
 const BREADTH_SYMBOLS = ['LIMIT_UP', 'LIMIT_DOWN', 'ADVANCE', 'DECLINE'] as const;
 type BreadthSymbol = (typeof BREADTH_SYMBOLS)[number];
 const isBreadth = (s: TwseChipSymbol): s is BreadthSymbol => (BREADTH_SYMBOLS as readonly string[]).includes(s);
+/** 由融券借券賣出餘額（TWT93U）取得的借券類指標 */
+const SBL_SYMBOLS = ['SBL_SELL_BAL', 'SBL_SELL', 'SBL_RETURN'] as const;
+type SblSymbol = (typeof SBL_SYMBOLS)[number];
+const isSbl = (s: TwseChipSymbol): s is SblSymbol => (SBL_SYMBOLS as readonly string[]).includes(s);
 
 export const TWSE_CHIPS_BACKFILL_DAYS = 365;
 /** 維持率每天多一個大檔請求，回補較短 */
@@ -263,6 +273,63 @@ export function computeMarginRatio(day: MarginDay, prices: Map<string, number>):
   return Math.round((mv / day.loanYuan) * 10000) / 100;
 }
 
+interface Twt93u {
+  stat?: string;
+  fields?: string[];
+  data?: string[][];
+  groups?: { start?: number; span?: number; title?: string }[];
+  tables?: { fields?: string[]; data?: string[][]; groups?: { start?: number; span?: number; title?: string }[] }[];
+}
+
+/** 上市借券賣出合計（萬張） */
+export interface SblDay {
+  /** 借券賣出當日餘額加總 */
+  balance: number;
+  /** 當日借券賣出加總 */
+  sell: number;
+  /** 當日還券加總 */
+  ret: number;
+}
+
+const wan = (v: number) => Math.round((v / 1e4) * 100) / 100; // 張 → 萬張，取 2 位
+
+/**
+ * 解析 TWT93U（融券借券賣出餘額，逐檔）：加總借券賣出的當日賣出／當日還券／當日餘額。
+ * 欄位同時相容兩種寫法：欄名自帶「借券賣出」前綴，或以 groups 分組（融券／借券賣出）而欄名只寫「當日賣出」等。
+ * 查無資料回傳 null；欄位找不到則擲錯（錯誤訊息附欄名，方便從 Actions 記錄看出格式變動）。
+ */
+export function parseTwt93u(json: Twt93u): SblDay | null {
+  if (json.stat !== 'OK') return null;
+  const t = json.tables?.find((x) => x.fields?.some((f) => /當日餘額|借券/.test(f))) ?? json;
+  const f = t.fields ?? [];
+  const groups = t.groups ?? [];
+  const sblGroup = groups.find((g) => (g.title ?? '').includes('借券'));
+  const inSbl = (i: number) =>
+    f[i]!.includes('借券') || (sblGroup && sblGroup.start !== undefined && i >= sblGroup.start && i < sblGroup.start + (sblGroup.span ?? 0));
+  const find = (re: RegExp) => f.findIndex((name, i) => re.test(name) && (inSbl(i) || /當日/.test(name)));
+  let iSell = find(/當日賣出/);
+  let iRet = find(/當日還券/);
+  let iBal = find(/當日餘額/);
+  // 兩種寫法都對不上時，退回證交所固定欄序：代號、名稱、融券 6 欄、借券賣出 前日餘額／當日賣出／當日還券／當日調整／當日餘額
+  if ((iSell < 0 || iRet < 0 || iBal < 0) && f.length >= 13) [iSell, iRet, iBal] = [9, 10, 12];
+  if (iSell < 0 || iRet < 0 || iBal < 0) throw new Error(`TWT93U 欄位異常：${f.join(',')}`);
+  let sell = 0;
+  let ret = 0;
+  let bal = 0;
+  let n = 0;
+  for (const r of t.data ?? []) {
+    if (!/^\d{4,6}[A-Z]?$/.test((r[0] ?? '').trim())) continue;
+    const b = num(r[iBal]);
+    if (!Number.isFinite(b)) continue;
+    bal += b;
+    sell += Number.isFinite(num(r[iSell])) ? num(r[iSell]) : 0;
+    ret += Number.isFinite(num(r[iRet])) ? num(r[iRet]) : 0;
+    n++;
+  }
+  if (n === 0) return null;
+  return { balance: wan(bal), sell: wan(sell), ret: wan(ret) };
+}
+
 /** 工作日（週一至週五）清單，由新到舊 */
 export function weekdaysBackward(from: string, to: string, limit: number): string[] {
   const out: string[] = [];
@@ -277,11 +344,27 @@ export function weekdaysBackward(from: string, to: string, limit: number): strin
 const bfiCache = new Map<string, Promise<ReturnType<typeof parseBfi82u>>>();
 const marginCache = new Map<string, Promise<MarginDay | null>>();
 const priceCache = new Map<string, Promise<{ prices: Map<string, number> | null; breadth: Breadth | null }>>();
+const sblCache = new Map<string, Promise<SblDay | null>>();
 
 export function resetTwseChipsCache(): void {
   bfiCache.clear();
   marginCache.clear();
   priceCache.clear();
+  sblCache.clear();
+}
+
+/** 融券借券賣出餘額（TWT93U）：同一天由三個借券指標共用 */
+function sblDay(date: string, http: HttpOptions, fast: boolean): Promise<SblDay | null> {
+  let p = sblCache.get(date);
+  if (!p) {
+    p = (async () => {
+      await throttle(fast);
+      const j = await getJson<Twt93u>(`https://www.twse.com.tw/rwd/zh/marginTrading/TWT93U?date=${date.replace(/-/g, '')}&response=json`, http);
+      return parseTwt93u(j);
+    })();
+    sblCache.set(date, p);
+  }
+  return p;
 }
 
 function marginDay(date: string, http: HttpOptions, fast: boolean): Promise<MarginDay | null> {
@@ -327,6 +410,11 @@ async function dayValue(symbol: TwseChipSymbol, date: string, http: HttpOptions,
     const { prices } = await closeDay(date, http, fast);
     return prices ? computeMarginRatio(m, prices) : null;
   }
+  if (isSbl(symbol)) {
+    const d = await sblDay(date, http, fast);
+    if (!d) return null;
+    return symbol === 'SBL_SELL_BAL' ? d.balance : symbol === 'SBL_SELL' ? d.sell : d.ret;
+  }
   if (isBreadth(symbol)) {
     const { breadth: b } = await closeDay(date, http, fast);
     if (!b) return null;
@@ -352,7 +440,7 @@ export async function fetchTwseChips(
   http: HttpOptions,
   fast = false,
 ): Promise<SourceFetchResult> {
-  const target = addDays(today, -(symbol === 'MARGIN_RATIO' || isBreadth(symbol) ? MARGIN_RATIO_BACKFILL_DAYS : TWSE_CHIPS_BACKFILL_DAYS));
+  const target = addDays(today, -(symbol === 'MARGIN_RATIO' || isBreadth(symbol) || isSbl(symbol) ? MARGIN_RATIO_BACKFILL_DAYS : TWSE_CHIPS_BACKFILL_DAYS));
   // 快取太少（例如早期版本被限流而留下缺洞）時，視同無快取重新抓最近 40 個工作日；結果仍會與舊快取合併
   if (cached && cached.length < 20) cached = null;
   const first = cached?.[0]?.[0] ?? null;
