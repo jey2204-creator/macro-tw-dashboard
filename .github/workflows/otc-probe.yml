@@ -1,0 +1,76 @@
+name: 探測：櫃買中心每日收盤行情（上櫃漲跌停／漲跌家數）
+
+# 一次性探測，不碰正式資料與網站。
+# 目的：確認櫃買中心「上櫃股票每日收盤行情」回傳格式、是否有官方漲跌家數統計列、
+#       歷史能抓到哪一年（新站 afterTrading/otc 與舊站 stk_wn1430_result.php 各試一次）。
+on:
+  workflow_dispatch:
+  push:
+    paths: ['.github/workflows/otc-probe.yml']
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: 逐日探測
+        run: |
+          node - <<'EOF'
+          const UA = 'macro-tw-dashboard/0.1 (+https://github.com/jey2204-creator/macro-tw-dashboard)';
+          const dates = ['2026-11-06', '2024-08-05', '2020-03-19', '2015-05-29', '2012-01-04', '2010-01-04', '2008-01-04', '2007-01-04'];
+          const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+          const roc = (d) => { const [y, m, dd] = d.split('-'); return `${+y - 1911}/${m}/${dd}`; };
+          const newUrl = (d) => `https://www.tpex.org.tw/www/zh-tw/afterTrading/otc?date=${encodeURIComponent(d.replace(/-/g, '/'))}&type=EW&response=json`;
+          const oldUrl = (d) => `https://www.tpex.org.tw/web/stock/aftertrading/otc_quotes_no1430/stk_wn1430_result.php?l=zh-tw&d=${encodeURIComponent(roc(d))}&se=EW&o=json`;
+          const num = (s) => Number(String(s ?? '').replace(/,/g, ''));
+          function summarize(j) {
+            const tables = j.tables ?? (j.aaData ? [{ fields: null, data: j.aaData }] : []);
+            const out = [];
+            for (const t of tables) {
+              const f = t.fields ?? [];
+              const rows = t.data ?? [];
+              out.push(`table[${t.title ?? ''}] fields=${f.length} rows=${rows.length} f=${JSON.stringify(f).slice(0, 220)} r0=${JSON.stringify(rows[0] ?? []).slice(0, 160)}`);
+            }
+            // 任何含「家數」的字串（官方統計列）
+            const txt = JSON.stringify(j);
+            const hits = [...txt.matchAll(/[^"]{0,24}家數[^"]{0,24}/g)].map((m) => m[0]).slice(0, 8);
+            // 試算：代號 4 位數、收盤>0、以漲跌欄正負計上漲／下跌
+            let up = 0, down = 0, flat = 0, n = 0;
+            for (const t of tables) {
+              const f = t.fields ?? [];
+              const iCode = f.findIndex((x) => /代號/.test(x));
+              const iClose = f.findIndex((x) => /收盤/.test(x));
+              const iChg = f.findIndex((x) => /^漲跌$/.test(x) || /漲跌價差|漲跌\(/.test(x));
+              if (iCode < 0 || iClose < 0) continue;
+              for (const r of t.data ?? []) {
+                if (!/^[1-9]\d{3}$/.test(String(r[iCode] ?? '').trim())) continue;
+                const c = num(r[iClose]);
+                if (!(c > 0)) continue;
+                n++;
+                const chg = iChg >= 0 ? String(r[iChg] ?? '') : '';
+                const v = num(chg.replace(/[+X]/g, '').replace('−', '-'));
+                if (chg.includes('+') || v > 0) up++; else if (chg.includes('-') || v < 0) down++; else flat++;
+              }
+            }
+            return { out, hits, calc: `計算 n=${n} 上漲=${up} 下跌=${down} 平=${flat}` };
+          }
+          (async () => {
+            for (const d of dates) {
+              for (const [tag, url] of [['新站', newUrl(d)], ['舊站', oldUrl(d)]]) {
+                const t0 = Date.now();
+                try {
+                  const r = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'application/json' }, signal: AbortSignal.timeout(40000) });
+                  const body = await r.text();
+                  let j = null; try { j = JSON.parse(body); } catch {}
+                  const ms = Date.now() - t0;
+                  if (!j) { console.log(`::warning title=${d} ${tag}::HTTP ${r.status} ${ms}ms 非 JSON：${body.slice(0, 120).replace(/\n/g, ' ')}`); continue; }
+                  const s = summarize(j);
+                  console.log(`::notice title=${d} ${tag}::HTTP ${r.status} ${ms}ms keys=${Object.keys(j).join(',')} stat=${j.stat ?? ''} | ${s.calc} | 家數字串=${JSON.stringify(s.hits)} | ${s.out.join(' ‖ ')}`.slice(0, 3800));
+                } catch (e) {
+                  console.log(`::warning title=${d} ${tag}::ERR ${Date.now() - t0}ms ${String(e).slice(0, 200)}`);
+                }
+                await sleep(2500);
+              }
+            }
+          })();
+          EOF
