@@ -135,6 +135,18 @@ export interface MarginStressFile {
 
 export type SblRow = [date: string, balance: number, change: number, sell: number, ret: number];
 
+/** data/sbl-history.json 每列：[日期, 借券賣出餘額, 當日賣出, 當日還券]（萬張） */
+export type SblHistoryRow = [date: string, balance: number, sell: number, ret: number];
+export interface SblHistoryFile {
+  schemaVersion: 1;
+  note: string;
+  target: string;
+  cursor: string;
+  updatedAt: string;
+  parseErrors: string[];
+  rows: SblHistoryRow[];
+}
+
 export interface SblLatest {
   date: string;
   /** 借券賣出餘額（萬張） */
@@ -148,16 +160,22 @@ export interface SblLatest {
   lo60: boolean;
 }
 
-/** 合併借券賣出序列（萬張）：以餘額序列為主，增減＝與前一筆餘額之差（第一筆為 NaN） */
-export function combineSblRows(live: { balance?: Bar[]; sell?: Bar[]; ret?: Bar[] }): SblRow[] {
+/** 合併借券賣出序列（萬張）：長期歷史 + 每日排程（同一天以每日排程為準）；增減＝與前一筆餘額之差（第一筆為 NaN） */
+export function combineSblRows(live: { balance?: Bar[]; sell?: Bar[]; ret?: Bar[] }, history: SblHistoryRow[] = []): SblRow[] {
+  const m = new Map<string, { balance: number; sell: number; ret: number }>();
+  for (const [d, balance, sell, ret] of history) m.set(d, { balance, sell, ret });
   const sell = new Map((live.sell ?? []).map((b) => [b[0], b[4]] as const));
   const ret = new Map((live.ret ?? []).map((b) => [b[0], b[4]] as const));
-  const out: SblRow[] = [];
-  let prev: number | null = null;
   for (const b of live.balance ?? []) {
     if (!Number.isFinite(b[4])) continue;
-    out.push([b[0], b[4], prev === null ? NaN : r2(b[4] - prev), sell.get(b[0]) ?? NaN, ret.get(b[0]) ?? NaN]);
-    prev = b[4];
+    m.set(b[0], { balance: b[4], sell: sell.get(b[0]) ?? NaN, ret: ret.get(b[0]) ?? NaN });
+  }
+  const out: SblRow[] = [];
+  let prev: number | null = null;
+  for (const d of [...m.keys()].sort()) {
+    const x = m.get(d)!;
+    out.push([d, x.balance, prev === null ? NaN : r2(x.balance - prev), x.sell, x.ret]);
+    prev = x.balance;
   }
   return out;
 }
