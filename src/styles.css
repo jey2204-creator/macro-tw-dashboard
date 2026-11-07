@@ -904,6 +904,15 @@ th {
 .ms-sbl-tag {
   margin-left: 6px;
 }
+.ms-comp-lag {
+  color: var(--err);
+}
+.ms-comp-mid {
+  color: var(--warn);
+}
+.ms-comp-done {
+  color: var(--accent);
+}
 .ms-pane-labels {
   margin: 2px 0 4px;
 }
@@ -1260,7 +1269,16 @@ th {
   min-height: 0;
   line-height: 1.5;
 }
-.fc .ms-pane-labels {
+.fc .ms-comp-lag {
+  color: var(--err);
+}
+.ms-comp-mid {
+  color: var(--warn);
+}
+.ms-comp-done {
+  color: var(--accent);
+}
+.ms-pane-labels {
   white-space: normal;
 }
 .fc-day-events {

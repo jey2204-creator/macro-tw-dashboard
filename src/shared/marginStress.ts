@@ -418,3 +418,76 @@ export function analyzeMarginStress(rows: StressRow[], historyFrom: string | nul
         : null,
   };
 }
+
+/* ───────────── 去槓桿完成度 ───────────── */
+
+/** 回看視窗（交易日）：指數高點與融資餘額高點都在近 N 個交易日內找 */
+export const COMPLETION_LOOKBACK = 120;
+/** 指數自高點回落未達此幅度（%）時不算完成度（小回檔沒有去槓桿可言） */
+export const COMPLETION_MIN_DD = 5;
+/** 完成度分級：< 0.6 清洗落後、0.6～1 進行中、≥ 1 追上大盤 */
+export const COMPLETION_LAG = 0.6;
+export const COMPLETION_DONE = 1;
+
+export type CompletionGrade = 'lag' | 'mid' | 'done';
+export const COMPLETION_LABEL: Record<CompletionGrade, string> = { lag: '清洗落後', mid: '進行中', done: '追上大盤' };
+
+export interface Completion {
+  /** 指數自近 N 日高點跌幅（%，≤ 0） */
+  dd: number;
+  peakDate: string;
+  peak: number;
+  /** 融資餘額自近 N 日高點減幅（%，≤ 0）；餘額缺值時 null */
+  cut: number | null;
+  balPeakDate: string | null;
+  balPeak: number | null;
+  /** 完成度＝融資減幅 ÷ 指數跌幅；指數回落 < 5% 或融資缺值時 null */
+  ratio: number | null;
+  grade: CompletionGrade | null;
+}
+
+export function completionGrade(ratio: number): CompletionGrade {
+  return ratio < COMPLETION_LAG ? 'lag' : ratio < COMPLETION_DONE ? 'mid' : 'done';
+}
+
+/**
+ * 去槓桿完成度：融資餘額自高點累計減幅 ÷ 指數自高點跌幅（兩者都在近 120 個交易日內找高點）。
+ * 1.0 ＝ 融資清洗幅度追上大盤跌幅；2020-03、2025-04、2026-07 的 V 轉底都 ≥ 1.2，
+ * 2024-08-05 當天只有 0.5（兩天急跌，隔天才追上）。≥ 1 不代表一定見底（2022 慢熊 7 月已 1.3 仍再跌）。
+ */
+export function completionAt(rows: readonly StressRow[], i: number, lookback = COMPLETION_LOOKBACK): Completion | null {
+  const row = rows[i];
+  if (!row) return null;
+  const lo = Math.max(0, i - lookback);
+  let pk = lo;
+  let bk = -1;
+  for (let k = lo; k <= i; k++) {
+    const r = rows[k]!;
+    if (r[1] > rows[pk]![1]) pk = k;
+    if (Number.isFinite(r[3]) && (bk < 0 || r[3] > rows[bk]![3])) bk = k;
+  }
+  const peak = rows[pk]![1];
+  const dd = r2((row[1] / peak - 1) * 100);
+  const hasBal = bk >= 0 && Number.isFinite(row[3]);
+  const balPeak = hasBal ? rows[bk]![3] : null;
+  const cut = hasBal && balPeak ? r2((row[3] / balPeak - 1) * 100) : null;
+  const ratio = cut !== null && dd <= -COMPLETION_MIN_DD ? r2(cut / dd) : null;
+  return {
+    dd,
+    peakDate: rows[pk]![0],
+    peak,
+    cut,
+    balPeakDate: hasBal ? rows[bk]![0] : null,
+    balPeak,
+    ratio,
+    grade: ratio === null ? null : completionGrade(ratio),
+  };
+}
+
+/** 每日完成度序列（畫圖用）：[日期, 指數跌幅%, 融資減幅%, 完成度] */
+export function completionSeries(rows: readonly StressRow[], lookback = COMPLETION_LOOKBACK): [string, number, number | null, number | null][] {
+  return rows.map((r, i) => {
+    const c = completionAt(rows, i, lookback)!;
+    return [r[0], c.dd, c.cut, c.ratio];
+  });
+}

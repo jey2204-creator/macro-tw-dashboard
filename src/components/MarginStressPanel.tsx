@@ -17,6 +17,11 @@ import { CHART_INTERACTION, resetPaneStretch, resetPriceScales, attachTimeAxis, 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CLEAR_REBOUND,
+  COMPLETION_DONE,
+  COMPLETION_LABEL,
+  COMPLETION_LAG,
+  COMPLETION_LOOKBACK,
+  COMPLETION_MIN_DD,
   DELEVER_MIN_DROP_PCT,
   EVENT_LABEL,
   EVENT_TYPES,
@@ -24,6 +29,9 @@ import {
   WARN_DROP_5D,
   WARN_RATIO,
   ZONE_RATIO,
+  completionAt,
+  completionSeries,
+  type Completion,
   type MarginStressFile,
   type StressEventType,
 } from '../shared/marginStress';
@@ -41,6 +49,8 @@ const RANGES: { k: RangeKey; label: string }[] = [
   { k: '10Y', label: '10年' },
   { k: 'ALL', label: '全部' },
 ];
+/** 四格：加權／維持率＋融資增減／去槓桿完成度／借券 */
+const MS_STRETCH = [0.38, 0.28, 0.17, 0.17] as const;
 const MARKER_TEXT: Record<StressEventType, string> = {
   below150: '150',
   below140: '140',
@@ -56,6 +66,7 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
   const chartRef = useRef<IChartApi | null>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const indexByDate = useMemo(() => new Map(data.rows.map((r, i) => [r[0], i])), [data]);
+  const completion = useMemo(() => completionSeries(data.rows), [data]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -170,28 +181,40 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
       data.rows.filter((r) => Number.isFinite(r[4])).map((r) => ({ time: r[0] as Time, value: r[4], color: r[4] >= 0 ? up : down })),
     );
     chart.panes()[1]?.priceScale('ms-chg')?.applyOptions({ scaleMargins: { top: 0.7, bottom: 0 }, visible: false });
-    // 借券賣出（上市，萬張）：第 3 格，餘額折線 ＋ 日增減柱（增加＝空方加碼，用空方色）
+    // 去槓桿完成度：第 3 格，指數自高點跌幅（黑）與融資餘額自高點減幅（藍）兩條 % 線；
+    // 藍線追上黑線＝融資清洗幅度追上大盤跌幅（完成度 ≥ 1），數值列在圖例
+    const pctFmt = { type: 'custom' as const, minMove: 0.1, formatter: (v: number) => `${v.toFixed(1)}%` };
+    const ddLine = chart.addSeries(LineSeries, { color: cssVar('--text-1'), lineWidth: 2, priceFormat: pctFmt, priceLineVisible: false }, 2);
+    ddLine.setData(completion.map((c) => ({ time: c[0] as Time, value: c[1] })));
+    const cutLine = chart.addSeries(LineSeries, { color: cssVar('--accent'), lineWidth: 2, priceFormat: pctFmt, priceLineVisible: false }, 2);
+    cutLine.setData(completion.filter((c) => c[2] !== null).map((c) => ({ time: c[0] as Time, value: c[2] as number })));
+    ddLine.createPriceLine({ price: 0, color: lineColor, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false, title: '' });
+    ddLine.createPriceLine({ price: -COMPLETION_MIN_DD, color: lineColor, lineWidth: 1, lineStyle: LineStyle.Dotted, axisLabelVisible: false, title: '' });
+    ddLine.priceScale().applyOptions({ scaleMargins: { top: 0.08, bottom: 0.08 } });
+    // 借券賣出（上市，萬張）：第 4 格，餘額折線 ＋ 日增減柱（增加＝空方加碼，用空方色）
     const sbl = data.sbl ?? [];
     let sblLine: ReturnType<typeof chart.addSeries> | null = null;
     let sblChg: ReturnType<typeof chart.addSeries> | null = null;
     if (sbl.length) {
-      sblLine = chart.addSeries(LineSeries, { color: cssVar('--text-1'), lineWidth: 2, priceFormat: { type: 'price', precision: 0, minMove: 1 } }, 2);
+      sblLine = chart.addSeries(LineSeries, { color: cssVar('--text-1'), lineWidth: 2, priceFormat: { type: 'price', precision: 0, minMove: 1 } }, 3);
       sblLine.setData(sbl.map((r) => ({ time: r[0] as Time, value: r[1] })));
-      sblChg = chart.addSeries(HistogramSeries, { priceFormat: { type: 'price', precision: 1, minMove: 0.1 }, priceScaleId: 'sbl-chg', priceLineVisible: false }, 2);
+      sblChg = chart.addSeries(HistogramSeries, { priceFormat: { type: 'price', precision: 1, minMove: 0.1 }, priceScaleId: 'sbl-chg', priceLineVisible: false }, 3);
       sblChg.setData(sbl.filter((r) => Number.isFinite(r[2])).map((r) => ({ time: r[0] as Time, value: r[2], color: r[2] >= 0 ? down : up })));
       // 柱子只占窗格下方 1/3、折線留在上方 2/3，兩者不重疊
-      chart.panes()[2]?.priceScale('sbl-chg')?.applyOptions({ scaleMargins: { top: 0.68, bottom: 0 }, visible: false });
+      chart.panes()[3]?.priceScale('sbl-chg')?.applyOptions({ scaleMargins: { top: 0.68, bottom: 0 }, visible: false });
       sblLine.priceScale().applyOptions({ scaleMargins: { top: 0.08, bottom: 0.36 } });
     }
-    resetPaneStretch(chart);
+    resetPaneStretch(chart, MS_STRETCH);
     return () => {
       chart.removeSeries(series);
       chart.removeSeries(ratio);
       chart.removeSeries(chg);
+      chart.removeSeries(ddLine);
+      chart.removeSeries(cutLine);
       if (sblLine) chart.removeSeries(sblLine);
       if (sblChg) chart.removeSeries(sblChg);
     };
-  }, [data, themeKey]);
+  }, [data, completion, themeKey]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -203,7 +226,7 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
     const apply = () => {
       chart.timeScale().setVisibleLogicalRange({ from, to: data.rows.length + 1 });
       resetPriceScales(chart);
-      resetPaneStretch(chart);
+      resetPaneStretch(chart, MS_STRETCH);
     };
     apply();
     const raf = requestAnimationFrame(apply);
@@ -227,6 +250,7 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
   const state = data.states[i];
   const sblByDate = useMemo(() => new Map((data.sbl ?? []).map((r) => [r[0], r])), [data]);
   const sblRow = row ? sblByDate.get(row[0]) : undefined;
+  const comp = completion[i];
   return (
     <div className="pricechart ms-chart">
       {row && (
@@ -242,9 +266,36 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
               <span className={sblRow[2] > 0 ? 'down' : sblRow[2] < 0 ? 'up' : ''}>{f1(sblRow[2], true)}</span>
             </>
           )}
+          {comp && (
+            <>
+              {' '}
+              完成度 <b>{comp[3] === null ? '—' : comp[3].toFixed(2)}</b>
+              <span className="muted">（指數 {f1(comp[1])}%／融資 {comp[2] === null ? '—' : `${f1(comp[2])}%`}）</span>
+            </>
+          )}
         </div>
       )}
       <div ref={hostRef} className="chart-host ms-host" />
+    </div>
+  );
+}
+
+/** 去槓桿完成度讀數列（最新一日） */
+function CompletionLine({ c }: { c: Completion }) {
+  const bal = (v: number | null) => (v === null ? '—' : v.toLocaleString('en-US', { maximumFractionDigits: 0 }));
+  return (
+    <div className="small num ms-sbl-line">
+      去槓桿完成度 <b>{c.ratio === null ? '—' : c.ratio.toFixed(2)}</b>
+      {c.grade && <span className={`ms-sbl-tag ms-comp-${c.grade}`}>{COMPLETION_LABEL[c.grade]}</span>}
+      ｜指數自高點 <b className={c.dd < 0 ? 'down' : ''}>{f1(c.dd)}%</b>
+      <span className="muted">（{c.peakDate} {bal(c.peak)}）</span>｜融資自高點{' '}
+      <b className={(c.cut ?? 0) < 0 ? 'down' : ''}>{c.cut === null ? '—' : `${f1(c.cut)}%`}</b>
+      {c.balPeakDate && (
+        <span className="muted">
+          （{c.balPeakDate} {bal(c.balPeak)} 億）
+        </span>
+      )}
+      {c.ratio === null && c.cut !== null && <span className="muted">｜指數回落未達 {COMPLETION_MIN_DD}%，不計</span>}
     </div>
   );
 }
@@ -253,8 +304,10 @@ export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile |
   const [range, setRange] = useState<RangeKey>('3M');
   const [resetKey, setResetKey] = useState(0);
   const [showEvents, setShowEvents] = useState(false);
+  const indexByDate = useMemo(() => new Map((data?.rows ?? []).map((r, i) => [r[0], i])), [data]);
   if (!data || !data.latest) return null;
   const { latest } = data;
+  const comp = completionAt(data.rows, data.rows.length - 1);
   const years = data.start && data.end ? `${data.start}～${data.end}` : '';
   const shortHistory = !data.start || data.start > '2011-01-01';
   return (
@@ -281,9 +334,12 @@ export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile |
         </div>
       )}
 
+      {comp && <CompletionLine c={comp} />}
+
       <PanelNote>
         <p className="small muted ms-rule">
           圖怎麼看：上格加權指數——K 棒上方 ▼ 跌破 150／140、■ 斷頭潮；下方 ■ 去槓桿、▲ 清洗完成、● 限空令／國安基金。中格維持率（線，警戒時 Y 軸含 140 線；門檻線在畫面外時不標）＋融資增減（下方柱，億，紅增綠減）。
+          第三格去槓桿完成度：指數自高點跌幅（黑）與融資餘額自高點減幅（藍）兩條 % 線，藍線追上黑線＝完成度 ≥ 1；虛線 0、點線 −{COMPLETION_MIN_DD}%。
           {data.sbl?.length ? '下格借券賣出餘額（線，萬張）＋日增減（柱，增加＝空方加碼）。' : ''}
         </p>
         <p className="small muted ms-rule">
@@ -292,6 +348,11 @@ export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile |
       </p>
       <p className="small muted ms-rule">
         融資大減（主動去槓桿）：不限斷頭區，融資單日減幅占餘額比為近 250 日最大 2% 且 ≥ {-DELEVER_MIN_DROP_PCT}%，20 個交易日內只標一次——散戶在 140% 以上就自己砍的型態，斷頭潮規則抓不到。限空令／國安基金：人工維護的政策日期表（市場首個反應交易日），回答「政府出手後到底有沒有用」；同一天兩者都有時標兩個。
+      </p>
+      <p className="small muted ms-rule">
+        去槓桿完成度＝融資餘額自高點累計減幅 ÷ 指數自高點跌幅，高點都在近 {COMPLETION_LOOKBACK} 個交易日內找，指數回落不到 {COMPLETION_MIN_DD}% 不算。
+        維持率是平均數，斷頭把最弱的戶清掉反而會把平均撐住，所以用「清洗了多少」來看：&lt; {COMPLETION_LAG} 清洗落後、{COMPLETION_LAG}～{COMPLETION_DONE} 進行中、≥ {COMPLETION_DONE} 追上大盤。
+        2020-03-19、2025-04-09、2026-07-30 的 V 轉底完成度都 ≥ 1.2；2024-08-05 當天只有 0.5（兩天急跌，隔天 0.9 才追上）；≥ 1 不保證見底——2022 慢熊 7 月已 1.3 仍再跌 3 個月。歷次事件表有「完成度」欄可對照。
       </p>
       {data.sbl?.length ? (
         <p className="small muted ms-rule">
@@ -379,13 +440,17 @@ export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile |
                 <th>事件</th>
                 <th className="r">維持率</th>
                 <th className="r">加權</th>
+                <th className="r">完成度</th>
                 <th className="r">20日</th>
                 <th className="r">60日</th>
                 <th className="r">最大跌幅</th>
               </tr>
             </thead>
             <tbody>
-              {[...data.events].reverse().map((e) => (
+              {[...data.events].reverse().map((e) => {
+                const i = indexByDate.get(e.date);
+                const c = i === undefined ? null : completionAt(data.rows, i);
+                return (
                 <tr key={`${e.date}-${e.type}`}>
                   <td>{e.date}</td>
                   <td>
@@ -394,11 +459,13 @@ export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile |
                   </td>
                   <td className="r">{e.ratio.toFixed(1)}%</td>
                   <td className="r">{e.taiex.toLocaleString('en-US', { maximumFractionDigits: 0 })}</td>
+                  <td className="r">{c?.ratio === null || c?.ratio === undefined ? '—' : c.ratio.toFixed(2)}</td>
                   <td className="r">{pctCell(e.ret20)}</td>
                   <td className="r">{pctCell(e.ret60)}</td>
                   <td className="r">{pctCell(e.mdd60)}</td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
