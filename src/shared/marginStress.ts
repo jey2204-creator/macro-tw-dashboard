@@ -50,7 +50,7 @@ export interface MarginHistoryFile {
 }
 
 export type StressState = 'normal' | 'warn' | 'zone';
-export type StressEventType = 'below150' | 'below140' | 'flush' | 'cleared' | 'delever' | 'caughtUp' | 'shortBan' | 'nsf';
+export type StressEventType = 'below150' | 'below140' | 'flush' | 'cleared' | 'delever' | 'caughtUp' | 'shortBan' | 'nsf' | 'sblSpike' | 'sblCover';
 /** 政策事件（config/policy-events.json） */
 export type PolicyEventType = 'shortBan' | 'nsf';
 export interface PolicyEvent {
@@ -60,7 +60,7 @@ export interface PolicyEvent {
   type: PolicyEventType;
   note?: string;
 }
-export const EVENT_TYPES: StressEventType[] = ['below150', 'below140', 'flush', 'cleared', 'delever', 'caughtUp', 'shortBan', 'nsf'];
+export const EVENT_TYPES: StressEventType[] = ['below150', 'below140', 'flush', 'cleared', 'delever', 'caughtUp', 'shortBan', 'nsf', 'sblSpike', 'sblCover'];
 
 export const WARN_RATIO = 160;
 export const ZONE_RATIO = 140;
@@ -93,6 +93,8 @@ export const EVENT_LABEL: Record<StressEventType, string> = {
   caughtUp: '去槓桿追上大盤（完成度 ≥ 1）',
   shortBan: '限空令生效',
   nsf: '國安基金進場',
+  sblSpike: '借券追空極端',
+  sblCover: '借券回補極端',
 };
 export const STATE_LABEL: Record<StressState, string> = { normal: '正常', warn: '警戒', zone: '斷頭區' };
 
@@ -140,7 +142,34 @@ export interface MarginStressFile {
   latestSbl?: SblLatest | null;
 }
 
-export type SblRow = [date: string, balance: number, change: number, sell: number, ret: number];
+/**
+ * 借券賣出每日列（萬張）：[日期, 餘額, 餘額增減, 當日賣出, 當日還券, 20 日變化率%, 3 年 p95, 3 年 p05]
+ * 後三欄資料不足時為 null。絕對張數逐年膨脹（2010 約 100 萬張 → 2026 約 1,800 萬張）不能跨年比，
+ * 所以極端值用「20 日變化率」對「近 3 年（750 個交易日）同一變化率的分位數」判。
+ */
+export type SblRow = [
+  date: string,
+  balance: number,
+  change: number,
+  sell: number,
+  ret: number,
+  chg20: number | null,
+  p95: number | null,
+  p05: number | null,
+];
+export const SBL_CHG_DAYS = 20;
+export const SBL_BAND_DAYS = 750;
+/** 分位數視窗至少要有這麼多筆才算 */
+export const SBL_BAND_MIN = 500;
+export const SBL_COOLDOWN = 20;
+export type SblState = 'spike' | 'cover' | 'normal';
+export const SBL_STATE_LABEL: Record<SblState, string> = { spike: '追空極端', cover: '回補極端', normal: '正常' };
+
+export function sblStateAt(r: SblRow): SblState | null {
+  const [, , , , , chg20, p95, p05] = r;
+  if (chg20 === null || p95 === null || p05 === null) return null;
+  return chg20 > p95 ? 'spike' : chg20 < p05 ? 'cover' : 'normal';
+}
 
 /** data/sbl-history.json 每列：[日期, 借券賣出餘額, 當日賣出, 當日還券]（萬張） */
 export type SblHistoryRow = [date: string, balance: number, sell: number, ret: number];
@@ -165,6 +194,13 @@ export interface SblLatest {
   /** 餘額為近 N 個交易日（資料範圍內，最多 60）新高／新低 */
   hi60: boolean;
   lo60: boolean;
+  /** 20 日變化率與 3 年分位帶；資料不足為 null */
+  chg20: number | null;
+  p95: number | null;
+  p05: number | null;
+  /** 20 日變化率在全部歷史中的百分位（0～100） */
+  pctAll: number | null;
+  state: SblState | null;
 }
 
 /** 合併借券賣出序列（萬張）：長期歷史 + 每日排程（同一天以每日排程為準）；增減＝與前一筆餘額之差（第一筆為 NaN） */
@@ -181,10 +217,44 @@ export function combineSblRows(live: { balance?: Bar[]; sell?: Bar[]; ret?: Bar[
   let prev: number | null = null;
   for (const d of [...m.keys()].sort()) {
     const x = m.get(d)!;
-    out.push([d, x.balance, prev === null ? NaN : r2(x.balance - prev), x.sell, x.ret]);
+    out.push([d, x.balance, prev === null ? NaN : r2(x.balance - prev), x.sell, x.ret, null, null, null]);
     prev = x.balance;
   }
+  // 20 日變化率與近 3 年分位帶（不含當日）
+  const chg: (number | null)[] = out.map((r, i) => (i >= SBL_CHG_DAYS && out[i - SBL_CHG_DAYS]![1] > 0 ? r2((r[1] / out[i - SBL_CHG_DAYS]![1] - 1) * 100) : null));
+  const win: number[] = [];
+  for (let i = 0; i < out.length; i++) {
+    const c = chg[i] ?? null;
+    out[i]![5] = c;
+    if (win.length >= SBL_BAND_MIN) {
+      const sorted = [...win].sort((a, b) => a - b);
+      out[i]![6] = r2(percentile(sorted, 0.95));
+      out[i]![7] = r2(percentile(sorted, 0.05));
+    }
+    if (c !== null) {
+      win.push(c);
+      if (win.length > SBL_BAND_DAYS) win.shift();
+    }
+  }
   return out;
+}
+
+/** 借券事件：20 日變化率突破 3 年 p95（追空極端）／跌破 p05（回補極端），各自 20 日冷卻 */
+export function sblEvents(rows: SblRow[]): { date: string; type: 'sblSpike' | 'sblCover' }[] {
+  const ev: { date: string; type: 'sblSpike' | 'sblCover' }[] = [];
+  let lastSpike = -Infinity;
+  let lastCover = -Infinity;
+  rows.forEach((r, i) => {
+    const st = sblStateAt(r);
+    if (st === 'spike' && i - lastSpike > SBL_COOLDOWN) {
+      lastSpike = i;
+      ev.push({ date: r[0], type: 'sblSpike' });
+    } else if (st === 'cover' && i - lastCover > SBL_COOLDOWN) {
+      lastCover = i;
+      ev.push({ date: r[0], type: 'sblCover' });
+    }
+  });
+  return ev;
 }
 
 export function summarizeSbl(rows: SblRow[]): SblLatest | null {
@@ -201,6 +271,8 @@ export function summarizeSbl(rows: SblRow[]): SblLatest | null {
     else streak += sign;
   }
   const win = rows.slice(Math.max(0, n - 60), n - 1).map((r) => r[1]);
+  const all = rows.map((r) => r[5]).filter((v): v is number => v !== null);
+  const c = last[5];
   return {
     date: last[0],
     balance: last[1],
@@ -208,6 +280,11 @@ export function summarizeSbl(rows: SblRow[]): SblLatest | null {
     streak,
     hi60: win.length >= 5 && last[1] > Math.max(...win),
     lo60: win.length >= 5 && last[1] < Math.min(...win),
+    chg20: c,
+    p95: last[6],
+    p05: last[7],
+    pctAll: c !== null && all.length >= SBL_BAND_MIN ? Math.round((all.filter((v) => v < c).length / all.length) * 1000) / 10 : null,
+    state: sblStateAt(last),
   };
 }
 
@@ -300,7 +377,7 @@ export function mdd(rows: readonly PriceRow[], i: number, n: number): number | n
   return r2((low / rows[i]![1] - 1) * 100);
 }
 
-export function detectEvents(rows: StressRow[], policy: PolicyEvent[] = []): StressEvent[] {
+export function detectEvents(rows: StressRow[], policy: PolicyEvent[] = [], sbl: SblRow[] = []): StressEvent[] {
   const flush = flushFlags(rows);
   const delever = deleverFlags(rows);
   const completion = completionSeries(rows);
@@ -326,6 +403,14 @@ export function detectEvents(rows: StressRow[], policy: PolicyEvent[] = []): Str
       ...(note ? { note } : {}),
     });
   };
+  // 借券事件：以日期對到維持率列（借券與融資都是上市交易日，通常同一天）
+  const idxByDate = new Map(rows.map((r, i) => [r[0], i] as const));
+  const sblByIdx = new Map<number, ('sblSpike' | 'sblCover')[]>();
+  for (const e of sblEvents(sbl)) {
+    const i = idxByDate.get(e.date);
+    if (i === undefined) continue;
+    sblByIdx.set(i, [...(sblByIdx.get(i) ?? []), e.type]);
+  }
   // 政策事件：取事件日當天或其後第一個交易日；資料範圍外（更早或尚未發生）略過
   const policyByIdx = new Map<number, PolicyEvent[]>();
   for (const p of policy) {
@@ -352,6 +437,7 @@ export function detectEvents(rows: StressRow[], policy: PolicyEvent[] = []): Str
       }
     }
     for (const p of policyByIdx.get(i) ?? []) emit(i, p.type, p.note);
+    for (const t of sblByIdx.get(i) ?? []) emit(i, t);
     if (ratio >= RESET_RATIO) {
       fired.clear();
       waveLowRatio = Infinity;
@@ -399,9 +485,15 @@ export function stats(list: { ret20: number | null; ret60: number | null; mdd60:
   };
 }
 
-export function analyzeMarginStress(rows: StressRow[], historyFrom: string | null, now = new Date(), policy: PolicyEvent[] = []): MarginStressFile {
+export function analyzeMarginStress(
+  rows: StressRow[],
+  historyFrom: string | null,
+  now = new Date(),
+  policy: PolicyEvent[] = [],
+  sbl: SblRow[] = [],
+): MarginStressFile {
   const states = rows.map((_, i) => stateAt(rows, i));
-  const events = detectEvents(rows, policy);
+  const events = detectEvents(rows, policy, sbl);
   const perDay = rows.map((_, i) => ({ ret20: forward(rows, i, 20), ret60: forward(rows, i, 60), mdd60: mdd(rows, i, 60) }));
   const types = EVENT_TYPES;
   const eventStats = Object.fromEntries(types.map((t) => [t, stats(events.filter((e) => e.type === t))])) as Record<

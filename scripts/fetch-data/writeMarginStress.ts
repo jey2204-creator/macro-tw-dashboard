@@ -38,13 +38,13 @@ export async function writeMarginStress(outDir: string, historyFile = path.resol
     taiex,
   );
   const policy = (await readJson<{ events: PolicyEvent[] }>(path.resolve('config/policy-events.json')))?.events ?? [];
-  const out = analyzeMarginStress(rows, hist?.rows[0]?.[0] ?? null, now, policy);
-  // 借券賣出（上市，萬張）：只有每日排程資料、沒有長期歷史；缺資料時面板不畫這一格
+  // 借券賣出（上市，萬張）：長期歷史（data/sbl-history.json）＋每日排程；缺資料時面板不畫這一格
   const sblHist = await readJson<SblHistoryFile>(path.resolve('data/sbl-history.json'));
   const sbl = combineSblRows(
     { balance: await series('sbl_sell_bal'), sell: await series('sbl_sell'), ret: await series('sbl_return') },
     sblHist?.rows ?? [],
   );
+  const out = analyzeMarginStress(rows, hist?.rows[0]?.[0] ?? null, now, policy, sbl);
   if (sbl.length) {
     out.sbl = sbl;
     out.latestSbl = summarizeSbl(sbl);
