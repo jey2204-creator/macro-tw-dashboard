@@ -18,7 +18,7 @@ import {
 import { PanelNote } from './PanelNote';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CHART_INTERACTION, attachTimeAxis, resetPaneStretch, resetPriceScales, TIME_AXIS } from '../lib/chartInteraction';
-import { cssVar, f2, pctCell } from '../lib/stressFormat';
+import { cssVar, f1, f2, pctCell } from '../lib/stressFormat';
 import {
   DEEPER_STEP,
   DIVERGE_PCTL,
@@ -35,18 +35,19 @@ import {
 } from '../shared/foreignChips';
 import { rangeStart, type RangeKey } from '../shared/timeseries';
 import { StatsRow } from './StatsRow';
-import { STATE_LABEL, WARN_RATIO, ZONE_RATIO, type MarginStressFile } from '../shared/marginStress';
+import { SBL_STATE_LABEL, STATE_LABEL, WARN_RATIO, ZONE_RATIO, sblStateAt, sblUnsold, type MarginStressFile } from '../shared/marginStress';
 import type { BreadthStressFile } from '../shared/breadthStress';
 import { LineLabels } from '../lib/lineLabels';
 import { MarkerLabels, type MarkerLabel } from '../lib/markerLabels';
 import { loadPref, savePref } from '../lib/storage';
 
-/** 第 4 格顯示：散戶小台淨 OI／融資維持率＋融資增減（散戶籌碼），或上市漲跌停家數／漲跌家數（市場廣度），切換對照 */
-export type Pane4Mode = 'retail' | 'margin' | 'limit' | 'ad';
-const PANE4_KEYS = ['retail', 'margin', 'limit', 'ad'] as const;
+/** 第 4 格顯示：散戶小台淨 OI／融資維持率＋融資增減（散戶籌碼）、借券（法人空單），或上市漲跌停家數／漲跌家數（市場廣度），切換對照 */
+export type Pane4Mode = 'retail' | 'margin' | 'sbl' | 'limit' | 'ad';
+const PANE4_KEYS = ['retail', 'margin', 'sbl', 'limit', 'ad'] as const;
 const PANE4_MODES: { k: Pane4Mode; label: string; title: string }[] = [
   { k: 'retail', label: '散戶小台', title: '散戶的期貨部位（小台淨未平倉，法人反推）' },
   { k: 'margin', label: '融資維持率', title: '散戶的現股槓桿（融資維持率＋融資增減）' },
+  { k: 'sbl', label: '借券', title: '法人空單（借券賣出餘額＋已借未賣＋日增減）' },
   { k: 'limit', label: '漲跌停', title: '上市漲停（0 以上）／跌停（0 以下）家數' },
   { k: 'ad', label: '漲跌家數', title: '上市上漲（0 以上）／下跌（0 以下）家數' },
 ];
@@ -72,7 +73,7 @@ const RANGES: { k: RangeKey; label: string }[] = [
 ];
 /** 四個窗格高度比例：加權／買賣超／外資期 OI／散戶小台 OI */
 const FC_PANE_STRETCH = [0.34, 0.22, 0.22, 0.22] as const;
-/** 第 4 格切到融資時（線＋柱兩層）略高一點，維持率線才不會被壓扁 */
+/** 第 4 格切到融資或借券時（線＋柱兩層）略高一點，折線才不會被壓扁 */
 const FC_PANE_STRETCH_MARGIN = [0.32, 0.2, 0.2, 0.28] as const;
 
 /** 事件文字最少相隔幾根 K 棒（依視圖長度）：長視圖事件太密（衰竭幾乎每月都有），先稀疏再交給 MarkerLabels 防撞 */
@@ -110,6 +111,11 @@ function ChipsChart({
   const marginRows = useMemo(() => (margin?.rows ?? []).filter((r) => indexByDate.has(r[0])), [margin, indexByDate]);
   const marginByDate = useMemo(() => new Map((margin?.rows ?? []).map((r, k) => [r[0], { row: r, state: margin!.states[k] }])), [margin]);
   const showMargin = pane4 === 'margin' && marginRows.length > 0;
+  // 借券（上市）：讀融資斷頭監測同一份資料，同樣只取外資資料也有的交易日
+  const sblRows = useMemo(() => (margin?.sbl ?? []).filter((r) => indexByDate.has(r[0])), [margin, indexByDate]);
+  const sblByDate = useMemo(() => new Map(sblRows.map((r) => [r[0], r])), [sblRows]);
+  const showSbl = pane4 === 'sbl' && sblRows.length > 0;
+  const tall = showMargin || showSbl;
   // 家數資料同樣只取外資資料也有的交易日；恐慌日旗標要跟著列一起過濾
   const breadthRows = useMemo(
     () => (breadth?.rows ?? []).flatMap((r, k) => (indexByDate.has(r[0]) ? [{ row: r, panic: breadth!.panic[k] ?? false, downPct: breadth!.downPct[k] ?? null, adRatio10: breadth!.adRatio10[k] ?? null }] : [])),
@@ -297,6 +303,46 @@ function ChipsChart({
       );
       mchg.setData(marginRows.filter((r) => Number.isFinite(r[4])).map((r) => ({ time: r[0] as Time, value: r[4], color: r[4] >= 0 ? up : down })));
       mchg.priceScale().applyOptions({ scaleMargins: { top: 0.7, bottom: 0 }, visible: false });
+    } else if (showSbl) {
+      // 第 4 格：借券賣出餘額（粗線，依追空／回補極端上色）＋已借未賣（藍虛線，獨立刻度，現值畫在線尾）＋日增減柱，比照融資斷頭監測第 4 格
+      const base = text1;
+      const sblLine = add(chart.addSeries(LineSeries, { color: base, lineWidth: 2, priceFormat: lotsFmt }, 3));
+      sblLine.setData(
+        sblRows.map((r) => {
+          const st = sblStateAt(r);
+          return { time: r[0] as Time, value: r[1], color: st === 'spike' ? down : st === 'cover' ? up : base };
+        }),
+      );
+      sblLine.priceScale().applyOptions({ scaleMargins: { top: 0.08, bottom: 0.32 } });
+      const unsoldRows = sblRows.filter((r) => r[8] !== null);
+      if (unsoldRows.length) {
+        const sblLend = add(
+          chart.addSeries(
+            LineSeries,
+            { color: accent, lineWidth: 1, lineStyle: LineStyle.Dashed, priceFormat: lotsFmt, priceScaleId: 'fc-sbl-unsold', priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false },
+            3,
+          ),
+        );
+        sblLend.setData(unsoldRows.map((r) => ({ time: r[0] as Time, value: sblUnsold(r)! })));
+        sblLend.priceScale().applyOptions({ scaleMargins: { top: 0.08, bottom: 0.32 }, visible: false });
+        const lastUnsold = sblUnsold(unsoldRows[unsoldRows.length - 1]!)!;
+        sblLend.attachPrimitive(
+          new LineLabels([{ price: lastUnsold, text: `已借未賣 ${Math.round(lastUnsold)}`, short: `${Math.round(lastUnsold)}` }], {
+            color: accent,
+            background: cssVar('--surface'),
+            border: accent,
+            fontSize: 11,
+            fontFamily: getComputedStyle(document.body).fontFamily,
+            align: 'right',
+            maxYFrac: 0.72,
+            avoid: [sblLine, sblLend],
+          }),
+        );
+      }
+      // 日增減：增加＝空方加碼，用空方色（跟融資增減相反）
+      const sblChg = add(chart.addSeries(HistogramSeries, { priceFormat: { type: 'price', precision: 1, minMove: 0.1 }, priceScaleId: 'fc-sbl-chg', priceLineVisible: false }, 3));
+      sblChg.setData(sblRows.filter((r) => Number.isFinite(r[2])).map((r) => ({ time: r[0] as Time, value: r[2], color: r[2] >= 0 ? down : up })));
+      sblChg.priceScale().applyOptions({ scaleMargins: { top: 0.74, bottom: 0 }, visible: false });
     } else if (breadthMode) {
       // 第 4 格：上市漲停／跌停或上漲／下跌家數，0 以上為漲、0 以下為跌（鏡像柱，比照漲跌停面板）；跌的那側恐慌日加深
       const ad = breadthMode === 'ad';
@@ -310,11 +356,11 @@ function ChipsChart({
     } else {
       oiPane(3, (r) => r[7], (r) => r[8]);
     }
-    resetPaneStretch(chart, showMargin ? FC_PANE_STRETCH_MARGIN : FC_PANE_STRETCH);
+    resetPaneStretch(chart, tall ? FC_PANE_STRETCH_MARGIN : FC_PANE_STRETCH);
     return () => {
       for (const s of all.reverse()) chart.removeSeries(s);
     };
-  }, [data, themeKey, indexByDate, range, showMargin, marginRows, breadthMode, breadthRows]);
+  }, [data, themeKey, indexByDate, range, showMargin, marginRows, showSbl, sblRows, breadthMode, breadthRows, tall]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -337,7 +383,7 @@ function ChipsChart({
       ts.applyOptions({ rightOffset: gap });
       ts.setVisibleLogicalRange({ from, to: lastIdx + gap });
       resetPriceScales(chart);
-      resetPaneStretch(chart, showMargin ? FC_PANE_STRETCH_MARGIN : FC_PANE_STRETCH);
+      resetPaneStretch(chart, tall ? FC_PANE_STRETCH_MARGIN : FC_PANE_STRETCH);
     };
     apply();
     const raf = requestAnimationFrame(apply);
@@ -346,7 +392,7 @@ function ChipsChart({
       cancelAnimationFrame(raf);
       ts.unsubscribeVisibleLogicalRangeChange(clamp);
     };
-  }, [data, range, themeKey, resetKey, showMargin]);
+  }, [data, range, themeKey, resetKey, tall]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -365,6 +411,8 @@ function ChipsChart({
   const sgn = (v: number | null) => (v === null ? '' : v > 0 ? 'up' : v < 0 ? 'down' : '');
   const m = row && showMargin ? marginByDate.get(row[0]) : undefined;
   const b = row && breadthMode ? breadthByDate.get(row[0]) : undefined;
+  const sb = row && showSbl ? sblByDate.get(row[0]) : undefined;
+  const sbState = sb ? sblStateAt(sb) : null;
   const dayEvents = row
     ? [
         ...data.events.filter((e) => e.date === row[0]).map((e) => FOREIGN_EVENT_LABEL[e.type]),
@@ -391,6 +439,26 @@ function ChipsChart({
               </>
             ) : (
               <>維持率 —</>
+            )
+          ) : showSbl ? (
+            sb ? (
+              <>
+                借券賣出 <b>{f1(sb[1])}</b> 萬張 <span className={sb[2] > 0 ? 'down' : sb[2] < 0 ? 'up' : ''}>{f1(sb[2], true)}</span>
+                {sb[5] !== null && (
+                  <>
+                    {' '}
+                    20日 <span className={sb[5] > 0 ? 'down' : sb[5] < 0 ? 'up' : ''}>{f1(sb[5], true)}%</span>
+                  </>
+                )}
+                {(sbState === 'spike' || sbState === 'cover') && <span className={`ms-sbl-tag ${sbState === 'spike' ? 'down' : 'up'}`}>{SBL_STATE_LABEL[sbState]}</span>}
+                {sb[8] !== null && (
+                  <>
+                    ｜借券餘額 <b>{f1(sb[8])}</b> 已借未賣 <b>{f1(sblUnsold(sb))}</b>
+                  </>
+                )}
+              </>
+            ) : (
+              <>借券 —</>
             )
           ) : breadthMode === 'limit' ? (
             b ? (
@@ -441,9 +509,10 @@ export function ForeignChipsPanel({
     savePref(PANE4_KEY, v);
   };
   const hasMargin = !!margin?.rows.length;
+  const hasSbl = !!margin?.sbl?.length;
   const hasBreadth = !!breadth?.rows.length;
   // 沒有對應資料的選項不顯示；記住的選項沒資料時退回散戶小台
-  const modes = PANE4_MODES.filter((o) => o.k === 'retail' || (o.k === 'margin' ? hasMargin : hasBreadth));
+  const modes = PANE4_MODES.filter((o) => o.k === 'retail' || (o.k === 'margin' ? hasMargin : o.k === 'sbl' ? hasSbl : hasBreadth));
   const pane4Eff: Pane4Mode = modes.some((o) => o.k === pane4) ? pane4 : 'retail';
   const [resetKey, setResetKey] = useState(0);
   const [showEvents, setShowEvents] = useState(false);
@@ -482,17 +551,19 @@ export function ForeignChipsPanel({
           圖怎麼看：上格加權（● 事件、小● 再創極端，點一下看名稱）；二格外資買賣超（億，柱）＋5 日細／20 日粗累計線；三格外資期淨 OI（口，0 軸填色）＋日增減柱；四格{' '}
           {pane4Eff === 'margin'
             ? '融資維持率（%，虛線＝警戒 160／斷頭區 140／追繳 130）＋融資增減（億，紅增綠減）'
+            : pane4Eff === 'sbl'
+              ? '借券賣出餘額（粗線，萬張；追空極端段紅、回補極端段綠）＋已借未賣（藍虛線，獨立刻度，現值標在線尾）＋日增減（柱，增加＝空方加碼）'
             : pane4Eff === 'limit'
               ? '上市漲停（0 以上）／跌停（0 以下，恐慌日加深）家數'
               : pane4Eff === 'ad'
                 ? '上市上漲（0 以上）／下跌（0 以下，恐慌日加深）家數'
                 : '散戶小台淨 OI（口）＋日增減柱'}
-          ，可用區間列旁的按鈕切換（散戶小台／融資維持率／漲跌停／漲跌家數）。
+          ，可用區間列旁的按鈕切換（散戶小台／融資維持率／借券／漲跌停／漲跌家數）。
         </p>
         <p className="small muted ms-rule">
         買賣超是流量、淨未平倉是部位，兩者與當日漲跌幾乎同步，單看柱子不會比看 K 棒多知道什麼；要看的是<b>累計 vs 指數的背離</b>與<b>部位極端</b>。
         百分位＝該值在近 {PCTL_WINDOW} 個交易日中的位置；事件只在首次 ≤ 第 {EXTREME_LOW * 100}／≥ 第 {EXTREME_HIGH * 100} 百分位時標一次，回到第 {RESET_PCTL * 100} 百分位另一側才算新的一波。賣超不跌：20 日累計 ≤ 第 {DIVERGE_PCTL * 100} 百分位且加權 20 日不跌。賣壓衰竭：20 日累計在 0 以下、「5 日累計 × {PACE_RATIO}」由下往上穿過 20 日累計（最近一週的賣超步調慢過整月平均），再掉回去才可再標。
-        同一波內外資期淨 OI 比前次標記再多 {DEEPER_STEP * 100}% 補一個小標記「OI空↓／OI多↑」，只畫在圖上不進回測。外資期空單多為現貨避險，空單極端不等於看空；散戶小台為法人反推值。第 4 格可切換「融資維持率」：散戶小台是散戶的期貨部位、融資是散戶的現股槓桿，兩者都是散戶籌碼；外資連續賣超時看維持率是否逼近 160／140，判斷賣壓會不會擴大成斷頭（完整事件與回測在下方「融資斷頭監測」面板）。也可切到「漲跌停」「漲跌家數」：外資賣超是籌碼、家數是廣度，兩者對照看的是「外資賣超時跌停家數是否同步暴增（恐慌）」與「賣超仍在、跌停卻減半（賣壓衰竭）」；恐慌日與回測在下方「漲跌停家數監測」面板。
+        同一波內外資期淨 OI 比前次標記再多 {DEEPER_STEP * 100}% 補一個小標記「OI空↓／OI多↑」，只畫在圖上不進回測。外資期空單多為現貨避險，空單極端不等於看空；散戶小台為法人反推值。第 4 格可切換「融資維持率」：散戶小台是散戶的期貨部位、融資是散戶的現股槓桿，兩者都是散戶籌碼；外資連續賣超時看維持率是否逼近 160／140，判斷賣壓會不會擴大成斷頭（完整事件與回測在下方「融資斷頭監測」面板）。切到「借券」看的是法人空單：借券放空者幾乎都是外資／法人，外資期空單（三格）是避險部位、借券賣出餘額是現貨空單，兩者對照——外資賣超＋借券賣出餘額暴增＝現貨與放空同時出手；外資仍賣超、借券餘額卻連續下降＝空方回補、賣壓接近尾聲；已借未賣擴大＝借了券還沒砸出來的潛在空單。追空／回補極端與回測在下方「融資斷頭監測」面板。也可切到「漲跌停」「漲跌家數」：外資賣超是籌碼、家數是廣度，兩者對照看的是「外資賣超時跌停家數是否同步暴增（恐慌）」與「賣超仍在、跌停卻減半（賣壓衰竭）」；恐慌日與回測在下方「漲跌停家數監測」面板。
       </p>
       </PanelNote>
 

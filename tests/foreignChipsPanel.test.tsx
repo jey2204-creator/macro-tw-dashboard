@@ -142,4 +142,36 @@ describe('rightGapBars', () => {
     expect(document.querySelector('.fc-legend')!.textContent).toContain('維持率 150.10%');
     expect(window.localStorage.getItem('fc-pane4')).toBe('margin');
   });
+
+  it('第 4 格切換成借券：賣出餘額線＋已借未賣虛線（隱藏刻度、線尾標籤）＋日增減柱，圖例顯示借券讀數', () => {
+    window.localStorage.removeItem('fc-pane4');
+    const mrows = rows.map((r) => [r[0], r[1], 170, 3000, 0] as [string, number, number, number, number]);
+    // 借券列：[日期, 賣出餘額, 日增減, 當日賣出, 還券, 20日%, p95, p05, 借券餘額, 借券, 還券]
+    const sbl = rows.map((r, i) => [r[0], 1800 + i, 2.5, 10, 7.5, i > 20 ? 12 : null, 10, -8, i > 150 ? 2970 : null, 20, 15]);
+    const margin = { rows: mrows, states: mrows.map(() => 'normal'), sbl } as unknown as import('../src/shared/marginStress').MarginStressFile;
+    render(<ForeignChipsPanel data={data} themeKey="auto-false-tw" margin={margin} />);
+    chartLog.series = [];
+    chartLog.stretch = [];
+    fireEvent.click(screen.getByRole('button', { name: '借券' }));
+    expect(chartLog.series.filter((x) => x.pane === 3)).toEqual([
+      { pane: 3, type: 'Line', label: true, scale: undefined },
+      { pane: 3, type: 'Line', label: false, scale: 'fc-sbl-unsold' },
+      { pane: 3, type: 'Histogram', label: true, scale: 'fc-sbl-chg' },
+    ]);
+    // 線＋柱兩層用較高的第 4 格比例（與融資維持率相同）
+    expect(chartLog.stretch.slice(0, 4)).toEqual([0.32, 0.2, 0.2, 0.28]);
+    const legend = document.querySelector('.fc-legend')!.textContent ?? '';
+    expect(legend).toContain('借券賣出 1999.0 萬張 +2.5');
+    expect(legend).toContain('20日 +12.0%');
+    expect(legend).toContain('追空極端'); // 12 > p95 10
+    expect(legend).toContain('借券餘額 2970.0 已借未賣 971.0');
+    expect(window.localStorage.getItem('fc-pane4')).toBe('sbl');
+  });
+
+  it('沒有借券資料時不顯示「借券」按鈕', () => {
+    const mrows = rows.map((r) => [r[0], r[1], 170, 3000, 0] as [string, number, number, number, number]);
+    const margin = { rows: mrows, states: mrows.map(() => 'normal') } as unknown as import('../src/shared/marginStress').MarginStressFile;
+    render(<ForeignChipsPanel data={data} themeKey="auto-false-tw" margin={margin} />);
+    expect(screen.queryByRole('button', { name: '借券' })).toBeNull();
+  });
 });
