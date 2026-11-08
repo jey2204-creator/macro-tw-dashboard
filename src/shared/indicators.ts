@@ -53,7 +53,10 @@ export type SourceSpec =
         | 'DECLINE'
         | 'SBL_SELL_BAL'
         | 'SBL_SELL'
-        | 'SBL_RETURN';
+        | 'SBL_RETURN'
+        | 'SBL_LEND_BAL'
+        | 'SBL_LEND'
+        | 'SBL_LEND_RET';
     };
 
 /** 原始資料 → 顯示用數列的轉換 */
@@ -958,6 +961,25 @@ export const INDICATORS: IndicatorDef[] = [
     unit: '萬張', decimals: 1, sources: [{ provider: 'twse_chips', symbol: 'SBL_RETURN' }], transform: 'none',
     market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true, flow: true,
     note: '當日借券賣出還券張數（萬張）＝空方回補',
+  },
+  {
+    id: 'sbl_lend_bal', name: '借券餘額（上市）', short: '借券餘額', category: 'tw_chips', frequency: 'daily',
+    subtitle: '借出去還沒還的股票總量（含已賣出與未賣出）',
+    unit: '萬張', decimals: 1, sources: [{ provider: 'twse_chips', symbol: 'SBL_LEND_BAL' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, chart: 'line', bearish: true,
+    note: '證交所借券系統＋證商/證金營業處所借券餘額合計（上市、含 ETF，萬張）。減去借券賣出餘額＝「已借未賣」：可能是準備放空的子彈，也可能是權證／期貨避險與套利用券，不能全算成看空',
+  },
+  {
+    id: 'sbl_lend', name: '借券（上市，當日）', short: '借券', category: 'tw_chips', frequency: 'daily',
+    unit: '萬張', decimals: 1, sources: [{ provider: 'twse_chips', symbol: 'SBL_LEND' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true, flow: true, bearish: true,
+    note: '當日新借出張數（萬張）',
+  },
+  {
+    id: 'sbl_lend_ret', name: '借券還券（上市，當日，借貸）', short: '借貸還券', category: 'tw_chips', frequency: 'daily',
+    unit: '萬張', decimals: 1, sources: [{ provider: 'twse_chips', symbol: 'SBL_LEND_RET' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true, flow: true,
+    note: '當日還給出借人的張數（萬張）',
   },
   {
     id: 'limit_up', name: '漲停家數（上市股票）', short: '漲停家數', category: 'tw_chips', frequency: 'daily',

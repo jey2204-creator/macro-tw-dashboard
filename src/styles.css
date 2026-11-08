@@ -283,6 +283,10 @@ code {
   font-size: 22px;
   font-weight: 800;
   letter-spacing: 1px;
+  white-space: nowrap; /* 手機窄版標題換行時，「警戒」不能被拆成兩個字 */
+}
+.ms-state {
+  white-space: nowrap;
 }
 .verdict-bull {
   color: var(--up);

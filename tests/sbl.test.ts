@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { HttpOptions } from '../scripts/fetch-data/http';
-import { fetchTwseChips, parseTwt93u, resetTwseChipsCache, weekdaysBackward } from '../scripts/fetch-data/sources/twseChips';
-import { combineSblRows, sblEvents, sblStateAt, summarizeSbl, type SblRow } from '../src/shared/marginStress';
+import { fetchTwseChips, parseTwt72u, parseTwt93u, resetTwseChipsCache, weekdaysBackward } from '../scripts/fetch-data/sources/twseChips';
+import { combineSblRows, sblEvents, sblStateAt, sblUnsold, summarizeSbl, type SblRow } from '../src/shared/marginStress';
 import type { Bar } from '../src/shared/types';
 
 /** 證交所 TWT93U：欄名自帶前綴的寫法 */
@@ -96,11 +96,11 @@ describe('借券賣出（TWT93U）', () => {
   it('合併與摘要：餘額增減、近 5 日、連增日數、近 60 日新高', () => {
     const bal: Bar[] = [1600, 1610, 1605, 1620, 1650, 1700, 1760, 1823].map((v, i) => [`2026-11-0${i + 1}`, v, v, v, v]);
     const rows = combineSblRows({ balance: bal, sell: [['2026-11-08', 1, 1, 1, 45.5]], ret: [['2026-11-08', 1, 1, 1, 9.7]] });
-    expect(rows.at(-1)).toEqual(['2026-11-08', 1823, 63, 45.5, 9.7, null, null, null]);
+    expect(rows.at(-1)).toEqual(['2026-11-08', 1823, 63, 45.5, 9.7, null, null, null, null, null, null]);
     expect(Number.isNaN(rows[0]![2])).toBe(true);
     const s = summarizeSbl(rows)!;
     expect(s).toMatchObject({ date: '2026-11-08', balance: 1823, chg5: 218, streak: 5, hi60: true, lo60: false });
-    const falling: SblRow[] = [1800, 1790, 1780].map((v, i) => [`2026-11-1${i}`, v, NaN, NaN, NaN, null, null, null]);
+    const falling: SblRow[] = [1800, 1790, 1780].map((v, i) => [`2026-11-1${i}`, v, NaN, NaN, NaN, null, null, null, null, null, null]);
     expect(summarizeSbl(falling)!.streak).toBe(-2);
     expect(summarizeSbl([])).toBeNull();
   });
@@ -134,5 +134,50 @@ describe('借券賣出（TWT93U）', () => {
     const latest = summarizeSbl(rows)!;
     expect(latest.state).toBe('spike');
     expect(latest.pctAll).toBeGreaterThan(95);
+  });
+});
+
+describe('借券餘額（TWT72U）與已借未賣', () => {
+  const fields = ['股票代號', '股票名稱', '市場別', '前日借券餘額', '本日異動借券', '本日異動還券', '本日借券餘額', '次一營業日可借券賣出張數'];
+  const twt72u = {
+    stat: 'OK',
+    tables: [
+      {
+        title: '有價證券借貸資訊',
+        fields,
+        data: [
+          ['2330', '台積電', '集中市場', '100,000,000', '5,000,000', '1,000,000', '104,000,000', ''],
+          ['0050', '元大台灣50', '集中市場', '20,000,000', '0', '2,000,000', '18,000,000', ''],
+          ['00631L', '元大台灣50正2', '集中市場', '1,000,000', '0', '0', '1,000,000', ''],
+          ['', '合計', '集中市場', '121,000,000', '5,000,000', '3,000,000', '123,000,000', ''],
+          ['5483', '中美晶', '上櫃', '9,000,000', '1,000,000', '0', '10,000,000', ''],
+          ['', '合計', '上櫃', '9,000,000', '1,000,000', '0', '10,000,000', ''],
+        ],
+      },
+    ],
+  };
+  it('只加總集中市場的證券列、排除合計列與上櫃，股→萬張', () => {
+    expect(parseTwt72u(twt72u)).toEqual({ balance: 12.3, lend: 0.5, ret: 0.3 });
+  });
+  it('查無資料 → null；欄位缺 → 擲錯', () => {
+    expect(parseTwt72u({ stat: '很抱歉，沒有符合條件的資料!' })).toBeNull();
+    expect(() => parseTwt72u({ stat: 'OK', fields: ['股票代號', '市場別'], data: [] })).toThrow(/欄位異常/);
+  });
+  it('合併借券餘額：對得上日期才填、已借未賣＝借券餘額 − 賣出餘額、近 5 日變化', () => {
+    const bal: Bar[] = [1600, 1610, 1605, 1620, 1650, 1700, 1760, 1823].map((v, i) => [`2026-11-0${i + 1}`, v, v, v, v]);
+    const lendBal: Bar[] = [2600, 2650, 2700, 2750, 2800, 2851.4, 2971.4].map((v, i) => [`2026-11-0${i + 2}`, v, v, v, v]);
+    const rows = combineSblRows(
+      { balance: bal, lendBal, lend: [['2026-11-08', 1, 1, 1, 176.35]], lendRet: [['2026-11-08', 1, 1, 1, 56.35]] },
+      [],
+      [['2026-11-01', 2500, 10, 5]],
+    );
+    expect(rows[0]!.slice(8)).toEqual([2500, 10, 5]); // 來自長期歷史
+    expect(rows.at(-1)!.slice(8)).toEqual([2971.4, 176.35, 56.35]);
+    expect(rows[1]!.slice(9)).toEqual([null, null]); // 當日借券/還券沒有資料 → null
+    expect(sblUnsold(rows.at(-1)!)).toBe(1148.4);
+    expect(sblUnsold([...rows[0]!.slice(0, 8), null, null, null] as SblRow)).toBeNull();
+    const s = summarizeSbl(rows)!;
+    // 11/03 已借未賣 2650−1605=1045 → 11/08 1148.4：+103.4
+    expect(s).toMatchObject({ lendBal: 2971.4, unsold: 1148.4, unsoldChg5: 103.4 });
   });
 });

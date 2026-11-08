@@ -16,13 +16,18 @@ on:
         description: '回補到哪一天（最早）'
         type: string
         default: '2010-01-04'
+      kind:
+        description: 'sell＝借券賣出餘額（TWT93U）；lend＝借券餘額（TWT72U 借貸系統）'
+        type: choice
+        options: [sell, lend]
+        default: 'sell'
 
 permissions:
   contents: write
   actions: write
 
 concurrency:
-  group: sbl-backfill
+  group: sbl-backfill-${{ inputs.kind || 'sell' }}
   cancel-in-progress: false
 
 jobs:
@@ -39,30 +44,32 @@ jobs:
 
       - name: 測試解析
         if: ${{ inputs.probe != '' }}
-        run: npx tsx scripts/fetch-data/sblBackfill.ts --probe "${{ inputs.probe }}"
+        run: npx tsx scripts/fetch-data/sblBackfill.ts --kind "${{ inputs.kind || 'sell' }}" --probe "${{ inputs.probe }}"
 
       - name: 回補
         id: run
         if: ${{ inputs.probe == '' }}
         continue-on-error: true
-        run: npx tsx scripts/fetch-data/sblBackfill.ts --target "${{ inputs.target }}" --budget-min 300
+        run: npx tsx scripts/fetch-data/sblBackfill.ts --kind "${{ inputs.kind || 'sell' }}" --target "${{ inputs.target }}" --budget-min 300
 
       - name: 提交進度
         if: ${{ inputs.probe == '' && always() }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/sbl-history.json
+          f=data/sbl-history.json; label=借券賣出
+          if [ "${{ inputs.kind || 'sell' }}" = "lend" ]; then f=data/sbl-lend-history.json; label=借券餘額; fi
+          git add "$f"
           if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
-          rows=$(grep -c '^\["' data/sbl-history.json || true)
-          git commit -m "data: 借券賣出歷史回補（共 ${rows} 天）"
+          rows=$(grep -c '^\["' "$f" || true)
+          git commit -m "data: ${label}歷史回補（共 ${rows} 天）"
           for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done
 
       - name: 接續下一段
         if: ${{ inputs.probe == '' && steps.run.outputs.remaining == 'true' }}
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run sbl-backfill.yml -f target="${{ inputs.target }}"
+        run: gh workflow run sbl-backfill.yml -f target="${{ inputs.target }}" -f kind="${{ inputs.kind || 'sell' }}"
 
       - name: 重新部署網站
         if: ${{ inputs.probe == '' && always() }}
