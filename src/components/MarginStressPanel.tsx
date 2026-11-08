@@ -255,6 +255,7 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
             fontSize: 11,
             fontFamily: getComputedStyle(document.body).fontFamily,
             align: 'right',
+            avoid: [sblLine, sblLend], // 壓到賣出餘額黑線或自己的虛線就往上下閃
           }),
         );
       }

@@ -1,11 +1,13 @@
-import type {
-  IPrimitivePaneRenderer,
-  IPrimitivePaneView,
-  ISeriesApi,
-  ISeriesPrimitive,
-  SeriesAttachedParameter,
-  SeriesType,
-  Time,
+import {
+  MismatchDirection,
+  type IChartApiBase,
+  type IPrimitivePaneRenderer,
+  type IPrimitivePaneView,
+  type ISeriesApi,
+  type ISeriesPrimitive,
+  type SeriesAttachedParameter,
+  type SeriesType,
+  type Time,
 } from 'lightweight-charts';
 
 /**
@@ -36,6 +38,11 @@ export interface LineLabelStyle {
   maxYFrac?: number;
   /** 貼左（預設，門檻線名稱）或貼右（序列線尾的現值，取代右軸標籤） */
   align?: 'left' | 'right';
+  /**
+   * 要閃開的折線（貼右時用）：標籤在自己那段 x 範圍內壓到任一條線，就上下找第一個空位，
+   * 再畫一條細線指回原本的位置
+   */
+  avoid?: readonly ISeriesApi<SeriesType>[];
 }
 
 type DrawTarget = Parameters<IPrimitivePaneRenderer['draw']>[0];
@@ -44,8 +51,11 @@ const PAD_X = 4;
 const PAD_Y = 2;
 const LEFT = 6;
 
+const GAP = 3;
+
 export class LineLabels implements ISeriesPrimitive<Time> {
   private series: ISeriesApi<SeriesType> | null = null;
+  private chart: IChartApiBase<Time> | null = null;
   private readonly views: readonly IPrimitivePaneView[];
 
   constructor(
@@ -56,12 +66,35 @@ export class LineLabels implements ISeriesPrimitive<Time> {
     this.views = [{ zOrder: () => 'top', renderer: () => renderer }];
   }
 
-  attached({ series }: SeriesAttachedParameter<Time>): void {
+  attached({ series, chart }: SeriesAttachedParameter<Time>): void {
     this.series = series;
+    this.chart = chart;
   }
 
   detached(): void {
     this.series = null;
+    this.chart = null;
+  }
+
+  /** 標籤 x 範圍內，每條要閃開的折線落在哪些 y（每 3px 取樣一次） */
+  private obstacleYs(x0: number, x1: number): number[] {
+    const chart = this.chart;
+    const avoid = this.style.avoid;
+    if (!chart || !avoid?.length) return [];
+    const ts = chart.timeScale();
+    const ys: number[] = [];
+    for (let x = x0; x <= x1; x += 3) {
+      const logical = ts.coordinateToLogical(x);
+      if (logical === null) continue;
+      for (const s of avoid) {
+        const d = s.dataByIndex(Math.round(logical), MismatchDirection.NearestLeft) as { value?: number; close?: number } | null;
+        const v = d?.value ?? d?.close;
+        if (v === undefined) continue;
+        const y = s.priceToCoordinate(v);
+        if (y !== null) ys.push(y);
+      }
+    }
+    return ys;
   }
 
   paneViews(): readonly IPrimitivePaneView[] {
@@ -82,16 +115,41 @@ export class LineLabels implements ISeriesPrimitive<Time> {
         const bottom = mediaSize.height * (this.style.maxYFrac ?? 1);
         if (y0 === null) continue;
         let y: number = y0;
+        const w = ctx.measureText(l.text).width + PAD_X * 2;
+        const x = this.style.align === 'right' ? mediaSize.width - LEFT - w : LEFT;
+        let moved = false;
         if (this.style.align === 'right') {
-          // 線尾現值：貼邊夾住就好（序列現值一定在窗格裡，只是太靠上下緣）
-          y = Math.min(Math.max(y, h / 2), bottom - h / 2);
+          // 線尾現值：先夾進窗格，再閃開壓到的折線（上下交替找第一個空位）
+          const clamp = (v: number) => Math.min(Math.max(v, h / 2), bottom - h / 2);
+          y = clamp(y);
+          const obs = this.obstacleYs(x, x + w);
+          const free = (cy: number) => obs.every((oy) => oy < cy - h / 2 - GAP || oy > cy + h / 2 + GAP);
+          if (!free(y)) {
+            const step = h + GAP;
+            for (let k = 1; k * step <= bottom; k++) {
+              const cands = [y0 - k * step, y0 + k * step].filter((c) => c - h / 2 >= 0 && c + h / 2 <= bottom);
+              const hit = cands.find(free);
+              if (hit !== undefined) {
+                y = hit;
+                moved = true;
+                break;
+              }
+            }
+          }
         } else if (y - h / 2 < 0 || y + h / 2 > bottom) {
           // 門檻線在窗格外（含標籤會被切到）就不畫，不貼邊，免得以為門檻就在窗格底部
           continue;
         }
-        const w = ctx.measureText(l.text).width + PAD_X * 2;
-        const x = this.style.align === 'right' ? mediaSize.width - LEFT - w : LEFT;
         const top = Math.round(y - h / 2) + 0.5;
+        if (moved) {
+          // 細線從標籤邊緣指回線尾原本的位置
+          ctx.beginPath();
+          ctx.moveTo(x + w, Math.round(y0) + 0.5);
+          ctx.lineTo(x + w, y > y0 ? top : top + h);
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = this.style.border;
+          ctx.stroke();
+        }
         ctx.beginPath();
         ctx.roundRect(x, top, w, h, 3);
         ctx.fillStyle = this.style.background;
