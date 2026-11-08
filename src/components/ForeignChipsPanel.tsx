@@ -301,9 +301,9 @@ function ChipsChart({
       // 第 4 格：上市漲停／跌停或上漲／下跌家數，0 以上為漲、0 以下為跌（鏡像柱，比照漲跌停面板）；跌的那側恐慌日加深
       const ad = breadthMode === 'ad';
       const err = cssVar('--err');
-      const upBars = add(chart.addSeries(HistogramSeries, { priceFormat: lotsFmt, color: up, priceLineVisible: false, lastValueVisible: ad }, 3));
+      const upBars = add(chart.addSeries(HistogramSeries, { priceFormat: lotsFmt, color: up, priceLineVisible: false }, 3));
       upBars.setData(breadthRows.map((b) => ({ time: b.row[0] as Time, value: ad ? b.row[4] : b.row[2] })));
-      const downBars = add(chart.addSeries(HistogramSeries, { priceFormat: lotsFmt, priceLineVisible: false, lastValueVisible: ad }, 3));
+      const downBars = add(chart.addSeries(HistogramSeries, { priceFormat: lotsFmt, priceLineVisible: false }, 3));
       downBars.setData(breadthRows.map((b) => ({ time: b.row[0] as Time, value: -(ad ? b.row[5] : b.row[3]), color: b.panic ? err : down })));
       upBars.priceScale().applyOptions({ scaleMargins: { top: 0.06, bottom: 0.06 } });
       upBars.createPriceLine({ price: 0, color: cssVar('--text-3'), lineWidth: 1, lineStyle: LineStyle.Dotted, axisLabelVisible: false, title: '' });

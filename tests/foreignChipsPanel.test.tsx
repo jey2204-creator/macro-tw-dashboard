@@ -86,7 +86,7 @@ describe('外資籌碼對照面板', () => {
     expect(cells).toContain('外資期空單極端');
   });
 
-  it('有家數資料時第 4 格可切到漲跌停／漲跌家數：兩個鏡像柱、漲跌家數顯示最新值標籤', async () => {
+  it('有家數資料時第 4 格可切到漲跌停／漲跌家數：兩個鏡像柱、各標右軸現值', async () => {
     const { analyzeBreadth } = await import('../src/shared/breadthStress');
     const brows = rows.map((r, i) => [r[0], r[1], 5 + (i % 3), 10 + (i % 5), 300, 500, null] as const);
     const breadth = analyzeBreadth(brows as never, new Date('2026-10-17T00:00:00Z'));
@@ -94,9 +94,10 @@ describe('外資籌碼對照面板', () => {
     expect(screen.queryByRole('button', { name: '融資維持率' })).toBeNull(); // 沒傳融資資料就不顯示
     chartLog.series = [];
     fireEvent.click(screen.getByRole('button', { name: '漲跌停' }));
+    // 漲停／跌停柱各標一個右軸現值（世杰 11/08 要求看數值）
     expect(chartLog.series.filter((s) => s.pane === 3)).toEqual([
-      { pane: 3, type: 'Histogram', label: false, scale: undefined },
-      { pane: 3, type: 'Histogram', label: false, scale: undefined },
+      { pane: 3, type: 'Histogram', label: true, scale: undefined },
+      { pane: 3, type: 'Histogram', label: true, scale: undefined },
     ]);
     expect(document.querySelector('.fc-legend')!.textContent).toContain('漲停');
     chartLog.series = [];
