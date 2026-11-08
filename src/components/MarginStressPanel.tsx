@@ -227,15 +227,16 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
           return { time: r[0] as Time, value: r[1], color: st === 'spike' ? down : st === 'cover' ? up : base };
         }),
       );
-      // 借券餘額（借貸系統合計，含已賣出與未賣出）：同一個刻度的細虛線，與賣出餘額之間的距離＝已借未賣
-      const lendRows = sbl.filter((r) => r[8] !== null);
-      if (lendRows.length) {
+      // 已借未賣＝借券餘額（借貸系統合計）− 借券賣出餘額：藍虛線、獨立隱藏刻度（和賣出餘額同一段高度），右軸仍顯示最新值
+      const unsoldRows = sbl.filter((r) => r[8] !== null);
+      if (unsoldRows.length) {
         sblLend = chart.addSeries(
           LineSeries,
-          { color: cssVar('--accent'), lineWidth: 1, lineStyle: LineStyle.Dashed, priceFormat: { type: 'price', precision: 0, minMove: 1 }, priceLineVisible: false, crosshairMarkerVisible: false },
+          { color: cssVar('--accent'), lineWidth: 1, lineStyle: LineStyle.Dashed, priceFormat: { type: 'price', precision: 0, minMove: 1 }, priceScaleId: 'sbl-unsold', priceLineVisible: false, crosshairMarkerVisible: false },
           3,
         );
-        sblLend.setData(lendRows.map((r) => ({ time: r[0] as Time, value: r[8]! })));
+        sblLend.setData(unsoldRows.map((r) => ({ time: r[0] as Time, value: sblUnsold(r)! })));
+        chart.panes()[3]?.priceScale('sbl-unsold')?.applyOptions({ scaleMargins: { top: 0.08, bottom: 0.36 }, visible: false });
       }
       sblChg = chart.addSeries(HistogramSeries, { priceFormat: { type: 'price', precision: 1, minMove: 0.1 }, priceScaleId: 'sbl-chg', priceLineVisible: false }, 3);
       sblChg.setData(sbl.filter((r) => Number.isFinite(r[2])).map((r) => ({ time: r[0] as Time, value: r[2], color: r[2] >= 0 ? down : up })));
@@ -412,6 +413,17 @@ export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile |
               {data.latestSbl.state === 'normal' && <span className="ms-sbl-tag muted">正常範圍</span>}
             </div>
           )}
+          {data.latestSbl.lendBal !== null && data.latestSbl.unsold !== null && (
+            <div>
+              借券餘額 <b>{f1(data.latestSbl.lendBal)}</b> 萬張｜已借未賣 <b>{f1(data.latestSbl.unsold)}</b> 萬張
+              {data.latestSbl.unsoldChg5 !== null && (
+                <>
+                  ｜近5日 <span className={data.latestSbl.unsoldChg5 > 0 ? 'down' : data.latestSbl.unsoldChg5 < 0 ? 'up' : ''}>{f1(data.latestSbl.unsoldChg5, true)}</span> 萬張
+                </>
+              )}
+              <span className="muted">（已借未賣＝借券餘額 − 借券賣出餘額，借了還沒砸出來的潛在空單）</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -421,7 +433,7 @@ export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile |
         <p className="small muted ms-rule">
           圖怎麼看：上格加權指數——K 棒上方 ▼ 跌破 150／140、■ 斷頭潮；下方 ■ 去槓桿、▲ 清洗完成、▲ 追上（藍，完成度 ≥ 1）、● 限空令／國安基金。中格維持率（線，警戒時 Y 軸含 140 線；門檻線在畫面外時不標）＋融資增減（下方柱，億，紅增綠減）。
           第三格去槓桿完成度：指數自高點跌幅（黑）與融資餘額自高點減幅（藍）兩條 % 線，藍線追上黑線＝完成度 ≥ 1；虛線 0、點線 −{COMPLETION_MIN_DD}%。
-          {data.sbl?.length ? '下格借券賣出餘額（粗線，萬張；追空極端段紅、回補極端段綠）＋借券餘額（藍虛線，兩線之間的距離＝已借未賣）＋日增減（柱，增加＝空方加碼）；K 棒上方 ● 追空（紅）、下方 ● 回補（綠）。' : ''}
+          {data.sbl?.length ? '下格借券賣出餘額（粗線，萬張；追空極端段紅、回補極端段綠）＋已借未賣（藍虛線，獨立刻度）＋日增減（柱，增加＝空方加碼）；K 棒上方 ● 追空（紅）、下方 ● 回補（綠）。' : ''}
         </p>
         <p className="small muted ms-rule">
         警戒：維持率 &lt; {WARN_RATIO}% 或近 5 日降 &gt; {WARN_DROP_5D}pp；斷頭區：&lt; {ZONE_RATIO}%；斷頭潮：斷頭區內融資單日減幅為近 250
@@ -442,7 +454,7 @@ export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile |
           借券賣出餘額（上市）＝證交所逐檔「借券賣出當日餘額」加總，借券放空者幾乎都是外資／法人，可視為法人空單；融資是散戶槓桿（多方）。餘額在跌勢後段暴增＝空方追空、也是反彈時的軋空燃料；餘額連續下降＝空方回補。限空令期間當日賣出會被制度性壓低，判斷看餘額增減、不看當日賣出量。
           絕對張數 2010 約 100 萬張 → 2026 約 1,800 萬張，不能跨年比，所以極端值用「餘額 {SBL_CHG_DAYS} 日變化率」對「近 3 年（{SBL_BAND_DAYS} 個交易日）同一變化率的分位數」判：&gt; p95＝追空極端、&lt; p05＝回補極端，各自 {SBL_COOLDOWN} 日內只標一次，進回測表。
           2013 年中起（分位帶要 3 年資料）追空極端 16 次（含這波 2026-11-06），已完成 60 日的 15 次平均 +6.6%、六成上漲，但分布兩極：2016-01、2020-11、2024-04、2025-06、2026-03 之後都是大反彈（軋空），2015-05／06、2022-04 之後再跌 10%～14%，2020-03-11 雖然 60 日 +6.6% 但先再跌 20%——空方追到極端代表「燃料滿了」，點不點得著要看政策與融資清洗是否同時到位。回補極端 21 次 60 日 +2.7%，和基準差不多：回補是反彈的結果，不是原因。
-          藍虛線是借券餘額（證交所借貸系統 TWT72U 上市逐檔加總）＝所有借出去還沒還的券，包含已賣出與還沒賣出的；減掉借券賣出餘額就是「已借未賣」——借了券、隨時可以砸出來的潛在空單。已借未賣擴大＝空方囤彈，之後若轉成賣出，借券賣出餘額會補漲；但其中也有避險、套利、ETF 申贖用途的券，不全是看空，當輔助看、不進回測。借券餘額歷史自 2010 起逐日回補中，回補完成前虛線只有最近幾天。
+          借券餘額（證交所借貸系統 TWT72U 上市逐檔加總）＝所有借出去還沒還的券，包含已賣出與還沒賣出的；減掉借券賣出餘額就是藍虛線「已借未賣」——借了券、隨時可以砸出來的潛在空單。已借未賣擴大＝空方囤彈，之後若轉成賣出，借券賣出餘額會補漲；但其中也有避險、套利、ETF 申贖用途的券，不全是看空，當輔助看、不進回測。借券餘額歷史自 2010 起逐日回補中，回補完成前虛線只有最近幾天。
         </p>
       ) : null}
       </PanelNote>
