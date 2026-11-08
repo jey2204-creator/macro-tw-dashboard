@@ -248,13 +248,14 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
         chart.panes()[3]?.priceScale('sbl-unsold')?.applyOptions({ scaleMargins: { top: 0.08, bottom: 0.32 }, visible: false });
         const lastUnsold = sblUnsold(unsoldRows[unsoldRows.length - 1]!)!;
         sblLend.attachPrimitive(
-          new LineLabels([{ price: lastUnsold, text: `已借未賣 ${Math.round(lastUnsold)}` }], {
+          new LineLabels([{ price: lastUnsold, text: `已借未賣 ${Math.round(lastUnsold)}`, short: `${Math.round(lastUnsold)}` }], {
             color: cssVar('--accent'),
             background: cssVar('--surface'),
             border: cssVar('--accent'),
             fontSize: 11,
             fontFamily: getComputedStyle(document.body).fontFamily,
             align: 'right',
+            maxYFrac: 0.72, // 下方 1/4 是日增減柱，不放
             avoid: [sblLine, sblLend], // 壓到賣出餘額黑線或自己的虛線就往上下閃
           }),
         );

@@ -22,6 +22,8 @@ import {
 export interface LineLabel {
   price: number;
   text: string;
+  /** 放不下時的短版（例如只剩數字）；連短版都放不下就不畫 */
+  short?: string;
 }
 
 export interface LineLabelStyle {
@@ -76,6 +78,16 @@ export class LineLabels implements ISeriesPrimitive<Time> {
     this.chart = null;
   }
 
+  /** 自己這條序列最後一個點的 x 座標 */
+  private lineEndX(): number | null {
+    const s = this.series;
+    const chart = this.chart;
+    if (!s || !chart) return null;
+    const d = s.data();
+    const last = d[d.length - 1];
+    return last ? chart.timeScale().timeToCoordinate(last.time) : null;
+  }
+
   /** 標籤 x 範圍內，每條要閃開的折線落在哪些 y（每 3px 取樣一次） */
   private obstacleYs(x0: number, x1: number): number[] {
     const chart = this.chart;
@@ -115,37 +127,52 @@ export class LineLabels implements ISeriesPrimitive<Time> {
         const bottom = mediaSize.height * (this.style.maxYFrac ?? 1);
         if (y0 === null) continue;
         let y: number = y0;
-        const w = ctx.measureText(l.text).width + PAD_X * 2;
-        const x = this.style.align === 'right' ? mediaSize.width - LEFT - w : LEFT;
+        let text = l.text;
+        let w = ctx.measureText(text).width + PAD_X * 2;
+        let x = this.style.align === 'right' ? mediaSize.width - LEFT - w : LEFT;
         let moved = false;
         if (this.style.align === 'right') {
-          // 線尾現值：先夾進窗格，再閃開壓到的折線（上下交替找第一個空位）
-          const clamp = (v: number) => Math.min(Math.max(v, h / 2), bottom - h / 2);
-          y = clamp(y);
-          const obs = this.obstacleYs(x, x + w);
-          const free = (cy: number) => obs.every((oy) => oy < cy - h / 2 - GAP || oy > cy + h / 2 + GAP);
-          if (!free(y)) {
-            const step = h + GAP;
-            for (let k = 1; k * step <= bottom; k++) {
-              const cands = [y0 - k * step, y0 + k * step].filter((c) => c - h / 2 >= 0 && c + h / 2 <= bottom);
-              const hit = cands.find(free);
-              if (hit !== undefined) {
-                y = hit;
-                moved = true;
-                break;
+          // 線尾現值：只能放在 maxYFrac 以上（下方是柱子區，不進去）；先夾進範圍，再閃開壓到的折線
+          // （上下交替找第一個空位）；全版放不下就換短版再找一次；還是沒有就不畫（狀態列有數字）
+          const step = h + GAP;
+          const xRight = mediaSize.width - LEFT - w;
+          // 先在原 x 找上下空位；找不到就把標籤往左挪半個寬度再找，最多挪三個寬度（線尾通常很陡，左邊線平的地方上方有空間）
+          const place = (lw: number): { x: number; y: number } | null => {
+            for (let j = 0; j <= 6; j++) {
+              const lx = mediaSize.width - LEFT - lw - (j * lw) / 2;
+              if (lx < LEFT) break;
+              const obs = this.obstacleYs(lx, lx + lw);
+              const free = (cy: number) => obs.every((oy) => oy < cy - h / 2 - GAP || oy > cy + h / 2 + GAP);
+              const c0 = Math.min(Math.max(y0, h / 2), bottom - h / 2);
+              if (free(c0)) return { x: lx, y: c0 };
+              for (let k = 1; k * step <= bottom; k++) {
+                const hit = [y0 - k * step, y0 + k * step].filter((c) => c - h / 2 >= 0 && c + h / 2 <= bottom).find(free);
+                if (hit !== undefined) return { x: lx, y: hit };
               }
             }
+            return null;
+          };
+          let got = place(w);
+          if (got === null && l.short) {
+            text = l.short;
+            w = ctx.measureText(text).width + PAD_X * 2;
+            got = place(w);
           }
+          if (got === null) continue;
+          x = got.x;
+          y = got.y;
+          moved = Math.abs(y - y0) > 1 || x < xRight - 1;
         } else if (y - h / 2 < 0 || y + h / 2 > bottom) {
           // 門檻線在窗格外（含標籤會被切到）就不畫，不貼邊，免得以為門檻就在窗格底部
           continue;
         }
         const top = Math.round(y - h / 2) + 0.5;
         if (moved) {
-          // 細線從標籤邊緣指回線尾原本的位置
+          // 細線從標籤右緣中點指回線尾原本的位置
+          const xEnd = this.lineEndX() ?? mediaSize.width - LEFT;
           ctx.beginPath();
-          ctx.moveTo(x + w, Math.round(y0) + 0.5);
-          ctx.lineTo(x + w, y > y0 ? top : top + h);
+          ctx.moveTo(xEnd, Math.round(y0) + 0.5);
+          ctx.lineTo(x + w, Math.round(y) + 0.5);
           ctx.lineWidth = 1;
           ctx.strokeStyle = this.style.border;
           ctx.stroke();
@@ -158,7 +185,7 @@ export class LineLabels implements ISeriesPrimitive<Time> {
         ctx.strokeStyle = this.style.border;
         ctx.stroke();
         ctx.fillStyle = this.style.color;
-        ctx.fillText(l.text, x + PAD_X, Math.round(y));
+        ctx.fillText(text, x + PAD_X, Math.round(y));
       }
     });
   }
