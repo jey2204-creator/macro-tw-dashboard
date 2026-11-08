@@ -174,3 +174,26 @@ describe('去槓桿完成度', () => {
     expect(s[2]).toEqual([day(2), -20, -15, 0.75]);
   });
 });
+
+describe('去槓桿追上大盤事件', () => {
+  const mk = (px: number[], bal: number[]): StressRow[] => px.map((p, i) => [day(i), p, 170, bal[i]!, 0] as StressRow);
+
+  it('跌幅 ≥ 10% 且完成度由 < 1 回到 ≥ 1 的第一天標一次', () => {
+    // 高點 100；第 2 天 -12%（融資 -6%，0.5）→ 第 3 天 -15%（融資 -15%，1.0）→ 第 4 天仍 ≥ 1 不重標
+    const rows = mk([100, 95, 88, 85, 84], [1000, 990, 940, 850, 830]);
+    const ev = detectEvents(rows).filter((e) => e.type === 'caughtUp');
+    expect(ev.map((e) => e.date)).toEqual([day(3)]);
+  });
+
+  it('沒有先 < 1 不標（融資一路跑在前面）；跌幅不到 10% 不標', () => {
+    expect(detectEvents(mk([100, 90, 85], [1000, 850, 780])).filter((e) => e.type === 'caughtUp')).toHaveLength(0);
+    expect(detectEvents(mk([100, 95, 92], [1000, 990, 920])).filter((e) => e.type === 'caughtUp')).toHaveLength(0);
+  });
+
+  it('指數回到高點 5% 以內後重新武裝，下一波可再標', () => {
+    const px = [100, 95, 88, 85, 97, 99, 92, 88, 86];
+    const bal = [1000, 990, 940, 850, 860, 870, 960, 900, 780];
+    const ev = detectEvents(mk(px, bal)).filter((e) => e.type === 'caughtUp');
+    expect(ev.map((e) => e.date)).toEqual([day(3), day(8)]);
+  });
+});

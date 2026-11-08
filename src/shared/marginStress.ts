@@ -50,7 +50,7 @@ export interface MarginHistoryFile {
 }
 
 export type StressState = 'normal' | 'warn' | 'zone';
-export type StressEventType = 'below150' | 'below140' | 'flush' | 'cleared' | 'delever' | 'shortBan' | 'nsf';
+export type StressEventType = 'below150' | 'below140' | 'flush' | 'cleared' | 'delever' | 'caughtUp' | 'shortBan' | 'nsf';
 /** 政策事件（config/policy-events.json） */
 export type PolicyEventType = 'shortBan' | 'nsf';
 export interface PolicyEvent {
@@ -60,7 +60,7 @@ export interface PolicyEvent {
   type: PolicyEventType;
   note?: string;
 }
-export const EVENT_TYPES: StressEventType[] = ['below150', 'below140', 'flush', 'cleared', 'delever', 'shortBan', 'nsf'];
+export const EVENT_TYPES: StressEventType[] = ['below150', 'below140', 'flush', 'cleared', 'delever', 'caughtUp', 'shortBan', 'nsf'];
 
 export const WARN_RATIO = 160;
 export const ZONE_RATIO = 140;
@@ -77,6 +77,12 @@ export const FLUSH_MIN_DROP_PCT = -0.5;
 export const DELEVER_MIN_DROP_PCT = -2;
 export const DELEVER_PCTL = 0.02;
 export const DELEVER_COOLDOWN = 20;
+/**
+ * 去槓桿追上大盤事件：指數自高點跌幅 ≥ 10% 且完成度由 < 1 回到 ≥ 1 的第一天；
+ * 同一波只標一次，指數回到高點 5% 以內（完成度不計）才重新武裝。
+ * 門檻用 5% 會有 50 次（小回檔融資本來就減得快，無提醒效果）；10%＋需曾 < 1 為 8 次（2010 起）。
+ */
+export const CAUGHT_UP_MIN_DD = 10;
 
 export const EVENT_LABEL: Record<StressEventType, string> = {
   below150: '跌破 150%',
@@ -84,6 +90,7 @@ export const EVENT_LABEL: Record<StressEventType, string> = {
   flush: '斷頭潮',
   cleared: '清洗完成',
   delever: '融資大減（主動去槓桿）',
+  caughtUp: '去槓桿追上大盤（完成度 ≥ 1）',
   shortBan: '限空令生效',
   nsf: '國安基金進場',
 };
@@ -296,6 +303,9 @@ export function mdd(rows: readonly PriceRow[], i: number, n: number): number | n
 export function detectEvents(rows: StressRow[], policy: PolicyEvent[] = []): StressEvent[] {
   const flush = flushFlags(rows);
   const delever = deleverFlags(rows);
+  const completion = completionSeries(rows);
+  let caughtArmed = true;
+  let caughtWasBehind = false;
   const events: StressEvent[] = [];
   const fired = new Set<StressEventType>();
   let waveLowRatio = Infinity;
@@ -329,6 +339,17 @@ export function detectEvents(rows: StressRow[], policy: PolicyEvent[] = []): Str
     if (delever[i] && i - lastDeleverIdx > DELEVER_COOLDOWN) {
       lastDeleverIdx = i;
       emit(i, 'delever');
+    }
+    const [, dd, , cr] = completion[i]!;
+    if (cr === null) {
+      caughtArmed = true;
+      caughtWasBehind = false;
+    } else {
+      if (cr < COMPLETION_DONE) caughtWasBehind = true;
+      if (caughtArmed && caughtWasBehind && dd <= -CAUGHT_UP_MIN_DD && cr >= COMPLETION_DONE) {
+        caughtArmed = false;
+        emit(i, 'caughtUp');
+      }
     }
     for (const p of policyByIdx.get(i) ?? []) emit(i, p.type, p.note);
     if (ratio >= RESET_RATIO) {
