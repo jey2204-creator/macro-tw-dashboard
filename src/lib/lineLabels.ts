@@ -34,6 +34,8 @@ export interface LineLabelStyle {
   fontFamily: string;
   /** 只在窗格上方這個比例內畫（0～1）；下方留給疊在同一窗格的柱狀圖時用 */
   maxYFrac?: number;
+  /** 貼左（預設，門檻線名稱）或貼右（序列線尾的現值，取代右軸標籤） */
+  align?: 'left' | 'right';
 }
 
 type DrawTarget = Parameters<IPrimitivePaneRenderer['draw']>[0];
@@ -76,12 +78,19 @@ export class LineLabels implements ISeriesPrimitive<Time> {
       ctx.textAlign = 'left';
       const h = fontSize + PAD_Y * 2;
       for (const l of this.labels) {
-        const y = s.priceToCoordinate(l.price);
-        // 線在窗格外（含標籤會被切到）就不畫
+        const y0 = s.priceToCoordinate(l.price);
         const bottom = mediaSize.height * (this.style.maxYFrac ?? 1);
-        if (y === null || y - h / 2 < 0 || y + h / 2 > bottom) continue;
+        if (y0 === null) continue;
+        let y: number = y0;
+        if (this.style.align === 'right') {
+          // 線尾現值：貼邊夾住就好（序列現值一定在窗格裡，只是太靠上下緣）
+          y = Math.min(Math.max(y, h / 2), bottom - h / 2);
+        } else if (y - h / 2 < 0 || y + h / 2 > bottom) {
+          // 門檻線在窗格外（含標籤會被切到）就不畫，不貼邊，免得以為門檻就在窗格底部
+          continue;
+        }
         const w = ctx.measureText(l.text).width + PAD_X * 2;
-        const x = LEFT;
+        const x = this.style.align === 'right' ? mediaSize.width - LEFT - w : LEFT;
         const top = Math.round(y - h / 2) + 0.5;
         ctx.beginPath();
         ctx.roundRect(x, top, w, h, 3);
