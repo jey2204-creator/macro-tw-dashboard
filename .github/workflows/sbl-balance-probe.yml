@@ -7,7 +7,7 @@ on:
       dates:
         description: '逗號分隔日期'
         type: string
-        default: '2026-11-06,2020-03-19,2012-01-03,2010-01-04'
+        default: '2026-11-06,2026-11-05'
 jobs:
   probe:
     runs-on: ubuntu-latest
@@ -19,4 +19,4 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx tsx scripts/probe/sblBalanceProbe.ts "${{ inputs.dates || '2026-11-06,2020-03-19,2012-01-03,2010-01-04' }}"
+      - run: npx tsx scripts/probe/sblBalanceProbe.ts "${{ inputs.dates || '2026-11-06,2026-11-05' }}"
