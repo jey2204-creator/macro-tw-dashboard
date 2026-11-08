@@ -16,6 +16,7 @@ import { PanelNote } from './PanelNote';
 import { CHART_INTERACTION, resetPaneStretch, resetPriceScales, attachTimeAxis, TIME_AXIS } from '../lib/chartInteraction';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  CAUGHT_UP_MIN_DD,
   CLEAR_REBOUND,
   COMPLETION_DONE,
   COMPLETION_LABEL,
@@ -59,6 +60,7 @@ const MARKER_TEXT: Record<StressEventType, string> = {
   flush: '斷頭',
   cleared: '清洗完成',
   delever: '去槓桿',
+  caughtUp: '追上',
   shortBan: '限空',
   nsf: '國安',
 };
@@ -115,13 +117,14 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
       flush: cssVar('--err'),
       cleared: cssVar('--accent'),
       delever: cssVar('--warn'),
+      caughtUp: cssVar('--accent'),
       shortBan: cssVar('--text-2'),
       nsf: cssVar('--text-2'),
     };
-    // 維持率事件在 K 棒上方（▼▼■）、清洗完成與政策事件在下方（▲●●）、去槓桿方塊在下方
-    const below = new Set<StressEventType>(['cleared', 'delever', 'shortBan', 'nsf']);
+    // 維持率事件在 K 棒上方（▼▼■）、清洗完成／追上與政策事件在下方（▲▲●●）、去槓桿方塊在下方
+    const below = new Set<StressEventType>(['cleared', 'delever', 'caughtUp', 'shortBan', 'nsf']);
     const shape = (t: StressEventType) =>
-      t === 'cleared' ? 'arrowUp' : t === 'flush' || t === 'delever' ? 'square' : t === 'shortBan' || t === 'nsf' ? 'circle' : 'arrowDown';
+      t === 'cleared' || t === 'caughtUp' ? 'arrowUp' : t === 'flush' || t === 'delever' ? 'square' : t === 'shortBan' || t === 'nsf' ? 'circle' : 'arrowDown';
     // marker 只畫符號；文字由 MarkerLabels 自己畫（會互相閃避，見 lib/markerLabels.ts）
     const markers: SeriesMarker<Time>[] = data.events.map((e) => ({
       time: e.date as Time,
@@ -354,7 +357,7 @@ export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile |
 
       <PanelNote>
         <p className="small muted ms-rule">
-          圖怎麼看：上格加權指數——K 棒上方 ▼ 跌破 150／140、■ 斷頭潮；下方 ■ 去槓桿、▲ 清洗完成、● 限空令／國安基金。中格維持率（線，警戒時 Y 軸含 140 線；門檻線在畫面外時不標）＋融資增減（下方柱，億，紅增綠減）。
+          圖怎麼看：上格加權指數——K 棒上方 ▼ 跌破 150／140、■ 斷頭潮；下方 ■ 去槓桿、▲ 清洗完成、▲ 追上（藍，完成度 ≥ 1）、● 限空令／國安基金。中格維持率（線，警戒時 Y 軸含 140 線；門檻線在畫面外時不標）＋融資增減（下方柱，億，紅增綠減）。
           第三格去槓桿完成度：指數自高點跌幅（黑）與融資餘額自高點減幅（藍）兩條 % 線，藍線追上黑線＝完成度 ≥ 1；虛線 0、點線 −{COMPLETION_MIN_DD}%。
           {data.sbl?.length ? '下格借券賣出餘額（線，萬張）＋日增減（柱，增加＝空方加碼）。' : ''}
         </p>
@@ -369,6 +372,8 @@ export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile |
         去槓桿完成度＝融資餘額自高點累計減幅 ÷ 指數自高點跌幅，高點都在近 {COMPLETION_LOOKBACK} 個交易日內找，指數回落不到 {COMPLETION_MIN_DD}% 不算。
         維持率是平均數，斷頭把最弱的戶清掉反而會把平均撐住，所以用「清洗了多少」來看：&lt; {COMPLETION_LAG} 清洗落後、{COMPLETION_LAG}～{COMPLETION_DONE} 進行中、≥ {COMPLETION_DONE} 追上大盤。
         2020-03-19、2025-04-09、2026-07-30 的 V 轉底完成度都 ≥ 1.2；2024-08-05 當天只有 0.5（兩天急跌，隔天 0.9 才追上）；≥ 1 不保證見底——2022 慢熊 7 月已 1.3 仍再跌 3 個月。歷次事件表有「完成度」欄可對照。
+        事件「追上」（▲ 藍，K 棒下方）＝指數自高點跌幅 ≥ {CAUGHT_UP_MIN_DD}% 且完成度從 &lt; 1 回到 ≥ 1 的第一天，同一波只標一次（指數回到高點 {COMPLETION_MIN_DD}% 以內才重新計）；進回測表。
+        2010 起 8 次：2020-03-13、2026-07-28 都比實際低點早 2 個交易日（完成度先追上、指數再殺一段），2022-04-29 之後還跌 16%——它標的是「融資該賣的賣得差不多了」，不是底部。
       </p>
       {data.sbl?.length ? (
         <p className="small muted ms-rule">
