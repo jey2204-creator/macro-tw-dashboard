@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { analyzeMarginStress, combineStressRows, detectEvents, stateAt, type StressRow } from '../src/shared/marginStress';
+import { analyzeMarginStress, combineStressRows, completionAt, completionGrade, completionSeries, detectEvents, stateAt, type StressRow } from '../src/shared/marginStress';
 import type { Bar } from '../src/shared/types';
 
 const day = (i: number) => {
@@ -124,5 +124,53 @@ describe('融資大減與政策事件', () => {
     expect(out.eventStats.nsf.n).toBe(1);
     expect(out.eventStats.shortBan.n).toBe(1);
     expect(out.eventStats.delever.n).toBe(0);
+  });
+});
+
+describe('去槓桿完成度', () => {
+  const mk = (px: number[], bal: (number | null)[]): StressRow[] =>
+    px.map((p, i) => [day(i), p, 170, bal[i] ?? NaN, 0] as StressRow);
+
+  it('融資減幅 ÷ 指數跌幅；高點各自在視窗內找', () => {
+    // 指數 100 → 80（-20%），融資 1000 → 820（-18%）；融資高點比指數高點早一天
+    const rows = mk([90, 100, 95, 80], [1000, 990, 900, 820]);
+    const c = completionAt(rows, 3)!;
+    expect(c.dd).toBe(-20);
+    expect(c.peakDate).toBe(day(1));
+    expect(c.cut).toBe(-18);
+    expect(c.balPeakDate).toBe(day(0));
+    expect(c.ratio).toBe(0.9);
+    expect(c.grade).toBe('mid');
+  });
+
+  it('指數回落不到 5% 不算；融資缺值不算', () => {
+    expect(completionAt(mk([100, 97], [1000, 900]), 1)!.ratio).toBeNull();
+    const c = completionAt(mk([100, 80], [1000, null]), 1)!;
+    expect(c.cut).toBeNull();
+    expect(c.ratio).toBeNull();
+    expect(c.dd).toBe(-20);
+  });
+
+  it('視窗外的高點不算', () => {
+    const rows = mk([200, 100, 100, 90], [2000, 1000, 1000, 950]);
+    const c = completionAt(rows, 3, 2)!;
+    expect(c.peak).toBe(100);
+    expect(c.dd).toBe(-10);
+    expect(c.cut).toBe(-5);
+    expect(c.ratio).toBe(0.5);
+    expect(c.grade).toBe('lag');
+  });
+
+  it('分級：< 0.6 落後、< 1 進行中、≥ 1 追上', () => {
+    expect(completionGrade(0.59)).toBe('lag');
+    expect(completionGrade(0.6)).toBe('mid');
+    expect(completionGrade(1)).toBe('done');
+  });
+
+  it('序列長度與列數相同', () => {
+    const rows = mk([100, 90, 80], [1000, 950, 850]);
+    const s = completionSeries(rows);
+    expect(s).toHaveLength(3);
+    expect(s[2]).toEqual([day(2), -20, -15, 0.75]);
   });
 });
