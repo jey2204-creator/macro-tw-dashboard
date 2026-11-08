@@ -1,0 +1,22 @@
+name: 借券餘額資料源探測（臨時）
+on:
+  push:
+    branches: [sbl-balance-probe]
+  workflow_dispatch:
+    inputs:
+      dates:
+        description: '逗號分隔日期'
+        type: string
+        default: '2026-11-06,2020-03-19,2012-01-03'
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsx scripts/probe/sblBalanceProbe.ts "${{ inputs.dates || '2026-11-06,2020-03-19,2012-01-03' }}"
