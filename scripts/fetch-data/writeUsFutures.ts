@@ -31,13 +31,15 @@ export function parseIntraday(json: YahooIntraday): HourBar[] {
   if (!r) throw new Error('Yahoo 回應沒有 result');
   const ts = r.timestamp ?? [];
   const close = r.indicators.quote[0]?.close ?? [];
-  const out: HourBar[] = [];
+  // Yahoo 盤中 K 最後一根的時間戳是「最後成交時間」而不是整點起點（例如 21:59:59Z），
+  // 一律取整到小時起點，否則快取會留下同一小時兩根
+  const m = new Map<number, number>();
   for (let i = 0; i < ts.length; i++) {
     const c = close[i];
     if (c === null || c === undefined || !Number.isFinite(c) || c <= 0) continue;
-    out.push([ts[i]!, c]);
+    m.set(ts[i]! - (ts[i]! % 3600), c);
   }
-  return out;
+  return [...m.entries()].sort((a, b) => a[0] - b[0]);
 }
 
 async function fetchHourly(symbol: string, since: number, http: HttpOptions, now: Date): Promise<HourBar[]> {

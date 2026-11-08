@@ -61,6 +61,7 @@ describe('判定', () => {
     const w = warningsOf({ nq: 0.6, es: -0.2, zn: -0.3, dx: 0.4 });
     expect(w).toHaveLength(3);
     expect(w[0]).toContain('殖利率');
+    expect(w[1]).toContain('美元指數');
   });
   it('偏相關：z 完全解釋 x 與 y 時趨近 0', () => {
     const z = [1, 2, 3, 4, 5, 6];
@@ -157,5 +158,21 @@ describe('buildRows 與 latestReading（冬令，2026-01）', () => {
   it('沒有 NQ 資料回傳空列與 null', () => {
     expect(buildRows({ es: flat }, taiex, sox)).toEqual([]);
     expect(latestReading({}, [], backtest([]), new Date())).toBeNull();
+  });
+});
+
+describe('parseIntraday', () => {
+  it('最後一根的時間戳取整到小時起點、同小時以後者為準', async () => {
+    const { parseIntraday } = await import('../scripts/fetch-data/writeUsFutures');
+    const bars = parseIntraday({
+      chart: {
+        result: [{ timestamp: [3600, 7200, 7200 + 3599], indicators: { quote: [{ close: [1, 2, 2.5] }] } }],
+        error: null,
+      },
+    });
+    expect(bars).toEqual([
+      [3600, 1],
+      [7200, 2.5],
+    ]);
   });
 });

@@ -24,7 +24,7 @@ export const USF_SYMBOLS = [
   { id: 'es', symbol: 'ES=F', name: 'S&P 500 期貨', short: 'ES', kind: 'equity' },
   { id: 'ym', symbol: 'YM=F', name: '道瓊期貨', short: 'YM', kind: 'equity' },
   { id: 'zn', symbol: 'ZN=F', name: '美債 10 年期貨', short: 'ZN', kind: 'bond' },
-  { id: 'dx', symbol: 'DX=F', name: '美元指數期貨', short: 'DX', kind: 'fx' },
+  { id: 'dx', symbol: 'DX-Y.NYB', name: '美元指數（ICE）', short: 'DXY', kind: 'fx' },
   { id: 'gc', symbol: 'GC=F', name: '黃金期貨', short: 'GC', kind: 'commodity' },
   { id: 'cl', symbol: 'CL=F', name: 'WTI 原油期貨', short: 'CL', kind: 'commodity' },
 ] as const;
@@ -34,7 +34,7 @@ export const USF_IDS = USF_SYMBOLS.map((s) => s.id) as UsfId[];
 /** 主訊號：NQ 隔夜變動的判定門檻（%） */
 export const USF_BULL_PCT = 0.4;
 export const USF_BEAR_PCT = -0.4;
-/** 配角警訊：美債期貨跌（殖利率升）、美元升 */
+/** 配角警訊：美債期貨跌（殖利率升）、美元指數升 */
 export const ZN_WARN_PCT = -0.3;
 export const DX_WARN_PCT = 0.4;
 /** 判定可用：|NQ 隔夜| ≥ 0.4% 的日子，加權開盤方向一致比例門檻與最少樣本 */
@@ -385,7 +385,7 @@ export function verdictOf(nqOn: number): UsfVerdict {
 export function warningsOf(on: Partial<Record<UsfId, number>>): string[] {
   const w: string[] = [];
   if (on.zn !== undefined && on.zn <= ZN_WARN_PCT) w.push(`美債期貨 ${on.zn.toFixed(2)}%（殖利率急升，壓抑高本益比科技股）`);
-  if (on.dx !== undefined && on.dx >= DX_WARN_PCT) w.push(`美元期貨 +${on.dx.toFixed(2)}%（美元急升，不利新興市場）`);
+  if (on.dx !== undefined && on.dx >= DX_WARN_PCT) w.push(`美元指數 +${on.dx.toFixed(2)}%（美元急升，不利新興市場）`);
   if (on.nq !== undefined && on.es !== undefined && Math.sign(on.nq) !== Math.sign(on.es) && Math.abs(on.nq - on.es) >= 0.5)
     w.push('NQ 與 ES 方向不一致（科技股獨立行情）');
   return w;
