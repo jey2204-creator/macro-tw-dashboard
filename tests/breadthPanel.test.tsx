@@ -68,7 +68,7 @@ describe('BreadthPanel（上市＋上櫃同一模組）', () => {
     expect(mid).toHaveLength(2);
     expect(mid[0]!.values.at(-1)).toBe(4); // 漲停
     expect(mid[1]!.values.at(-1)).toBe(-39); // 跌停（0 以下）
-    expect(mid.every((s) => !s.label)).toBe(true);
+    expect(mid.every((s) => s.label)).toBe(true); // 漲停／跌停柱各標右軸現值（世杰 11/08 要求）
     // 只有上市資料：一張圖、一張回測表
     expect(screen.getAllByText(/事件發生後/)).toHaveLength(1);
   });

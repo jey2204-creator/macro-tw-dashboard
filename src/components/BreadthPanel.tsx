@@ -186,11 +186,11 @@ function BreadthChart({
     const ad = mid === 'ad';
     const ul = chart.addSeries(
       HistogramSeries,
-      { priceFormat: fmt0, color: up, priceLineVisible: false, lastValueVisible: ad },
+      { priceFormat: fmt0, color: up, priceLineVisible: false, lastValueVisible: true },
       1,
     );
     ul.setData(data.rows.map((r) => ({ time: r[0] as Time, value: ad ? r[4] : r[2] })));
-    const dl = chart.addSeries(HistogramSeries, { priceFormat: fmt0, priceLineVisible: false, lastValueVisible: ad }, 1);
+    const dl = chart.addSeries(HistogramSeries, { priceFormat: fmt0, priceLineVisible: false, lastValueVisible: true }, 1);
     dl.setData(data.rows.map((r, i) => ({ time: r[0] as Time, value: -(ad ? r[5] : r[3]), color: data.panic[i] ? err : down })));
     ul.priceScale().applyOptions({ scaleMargins: { top: 0.06, bottom: 0.06 } });
 
