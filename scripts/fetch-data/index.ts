@@ -12,6 +12,7 @@ import { writeFactsetEps } from './writeFactsetEps';
 import { writeForeignChips } from './writeForeignChips';
 import { lastBreadth, lastBreadthOtc, writeMarginStress } from './writeMarginStress';
 import { writeMsciTw } from './writeMsciTw';
+import { writeUsFutures } from './writeUsFutures';
 import { runPipeline } from './pipeline';
 
 function arg(name: string): string | undefined {
@@ -89,6 +90,15 @@ async function main() {
     console.log(`[foreign-chips] ${fc.start}～${fc.end}，${fc.rows.length} 天，事件 ${fc.events.length} 筆，最新 ${JSON.stringify(fc.latest)}`);
   } catch (e) {
     console.warn('[foreign-chips] 略過：', e instanceof Error ? e.message : e);
+  }
+  // 美期隔夜風向失敗不影響資料更新
+  try {
+    const uf = await writeUsFutures(outDir, { fetchImpl: (url, init) => fetch(url, init) }, new Date(), (m) => console.log(`  [usfut] ${m}`));
+    console.log(
+      `[usfut] ${uf.backtest.start}～${uf.backtest.end}，${uf.rows.length} 天，同向 ${uf.backtest.hit}%（n=${uf.backtest.hitN}，${uf.backtest.usable ? '可用' : '只顯示數字'}）；最新 ${JSON.stringify(uf.latest)}`,
+    );
+  } catch (e) {
+    console.warn('[usfut] 略過：', e instanceof Error ? e.message : e);
   }
 }
 

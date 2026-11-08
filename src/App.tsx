@@ -13,9 +13,10 @@ import { PolicyInflationPanel } from './components/PolicyInflationPanel';
 import { RegimePanel } from './components/RegimePanel';
 import { SourceStatus } from './components/SourceStatus';
 import { TwValuationPanel } from './components/TwValuationPanel';
+import { UsFuturesPanel } from './components/UsFuturesPanel';
 import { UsValuationPanel } from './components/UsValuationPanel';
 import { ShippingPanel } from './components/ShippingPanel';
-import { useBacktest, useCalendar, useBreadthStress, useForeignChips, useMarginStress, useSummary } from './hooks/useData';
+import { useBacktest, useCalendar, useBreadthStress, useForeignChips, useMarginStress, useSummary, useUsFutures } from './hooks/useData';
 import { buildRow } from './lib/rows';
 import { loadList, loadPref, savePref } from './lib/storage';
 import { formatTaipeiDateTime, todayInTaipei } from './shared/dates';
@@ -96,6 +97,7 @@ export default function App() {
   const breadthStress = useBreadthStress(summary?.generatedAt ?? null);
   const breadthStressOtc = useBreadthStress(summary?.generatedAt ?? null, 'breadth-stress-otc');
   const foreignChips = useForeignChips(summary?.generatedAt ?? null);
+  const usFutures = useUsFutures(summary?.generatedAt ?? null);
   const releases = useMemo(
     () => (summary ? releasesByIndicator(calendar, summary, new Date(nowMs)) : {}),
     [calendar, summary, nowMs],
@@ -198,6 +200,7 @@ export default function App() {
               nowScore={regime.score}
               now={new Date(nowMs)}
             />
+            <UsFuturesPanel data={usFutures} />
             <CrossMarketPanel
               version={summary.generatedAt}
               themeKey={themeKey}

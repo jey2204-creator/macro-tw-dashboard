@@ -35,6 +35,18 @@ export function yahooUrl(symbol: string, period1: number, period2: number, crumb
   return crumb ? `${base}&crumb=${encodeURIComponent(crumb)}` : base;
 }
 
+/** 盤中 K（60m 等）；period1 不能早於約 730 天前 */
+export function yahooIntradayUrl(symbol: string, period1: number, period2: number, interval: '60m' | '30m' | '15m' | '5m', crumb?: string): string {
+  const base = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${period1}&period2=${period2}&interval=${interval}&includePrePost=false&events=`;
+  return crumb ? `${base}&crumb=${encodeURIComponent(crumb)}` : base;
+}
+
+/** 被限流時改用 cookie + crumb：回傳加了 crumb 的網址與 Cookie 標頭（供 yahoo.ts 以外的抓取共用） */
+export async function yahooSessionHeaders(url: string, http: HttpOptions): Promise<{ url: string; headers: Record<string, string> }> {
+  const s = await getYahooSession(http);
+  return { url: `${url}&crumb=${encodeURIComponent(s.crumb)}`, headers: { Cookie: s.cookie } };
+}
+
 /** Yahoo 的 cookie + crumb 工作階段；遇到 401/429 時才取得，整次執行共用 */
 interface YahooSession {
   cookie: string;

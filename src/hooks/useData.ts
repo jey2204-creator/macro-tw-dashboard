@@ -5,6 +5,7 @@ import type { BreadthStressFile } from '../shared/breadthStress';
 import type { ForeignChipsFile } from '../shared/foreignChips';
 import type { MarginStressFile } from '../shared/marginStress';
 import type { MsciTwFile } from '../shared/msciTw';
+import type { UsfFile } from '../shared/usFutures';
 import type { BacktestFile, SeriesFile, SummaryFile } from '../shared/types';
 
 export type LoadState<T> =
@@ -209,6 +210,22 @@ export function useMsciTw(version: string | null): MsciTwFile | null {
     const ctrl = new AbortController();
     getJson<MsciTwFile>(`${DATA_BASE}/msci-tw.json?v=${encodeURIComponent(version)}`, ctrl.signal)
       .then((data) => setState({ v: version, data: data.schemaVersion === 1 && Array.isArray(data.records) ? data : null }))
+      .catch(() => {
+        if (!ctrl.signal.aborted) setState({ v: version, data: null });
+      });
+    return () => ctrl.abort();
+  }, [version]);
+  return state && state.v === version ? state.data : null;
+}
+
+/** 美期隔夜風向（選用資料）：載入失敗時回傳 null */
+export function useUsFutures(version: string | null): UsfFile | null {
+  const [state, setState] = useState<{ v: string; data: UsfFile | null } | null>(null);
+  useEffect(() => {
+    if (!version) return;
+    const ctrl = new AbortController();
+    getJson<UsfFile>(`${DATA_BASE}/usfut-tone.json?v=${encodeURIComponent(version)}`, ctrl.signal)
+      .then((data) => setState({ v: version, data: data.schemaVersion === 1 && Array.isArray(data.rows) ? data : null }))
       .catch(() => {
         if (!ctrl.signal.aborted) setState({ v: version, data: null });
       });
