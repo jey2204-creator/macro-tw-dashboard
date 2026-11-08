@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { HttpOptions } from '../scripts/fetch-data/http';
 import { fetchTwseChips, parseTwt93u, resetTwseChipsCache, weekdaysBackward } from '../scripts/fetch-data/sources/twseChips';
-import { combineSblRows, summarizeSbl, type SblRow } from '../src/shared/marginStress';
+import { combineSblRows, sblEvents, sblStateAt, summarizeSbl, type SblRow } from '../src/shared/marginStress';
 import type { Bar } from '../src/shared/types';
 
 /** 證交所 TWT93U：欄名自帶前綴的寫法 */
@@ -96,11 +96,11 @@ describe('借券賣出（TWT93U）', () => {
   it('合併與摘要：餘額增減、近 5 日、連增日數、近 60 日新高', () => {
     const bal: Bar[] = [1600, 1610, 1605, 1620, 1650, 1700, 1760, 1823].map((v, i) => [`2026-11-0${i + 1}`, v, v, v, v]);
     const rows = combineSblRows({ balance: bal, sell: [['2026-11-08', 1, 1, 1, 45.5]], ret: [['2026-11-08', 1, 1, 1, 9.7]] });
-    expect(rows.at(-1)).toEqual(['2026-11-08', 1823, 63, 45.5, 9.7]);
+    expect(rows.at(-1)).toEqual(['2026-11-08', 1823, 63, 45.5, 9.7, null, null, null]);
     expect(Number.isNaN(rows[0]![2])).toBe(true);
     const s = summarizeSbl(rows)!;
     expect(s).toMatchObject({ date: '2026-11-08', balance: 1823, chg5: 218, streak: 5, hi60: true, lo60: false });
-    const falling: SblRow[] = [1800, 1790, 1780].map((v, i) => [`2026-11-1${i}`, v, NaN, NaN, NaN]);
+    const falling: SblRow[] = [1800, 1790, 1780].map((v, i) => [`2026-11-1${i}`, v, NaN, NaN, NaN, null, null, null]);
     expect(summarizeSbl(falling)!.streak).toBe(-2);
     expect(summarizeSbl([])).toBeNull();
   });
@@ -111,5 +111,28 @@ describe('借券賣出（TWT93U）', () => {
     );
     expect(rows.map((r) => [r[0], r[1]])).toEqual([['2026-11-03', 1723.3], ['2026-11-05', 1786.7], ['2026-11-06', 1822.5]]);
     expect(rows[1]![2]).toBe(63.4);
+  });
+  it('20 日變化率與 3 年分位帶：資料夠才算、追空／回補極端各自 20 日冷卻', () => {
+    // 600 天：餘額每天 +0.1%（20 日變化約 +2%），第 580 天起每天 +2%（20 日變化衝到 +40% 以上）
+    const bal: Bar[] = [];
+    let v = 1000;
+    for (let i = 0; i < 600; i++) {
+      v *= i >= 580 ? 1.02 : 1.001;
+      const d = new Date(Date.UTC(2020, 0, 1) + i * 86400000).toISOString().slice(0, 10);
+      bal.push([d, v, v, v, v]);
+    }
+    const rows = combineSblRows({ balance: bal });
+    expect(rows[19]![5]).toBeNull(); // 不足 20 天
+    expect(rows[20]![5]).toBeCloseTo(2.02, 1);
+    expect(rows[519]![6]).toBeNull(); // 分位帶視窗不足 500 筆（第 20 天起才有變化率）
+    expect(rows[520]![6]).not.toBeNull();
+    expect(sblStateAt(rows[560]!)).toBe('normal');
+    expect(sblStateAt(rows[599]!)).toBe('spike');
+    const ev = sblEvents(rows);
+    expect(ev.filter((e) => e.type === 'sblSpike')).toHaveLength(1); // 連續多天極端只標第一天
+    expect(ev[0]!.date >= rows[580]![0]).toBe(true);
+    const latest = summarizeSbl(rows)!;
+    expect(latest.state).toBe('spike');
+    expect(latest.pctAll).toBeGreaterThan(95);
   });
 });
