@@ -49,6 +49,20 @@ async function show(url: string) {
         if (/^\d{4}$/.test((r[0] ?? '').trim())) v.stock += num(r[iBal]);
         byMkt.set(k, v);
       }
+      // 去重：同一代號（去空白）只留第一筆，看是否剛好是合計的一半
+      const seen = new Set<string>();
+      let dedupTwse = 0, dLend = 0, dRet = 0, dupN = 0;
+      const samples: string[] = [];
+      const iLend = t.fields?.findIndex((f) => /異動股借券/.test(f)) ?? -1;
+      const iRet = t.fields?.findIndex((f) => /異動股還券/.test(f)) ?? -1;
+      for (const r of rowsAll) {
+        const code = (r[0] ?? '').trim();
+        if (!/集中/.test(r[iMkt] ?? '')) continue;
+        if (seen.has(code)) { dupN++; if (samples.length < 3) samples.push(JSON.stringify(r)); continue; }
+        seen.add(code);
+        dedupTwse += num(r[iBal]); dLend += num(r[iLend]); dRet += num(r[iRet]);
+      }
+      console.log(`::notice title=dedup ${url.slice(-40)}::集中去重後 餘額=${(dedupTwse / 1e7).toFixed(1)} 借券=${(dLend / 1e7).toFixed(1)} 還券=${(dRet / 1e7).toFixed(1)} 重複列數=${dupN} 重複樣本=${samples.join(' | ').slice(0, 400)}`);
       const codes = rowsAll.map((r) => r[0]);
       const dup = codes.filter((c, i) => codes.indexOf(c) !== i).slice(0, 5);
       const whole = rowsAll.filter((r) => /整體/.test(r[iMkt] ?? '')).slice(0, 3).map((r) => r.slice(0, 2).concat(r[iBal] ?? ''));
