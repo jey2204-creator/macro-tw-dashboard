@@ -38,6 +38,22 @@ async function show(url: string) {
     const sumTwse = twse.reduce((a, r) => a + num(r[iBal]), 0);
     const sumTwseStock = twse.filter((r) => /^\d{4}$/.test((r[0] ?? '').trim())).reduce((a, r) => a + num(r[iBal]), 0);
     const mkts = iMkt >= 0 ? [...new Set(rowsAll.map((r) => r[iMkt]))].join('/') : '-';
+    if (iMkt >= 0) {
+      const byMkt = new Map<string, { n: number; sum: number; etf: number; stock: number }>();
+      for (const r of rowsAll) {
+        const k = r[iMkt] ?? '?';
+        const v = byMkt.get(k) ?? { n: 0, sum: 0, etf: 0, stock: 0 };
+        v.n++;
+        v.sum += num(r[iBal]);
+        if (/^00/.test(r[0] ?? '')) v.etf += num(r[iBal]);
+        if (/^\d{4}$/.test((r[0] ?? '').trim())) v.stock += num(r[iBal]);
+        byMkt.set(k, v);
+      }
+      const codes = rowsAll.map((r) => r[0]);
+      const dup = codes.filter((c, i) => codes.indexOf(c) !== i).slice(0, 5);
+      const whole = rowsAll.filter((r) => /整體/.test(r[iMkt] ?? '')).slice(0, 3).map((r) => r.slice(0, 2).concat(r[iBal] ?? ''));
+      console.log(`::notice title=mkt ${url.slice(-40)}::${JSON.stringify([...byMkt].map(([k, v]) => [k, v.n, (v.sum / 1e7).toFixed(1), 'etf', (v.etf / 1e7).toFixed(1), 'stock4', (v.stock / 1e7).toFixed(1)]))} 重複代號=${JSON.stringify(dup)} 整體市場樣本=${JSON.stringify(whole)}`);
+    }
     console.log(`::notice title=sum ${url.slice(-40)}::全部=${(sum! / 1e7).toFixed(1)}萬張 集中=${(sumTwse / 1e7).toFixed(1)} 集中4碼股票=${(sumTwseStock / 1e7).toFixed(1)} 市場別=${mkts} 列數 全部${rowsAll.length}/集中${twse.length}`);
     console.log(`::notice title=${url.replace('https://', '')}::HTTP ${r.status} stat=${o.stat ?? '-'} date=${o.date ?? '-'} ${((Date.now() - t0) / 1000).toFixed(1)}s 合計(股)=${sum} ${JSON.stringify(ts).slice(0, 1200)}`);
   } catch (e) {
