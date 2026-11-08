@@ -49,7 +49,7 @@ export function UsFuturesPanel({ data }: { data: UsfFile | null }) {
         </div>
         {l && (
           <span className="small muted num">
-            台股 {md(l.date)}｜美股 {md(l.usDate)} 收盤 → 台北 08:00｜快照 {formatTaipeiDateTime(l.asOf)}
+            台股 {md(l.date)}｜美股 {md(l.usDate)} 收盤 → 台北 08:00｜期貨資料到 {formatTaipeiDateTime(l.asOf)}
           </span>
         )}
       </div>
@@ -69,7 +69,7 @@ export function UsFuturesPanel({ data }: { data: UsfFile | null }) {
         </p>
         <p className="small muted ms-rule">
           <b>資料</b>：Yahoo 60 分鐘 K：CME 近月期貨 NQ、ES、YM、ZN、GC、CL 與 ICE 美元指數 DXY（期貨 DX=F 沒有盤中資料，改用指數），時間戳為整點起點：美股現貨收盤＝起點 15:00 ET 那根、台北 08:00＝起點 07:00 台北那根（夏令 20:00 ET／冬令 19:00 ET，CME 兩季都有交易）。
-          小時 K 只能回溯約 2 年，之後靠每日快照累積，所以回測樣本從 {bt?.start ?? '—'} 起。平日 08:45 多跑一次排程，所以 09:00 開盤前看得到今天的隔夜讀數；排程偶爾晚 5～15 分鐘，以「快照」時間為準。
+          小時 K 只能回溯約 2 年，之後靠每日快照累積，所以回測樣本從 {bt?.start ?? '—'} 起。平日 08:45 多跑一次排程，所以 09:00 開盤前看得到今天的隔夜讀數；排程偶爾晚 5～15 分鐘，以「期貨資料到」的時間為準。
           亞洲時段期貨成交量只有美盤的 5～10%，單筆大單可造成假突破，別把 ±0.2% 內的波動當訊號。
         </p>
       </PanelNote>
