@@ -156,7 +156,14 @@ export type SblRow = [
   chg20: number | null,
   p95: number | null,
   p05: number | null,
+  /** 借券餘額（TWT72U 上市合計，萬張；含已賣出與未賣出），沒資料為 null */
+  lendBal: number | null,
+  /** 當日借券／還券（借貸系統） */
+  lend: number | null,
+  lendRet: number | null,
 ];
+/** 已借未賣（萬張）＝借券餘額 − 借券賣出餘額；任一缺值為 null */
+export const sblUnsold = (r: SblRow): number | null => (r[8] === null ? null : r2(r[8] - r[1]));
 export const SBL_CHG_DAYS = 20;
 export const SBL_BAND_DAYS = 750;
 /** 分位數視窗至少要有這麼多筆才算 */
@@ -171,7 +178,10 @@ export function sblStateAt(r: SblRow): SblState | null {
   return chg20 > p95 ? 'spike' : chg20 < p05 ? 'cover' : 'normal';
 }
 
-/** data/sbl-history.json 每列：[日期, 借券賣出餘額, 當日賣出, 當日還券]（萬張） */
+/**
+ * data/sbl-history.json 每列：[日期, 借券賣出餘額, 當日賣出, 當日還券]（萬張）
+ * data/sbl-lend-history.json 每列：[日期, 借券餘額, 當日借券, 當日還券]（萬張）——同一結構、不同表
+ */
 export type SblHistoryRow = [date: string, balance: number, sell: number, ret: number];
 export interface SblHistoryFile {
   schemaVersion: 1;
@@ -201,10 +211,19 @@ export interface SblLatest {
   /** 20 日變化率在全部歷史中的百分位（0～100） */
   pctAll: number | null;
   state: SblState | null;
+  /** 借券餘額與已借未賣（萬張）；沒資料為 null */
+  lendBal: number | null;
+  unsold: number | null;
+  /** 已借未賣近 5 日增減 */
+  unsoldChg5: number | null;
 }
 
 /** 合併借券賣出序列（萬張）：長期歷史 + 每日排程（同一天以每日排程為準）；增減＝與前一筆餘額之差（第一筆為 NaN） */
-export function combineSblRows(live: { balance?: Bar[]; sell?: Bar[]; ret?: Bar[] }, history: SblHistoryRow[] = []): SblRow[] {
+export function combineSblRows(
+  live: { balance?: Bar[]; sell?: Bar[]; ret?: Bar[]; lendBal?: Bar[]; lend?: Bar[]; lendRet?: Bar[] },
+  history: SblHistoryRow[] = [],
+  lendHistory: SblHistoryRow[] = [],
+): SblRow[] {
   const m = new Map<string, { balance: number; sell: number; ret: number }>();
   for (const [d, balance, sell, ret] of history) m.set(d, { balance, sell, ret });
   const sell = new Map((live.sell ?? []).map((b) => [b[0], b[4]] as const));
@@ -213,11 +232,33 @@ export function combineSblRows(live: { balance?: Bar[]; sell?: Bar[]; ret?: Bar[
     if (!Number.isFinite(b[4])) continue;
     m.set(b[0], { balance: b[4], sell: sell.get(b[0]) ?? NaN, ret: ret.get(b[0]) ?? NaN });
   }
+  // 借券餘額（借貸系統）：另一張表，日期以借券賣出為主、對得上才填
+  const lendM = new Map<string, { bal: number; lend: number; ret: number }>();
+  for (const [d, bal, lend, lret] of lendHistory) lendM.set(d, { bal, lend, ret: lret });
+  const lend = new Map((live.lend ?? []).map((b) => [b[0], b[4]] as const));
+  const lret = new Map((live.lendRet ?? []).map((b) => [b[0], b[4]] as const));
+  for (const b of live.lendBal ?? []) {
+    if (!Number.isFinite(b[4])) continue;
+    lendM.set(b[0], { bal: b[4], lend: lend.get(b[0]) ?? NaN, ret: lret.get(b[0]) ?? NaN });
+  }
   const out: SblRow[] = [];
   let prev: number | null = null;
   for (const d of [...m.keys()].sort()) {
     const x = m.get(d)!;
-    out.push([d, x.balance, prev === null ? NaN : r2(x.balance - prev), x.sell, x.ret, null, null, null]);
+    const l = lendM.get(d);
+    out.push([
+      d,
+      x.balance,
+      prev === null ? NaN : r2(x.balance - prev),
+      x.sell,
+      x.ret,
+      null,
+      null,
+      null,
+      l ? l.bal : null,
+      l && Number.isFinite(l.lend) ? l.lend : null,
+      l && Number.isFinite(l.ret) ? l.ret : null,
+    ]);
     prev = x.balance;
   }
   // 20 日變化率與近 3 年分位帶（不含當日）
@@ -285,6 +326,9 @@ export function summarizeSbl(rows: SblRow[]): SblLatest | null {
     p05: last[7],
     pctAll: c !== null && all.length >= SBL_BAND_MIN ? Math.round((all.filter((v) => v < c).length / all.length) * 1000) / 10 : null,
     state: sblStateAt(last),
+    lendBal: last[8],
+    unsold: sblUnsold(last),
+    unsoldChg5: n > 5 && sblUnsold(last) !== null && sblUnsold(rows[n - 6]!) !== null ? r2(sblUnsold(last)! - sblUnsold(rows[n - 6]!)!) : null,
   };
 }
 
