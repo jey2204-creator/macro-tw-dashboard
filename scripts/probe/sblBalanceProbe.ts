@@ -63,6 +63,8 @@ async function show(url: string) {
         dedupTwse += num(r[iBal]); dLend += num(r[iLend]); dRet += num(r[iRet]);
       }
       console.log(`::notice title=dedup ${url.slice(-40)}::集中去重後 餘額=${(dedupTwse / 1e7).toFixed(1)} 借券=${(dLend / 1e7).toFixed(1)} 還券=${(dRet / 1e7).toFixed(1)} 重複列數=${dupN} 重複樣本=${samples.join(' | ').slice(0, 400)}`);
+      const pick = rowsAll.filter((r) => ['2330', '2317', '0050', '2344', '6488'].includes((r[0] ?? '').trim()));
+      console.log(`::notice title=rows ${url.slice(-40)}::${JSON.stringify(pick)}`);
       const codes = rowsAll.map((r) => r[0]);
       const dup = codes.filter((c, i) => codes.indexOf(c) !== i).slice(0, 5);
       const whole = rowsAll.filter((r) => /整體/.test(r[iMkt] ?? '')).slice(0, 3).map((r) => r.slice(0, 2).concat(r[iBal] ?? ''));
