@@ -136,9 +136,9 @@ export default function App() {
           <h1>美國總經 → 台股儀表板</h1>
           {import.meta.env.VITE_PREVIEW_LABEL && <span className="small warn">{import.meta.env.VITE_PREVIEW_LABEL}</span>}
           {summary && (
-            <span className={`small num ${dataAgeHours > 36 ? 'warn' : 'muted'}`}>
+            <span className={`small num ${dataAgeHours > 24 ? 'warn' : 'muted'}`}>
               資料更新 {formatTaipeiDateTime(summary.generatedAt)}
-              {dataAgeHours > 36 && '（平日超過 36 小時未更新）'}
+              {dataAgeHours > 24 && '（平日超過 24 小時未更新）'}
             </span>
           )}
         </div>
