@@ -1408,12 +1408,24 @@ th {
   margin-top: 2px;
 }
 
-/* 美期隔夜風向 */
+/* 美期隔夜風向（跨市場對照面板頂端的子區塊） */
+.usf-head {
+  margin-top: 6px;
+}
+.usf-head .regime-title .label {
+  color: var(--text-1);
+  font-weight: 700;
+}
 .usf-warn {
   margin: 0 0 4px;
 }
 .usf-table td.nw {
   white-space: nowrap;
+}
+.usf-sep {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 10px 0 6px;
 }
 
 /* 航運景氣：上窗格還原股價、中窗格 SCFI、下窗格月營收 */

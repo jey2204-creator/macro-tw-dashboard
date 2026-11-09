@@ -2,7 +2,6 @@
 export const JUMP_TARGETS = [
   { id: 'sec-table', label: '指標' },
   { id: 'sec-grp-tw_macro', label: '台灣景氣' },
-  { id: 'sec-usf', label: '美期' },
   { id: 'sec-cm', label: '跨市場' },
   { id: 'sec-pi', label: '政策利率' },
   { id: 'sec-tv', label: '台股估值' },

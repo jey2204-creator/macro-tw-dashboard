@@ -13,7 +13,6 @@ import { PolicyInflationPanel } from './components/PolicyInflationPanel';
 import { RegimePanel } from './components/RegimePanel';
 import { SourceStatus } from './components/SourceStatus';
 import { TwValuationPanel } from './components/TwValuationPanel';
-import { UsFuturesPanel } from './components/UsFuturesPanel';
 import { UsValuationPanel } from './components/UsValuationPanel';
 import { ShippingPanel } from './components/ShippingPanel';
 import { useBacktest, useCalendar, useBreadthStress, useForeignChips, useMarginStress, useSummary, useUsFutures } from './hooks/useData';
@@ -200,9 +199,9 @@ export default function App() {
               nowScore={regime.score}
               now={new Date(nowMs)}
             />
-            <UsFuturesPanel data={usFutures} />
             <CrossMarketPanel
               version={summary.generatedAt}
+              usFutures={usFutures}
               themeKey={themeKey}
               mas={prefs.mas}
               onMas={(mas) => onPrefs({ ...prefs, mas })}

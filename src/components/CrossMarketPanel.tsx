@@ -1,4 +1,6 @@
 import { BtcTwCard } from './BtcTwCard';
+import type { UsfFile } from '../shared/usFutures';
+import { UsFuturesBlock } from './UsFuturesPanel';
 import {
   CandlestickSeries,
   ColorType,
@@ -197,6 +199,8 @@ function sessionText(session: Session, aligned: boolean): string {
 
 interface Props {
   version: string;
+  /** 美期隔夜風向（選用）：放在面板最上面 */
+  usFutures?: UsfFile | null;
   themeKey: string;
   /** 均線週期，與單一指標圖共用同一個設定 */
   mas: MaPeriod[];
@@ -207,7 +211,7 @@ interface Props {
   now?: Date;
 }
 
-export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = null, summary = null, now }: Props) {
+export function CrossMarketPanel({ version, usFutures = null, themeKey, mas, onMas, calendar = null, summary = null, now }: Props) {
   const sectionRef = useRef<HTMLElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -735,6 +739,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         </div>
         {twBars.length > 0 && <span className="small muted num">加權資料 {twBars.at(-1)![0]}</span>}
       </div>
+      <UsFuturesBlock data={usFutures} />
       {latestRho.length > 0 && (
         <p className="score num cm-rho">ρ60：{latestRho.map((r) => `${r.label} ${fmtRho(r.rho60)}`).join('｜')}</p>
       )}

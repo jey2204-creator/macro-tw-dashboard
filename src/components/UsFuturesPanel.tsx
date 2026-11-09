@@ -37,15 +37,19 @@ function Lamp({ color }: { color: string }) {
   return <i className="lamp" style={{ background: `var(${color})` }} aria-hidden="true" />;
 }
 
-export function UsFuturesPanel({ data }: { data: UsfFile | null }) {
+/**
+ * 美期隔夜風向：放在跨市場對照面板最上面的子區塊（不是獨立面板、不進跳轉列）。
+ * 跨市場對照看的是「昨晚美股怎麼收」，這塊補的是「美股收盤後到台股開盤前期貨又動了多少」。
+ */
+export function UsFuturesBlock({ data }: { data: UsfFile | null }) {
   const [open, setOpen] = useState(false);
   const l = data?.latest ?? null;
   const bt = data?.backtest ?? null;
   return (
-    <section id="sec-usf" className="regime ms usf" aria-label="美期隔夜風向">
-      <div className="regime-head">
+    <div className="usf" aria-label="美期隔夜風向">
+      <div className="regime-head usf-head">
         <div className="regime-title">
-          <span className="label">美期隔夜風向（參考，不計分）</span>
+          <span className="label">美期隔夜風向（不計分）</span>
         </div>
         {l && (
           <span className="small muted num">
@@ -58,7 +62,7 @@ export function UsFuturesPanel({ data }: { data: UsfFile | null }) {
       {data && !l && <p className="small warn">尚無小時資料（第一次排程後才會出現）。</p>}
       {l && bt && <Verdict l={l} bt={bt} />}
 
-      <PanelNote>
+      <PanelNote label="ⓘ 美期說明">
         <p className="small muted ms-rule">
           <b>看什麼</b>：台股開盤前只能看到兩件事——昨晚美股現貨怎麼收（已在跨市場對照的費半、NASDAQ 窗格），以及<b>美股收盤後到台北 08:00 這段期貨又動了多少</b>（財報盤後反應、亞洲開盤）。這面板只算後面這一段，叫「隔夜」。
           「台股盤中」是 08:00 → 13:00 期貨的變動，與加權同時段，用來解釋當天為什麼漲跌，不是預測。
@@ -77,12 +81,13 @@ export function UsFuturesPanel({ data }: { data: UsfFile | null }) {
       {bt && bt.n > 0 && (
         <>
           <button type="button" className="linkbtn small" onClick={() => setOpen(!open)} aria-expanded={open}>
-            {open ? '收起' : '展開'}回測表（NQ 隔夜分組、各商品相關、逐年）
+            {open ? '收起' : '展開'}美期回測表（NQ 隔夜分組、各商品相關、逐年）
           </button>
           {open && <Tables bt={bt} />}
         </>
       )}
-    </section>
+      <hr className="usf-sep" />
+    </div>
   );
 }
 
