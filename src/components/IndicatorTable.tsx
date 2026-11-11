@@ -24,7 +24,15 @@ function NextRelease({ o, nowScore, now }: { o: IndicatorOutlook; nowScore: numb
         {r.note && <span className="next-note">{r.note}</span>}
         {r.kind === 'gdpnow' && <span className="next-note">{RELEASE_KINDS.gdpnow.source}</span>}
       </span>
-      {o.pendingData && <span className="next-line warn">上次公布的數據尚未更新進網站，門檻待資料更新後計算</span>}
+      {o.pendingData &&
+        (o.noYoyPeriod ? (
+          <span className="next-line warn">
+            {Number(o.noYoyPeriod.slice(5))} 月無年增率（去年 {Number(o.noYoyPeriod.slice(5))} 月政府關門缺基期，BLS 只公布月增），判斷沿用{' '}
+            {((Number(o.noYoyPeriod.slice(5)) + 10) % 12) + 1} 月
+          </span>
+        ) : (
+          <span className="next-line warn">上次公布的數據尚未更新進網站，門檻待資料更新後計算</span>
+        ))}
       {pieces.length > 0 && (
         <span className="next-line">
           {pieces.map((p, i) => (

@@ -2,6 +2,7 @@ import type { CalendarFile, EventKey } from './calendar';
 import { addDays, daysBetween } from './dates';
 import type { IndicatorDef } from './indicators';
 import { scoreToSignal, SIGNAL_SCORE, type IndicatorEval, type Regime } from './regime';
+import { cpiYoyUnavailable } from './releaseHistory';
 import { lastReleaseFor, nextReleaseFor, RELEASE_KINDS, type ScheduledRelease } from './schedule';
 import { evaluateSignal } from './signals';
 import type { Point } from './timeseries';
@@ -46,6 +47,8 @@ export interface IndicatorOutlook {
   impact: Record<Signal, ScoreImpact>;
   /** 上次公布的資料還沒進網站（例如剛公布、FRED 尚未更新） */
   pendingData: boolean;
+  /** 上次公布那一期（YYYY-MM）沒有年增率（去年同月缺基期），數列不會再更新；否則 null */
+  noYoyPeriod: string | null;
 }
 
 const FORECAST_KEY: Record<string, EventKey> = {
@@ -151,13 +154,15 @@ export function indicatorOutlook(
   const lastDate = pts.at(-1)?.[0] ?? '';
   const prev = lastReleaseFor(def.id, now);
   const pendingData = !!prev?.period && prev.period > lastDate;
+  const noYoyPeriod =
+    pendingData && prev?.kind === 'cpi' && def.transform === 'yoy' && cpiYoyUnavailable(prev.period!) ? prev.period! : null;
 
   const impact = {
     bull: scoreWith(regime, { [def.id]: 'bull' }),
     neutral: scoreWith(regime, { [def.id]: 'neutral' }),
     bear: scoreWith(regime, { [def.id]: 'bear' }),
   };
-  const base = { id: def.id, release, current: ev.signal.signal, impact, pendingData };
+  const base = { id: def.id, release, current: ev.signal.signal, impact, pendingData, noYoyPeriod };
 
   if (release.kind === 'fomc') {
     return { ...base, bands: null, policy: policyScenarios(def, pts, release.date), forecast: null };

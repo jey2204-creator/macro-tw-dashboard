@@ -12,6 +12,18 @@
 
 export type HistKind = 'cpi' | 'jobs' | 'fomc';
 
+/**
+ * BLS 沒有 CPI 指數的月份（2025-10 政府停擺，事後也無法補收）。
+ * 12 個月後的那一期因此沒有年增率：BLS 只公布月增，網站數列也不會有那一期。
+ */
+export const CPI_MISSING_MONTHS: readonly string[] = ['2025-10'];
+
+/** 這一期（YYYY-MM）的 CPI 年增率是否因缺基期而不存在 */
+export function cpiYoyUnavailable(period: string): boolean {
+  const y = Number(period.slice(0, 4)) - 1;
+  return CPI_MISSING_MONTHS.includes(`${y}${period.slice(4, 7)}`);
+}
+
 export interface HistRelease {
   kind: HistKind;
   /** 美東公布日 */
