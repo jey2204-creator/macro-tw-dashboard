@@ -13,6 +13,7 @@ import { PolicyInflationPanel } from './components/PolicyInflationPanel';
 import { RegimePanel } from './components/RegimePanel';
 import { SourceStatus } from './components/SourceStatus';
 import { TwValuationPanel } from './components/TwValuationPanel';
+import { UsRiskPanel } from './components/UsRiskPanel';
 import { UsValuationPanel } from './components/UsValuationPanel';
 import { ShippingPanel } from './components/ShippingPanel';
 import { useBacktest, useCalendar, useBreadthStress, useForeignChips, useMarginStress, useSummary } from './hooks/useData';
@@ -210,6 +211,7 @@ export default function App() {
             <PolicyInflationPanel version={summary.generatedAt} themeKey={themeKey} />
             <TwValuationPanel version={summary.generatedAt} themeKey={themeKey} />
             <UsValuationPanel version={summary.generatedAt} themeKey={themeKey} />
+            <UsRiskPanel version={summary.generatedAt} themeKey={themeKey} />
             <JpValuationPanel version={summary.generatedAt} themeKey={themeKey} />
             <KrValuationPanel version={summary.generatedAt} themeKey={themeKey} />
             <ForeignChipsPanel data={foreignChips} themeKey={themeKey} margin={marginStress} breadth={breadthStress} />
