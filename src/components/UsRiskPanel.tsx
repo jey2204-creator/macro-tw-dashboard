@@ -129,7 +129,7 @@ function findings(bt: RiskBacktest): string[] {
   for (const s of bt.signals) {
     const b = s.on.full;
     if (b.days === 0) {
-      out.push(`${s.label}：${bt.start.slice(0, 4)} 年以來沒有亮過。`);
+      out.push(s.off.full.days === 0 ? `${s.label}：資料不足，沒有回測。` : `${s.label}：${bt.start.slice(0, 4)} 年以來沒有亮過。`);
       continue;
     }
     out.push(
@@ -267,7 +267,7 @@ export function UsRiskPanel({ version, themeKey }: Props) {
       hyS.priceScale().applyOptions(tight);
       dash(hyS, HY_WARN, `警戒 ${HY_WARN}%`);
       dash(hyS, HY_PANIC, `恐慌 ${HY_PANIC}%`);
-      lower = `高收益債利差 %（藍，近 3 年）｜灰細線＝Baa−10Y（全史，獨立刻度，回測用）`;
+      lower = '高收益債利差 %｜灰線＝Baa−10Y（獨立刻度）';
     } else if (mode === 'vol') {
       const s = chart.addSeries(
         BaselineSeries,
@@ -295,7 +295,7 @@ export function UsRiskPanel({ version, themeKey }: Props) {
       const s = chart.addSeries(LineSeries, { color: accent, lineWidth: 2, priceFormat: f2, lastValueVisible: true, priceLineVisible: false }, 1);
       s.setData(pts((r) => r.breadth));
       s.priceScale().applyOptions(tight);
-      lower = 'RSP ÷ SPY × 100（等權重 ÷ 市值加權）｜往下＝漲勢集中在權值股';
+      lower = 'RSP ÷ SPY × 100｜往下＝漲勢集中在權值股';
     } else {
       const h = chart.addSeries(HistogramSeries, { priceFormat: f0, priceScaleId: 'left', priceLineVisible: false, lastValueVisible: false }, 1);
       // 每週一根：畫在這筆週資料開始可用的第一個交易日
@@ -311,14 +311,14 @@ export function UsRiskPanel({ version, themeKey }: Props) {
       const s = chart.addSeries(LineSeries, { color: accent, lineWidth: 2, priceFormat: f2, lastValueVisible: true, priceLineVisible: false }, 1);
       s.setData(pts((r) => (fin(r.netLiq) ? r.netLiq / 1000 : null)));
       s.priceScale().applyOptions({ scaleMargins: { top: 0.08, bottom: 0.3 } });
-      lower = '淨流動性（兆美元，藍）｜柱＝4 週變化，紅＝減少逾 1,000 億';
+      lower = '淨流動性（兆美元）｜柱＝4 週變化，紅＝減逾 1,000 億';
     }
 
     const wm = (paneIndex: number, text: string) => {
       const pane = chart.panes()[paneIndex];
       if (pane) createTextWatermark(pane, { horzAlign: 'left', vertAlign: 'top', lines: [{ text, color: textColor, fontSize: 12, fontFamily, fontStyle: '' }] });
     };
-    wm(0, `S&P 500｜● ${RISK_LABEL[mode]}每一波亮燈的第一天（回測口徑）`);
+    wm(0, `S&P 500｜● ${RISK_LABEL[mode]}每波亮燈首日`);
     wm(1, lower);
 
     const handler = (param: MouseEventParams<Time>) => setHoverTime(typeof param.time === 'string' ? param.time : null);

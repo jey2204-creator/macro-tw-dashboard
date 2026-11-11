@@ -6,7 +6,6 @@ export const JUMP_TARGETS = [
   { id: 'sec-pi', label: '政策利率' },
   { id: 'sec-tv', label: '台股估值' },
   { id: 'sec-uv', label: '美股估值' },
-  { id: 'sec-ur', label: '美股風險' },
   { id: 'sec-jv', label: '日股估值' },
   { id: 'sec-kv', label: '韓股估值' },
   { id: 'sec-fc', label: '外資' },
