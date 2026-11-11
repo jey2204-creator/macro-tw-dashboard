@@ -348,6 +348,52 @@ export const INDICATORS: IndicatorDef[] = [
     market: true, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true,
     note: 'CBOE 以 S&P 500 選擇權計算的 30 日隱含波動率；比黃金乾淨的風險情緒量尺（不混利率）。跨市場對照面板用，不計分',
   },
+  // ── 美股風險溫度面板用（只抓取、不列入指標表與計分；src/shared/usRisk.ts）──
+  // VIX 期限結構＝VIX ÷ VIX3M：近月比 3 個月貴（> 1，逆價差）代表市場在搶短期保護
+  {
+    id: 'vix3m', name: 'VIX3M（S&P 500 三個月隱含波動率）', short: 'VIX3M', category: 'us_equity', frequency: 'daily',
+    subtitle: '三個月隱含波動率｜與 VIX 比看期限結構',
+    unit: 'pt', decimals: 2, sources: [{ provider: 'yahoo', symbol: '^VIX3M' }, { provider: 'fred', symbol: 'VXVCLS' }], transform: 'none',
+    market: true, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true,
+    note: 'CBOE 三個月隱含波動率（2007-12 起）；VIX ÷ VIX3M > 1 為逆價差。美股風險溫度面板用，不計分',
+  },
+  // 市場廣度＝等權重 ÷ 市值加權：指數創高但比值創低，代表只剩少數權值股在撐
+  {
+    id: 'rsp', name: 'Invesco S&P 500 等權重 ETF', short: 'RSP', category: 'us_equity', frequency: 'daily',
+    subtitle: 'S&P 500 等權重｜看漲勢擴不擴散',
+    unit: 'USD', decimals: 2, sources: [{ provider: 'yahoo', symbol: 'RSP' }], transform: 'none',
+    market: true, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true,
+    note: 'S&P 500 成分股等權重（2003 起）；與 SPY 相除看市場廣度。美股風險溫度面板用，不計分',
+  },
+  {
+    id: 'spy', name: 'SPDR S&P 500 ETF', short: 'SPY', category: 'us_equity', frequency: 'daily',
+    subtitle: 'S&P 500 市值加權 ETF',
+    unit: 'USD', decimals: 2, sources: [{ provider: 'yahoo', symbol: 'SPY' }], transform: 'none',
+    market: true, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true,
+    note: 'S&P 500 市值加權 ETF；RSP ÷ SPY 的分母。美股風險溫度面板用，不計分',
+  },
+  // 淨流動性＝Fed 總資產 − 財政部帳戶（TGA）− 隔夜逆回購（RRP）。WALCL、WDTGAL 為週三值（百萬美元，週四公布），RRPONTSYD 為日資料（十億美元）
+  {
+    id: 'fed_assets', name: 'Fed 總資產（週三值，百萬美元）', short: 'Fed總資產', category: 'macro', frequency: 'weekly',
+    subtitle: 'Fed 資產負債表規模',
+    unit: 'USD', decimals: 0, sources: [{ provider: 'fred', symbol: 'WALCL' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 16, hidden: true,
+    note: 'Fed H.4.1 總資產（百萬美元，週三值、週四公布）。美股風險溫度面板的淨流動性用，不計分',
+  },
+  {
+    id: 'tga', name: '美國財政部一般帳戶 TGA（週三值，百萬美元）', short: 'TGA', category: 'macro', frequency: 'weekly',
+    subtitle: '財政部在 Fed 的存款',
+    unit: 'USD', decimals: 0, sources: [{ provider: 'fred', symbol: 'WDTGAL' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 16, hidden: true,
+    note: '財政部一般帳戶餘額（百萬美元）：升高＝把錢從銀行體系抽走。淨流動性用，不計分',
+  },
+  {
+    id: 'rrp', name: 'Fed 隔夜逆回購餘額（十億美元）', short: 'RRP', category: 'macro', frequency: 'daily',
+    subtitle: '貨幣基金停在 Fed 的錢',
+    unit: 'USD', decimals: 1, sources: [{ provider: 'fred', symbol: 'RRPONTSYD' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 10, hidden: true,
+    note: '隔夜逆回購餘額（十億美元）：升高＝資金停泊在 Fed、不在市場。淨流動性用，不計分',
+  },
   // ── 航運景氣（航運面板用，參考、不計分）────────────────
   // SCFI：上海航交所官方免費只公布最新兩期（多期查詢要登入），歷史從 data/scfi-seed.json（2026-01 起）＋每週累積
   {

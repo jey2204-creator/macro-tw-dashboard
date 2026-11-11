@@ -1425,6 +1425,17 @@ th {
   margin: 1px 0;
 }
 
+/* 美股風險溫度：上窗格 S&P 500、下窗格可切換的指標（兩格，比三格面板矮） */
+.ur-host {
+  height: max(340px, 48vh);
+}
+.wide .ur-host {
+  height: 440px;
+}
+.ur .seg + .seg {
+  margin-top: 4px;
+}
+
 /* ===== 均線「全部」切換鈕：全開實心／部分開半透明／全關空心 ===== */
 .ma-chip.ma-all {
   font-weight: 600;
