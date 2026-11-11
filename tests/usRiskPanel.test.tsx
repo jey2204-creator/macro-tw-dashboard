@@ -136,7 +136,7 @@ describe('美股風險溫度面板', () => {
   });
 
   it('缺資料的燈顯示資料不足，其他照常', async () => {
-    const { vix3m: _v, rsp: _r, ...rest } = FILES;
+    const rest = Object.fromEntries(Object.entries(FILES).filter(([id]) => id !== 'vix3m' && id !== 'rsp'));
     stub(rest);
     // 換一個版本：序列快取以 id@version 為鍵，沿用 v1 會拿到前面測試載過的資料
     render(<UsRiskPanel version="v2" themeKey="auto-false-tw" />);
