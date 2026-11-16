@@ -262,6 +262,12 @@ export const INDICATORS: IndicatorDef[] = [
     rule: { kind: 'risingIsBearish', lookback: 20, mode: 'pct', bearAt: 1.5, bullAt: -1.5 },
     weight: 0.5, maxAgeDays: 10, note: '數值上升＝台幣貶值，常反映外資匯出',
   },
+  // 只給「政策利率」面板第四格與「升息 × 台幣」回測拼接 2004 年以前的歷史用（Yahoo TWD=X 從 2004-03 起）；不列入指標表與計分
+  {
+    id: 'usdtwd_legacy', name: '美元／新台幣（FRED，長期歷史）', short: 'USD/TWD舊', category: 'fx', frequency: 'daily',
+    unit: 'TWD', decimals: 3, sources: [{ provider: 'fred', symbol: 'DEXTAUS' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 100_000, note: '', hidden: true,
+  },
   // 亞洲匯率（跨市場對照面板用；只抓取、不列入指標表與計分）
   // 判斷外資撤出要三角確認：當地股跌＋當地貨幣貶＋DXY 沒同步漲；只有貨幣貶、DXY 也漲＝全球美元回流，不是針對該國
   {
