@@ -79,3 +79,10 @@ export function makePctRangeAt(list: BreadthStressFile[], range: RangeKey): (win
     return cached;
   };
 }
+
+/** 基準日的短寫法：與參照日同一年寫 M/D，跨年寫 YYYY/M/D */
+export function baseDateLabel(date: string, ref: string): string {
+  const [y, m, d] = date.split('-');
+  const md = `${Number(m)}/${Number(d)}`;
+  return y === ref.slice(0, 4) ? md : `${y}/${md}`;
+}

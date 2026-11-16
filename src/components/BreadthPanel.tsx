@@ -28,7 +28,8 @@ import { rangeStart, type RangeKey } from '../shared/timeseries';
 import { StatsRow } from './StatsRow';
 import { ChartSync } from '../lib/chartSync';
 import { BREADTH_MARKET, type BreadthMarket } from '../lib/breadthMarket';
-import { makePctRangeAt, rangeBase, timeToDate, type DateWindow, type PctRange } from '../lib/breadthPct';
+import { baseDateLabel, makePctRangeAt, rangeBase, timeToDate, type DateWindow, type PctRange } from '../lib/breadthPct';
+import { BaseLabel } from '../lib/baseLabel';
 
 const RANGES: { k: RangeKey; label: string }[] = [
   { k: '3M', label: '3個月' },
@@ -46,6 +47,8 @@ const MID_MODES: { k: MidMode; label: string }[] = [
   { k: 'ad', label: '漲跌家數' },
 ];
 const MARKER_TEXT: Record<BreadthEventType, string> = { panic: '恐慌', capitulate: '投降', divergence: '背離', stabilized: '止跌' };
+
+const fmtIndex = (v: number) => v.toLocaleString('en-US', { maximumFractionDigits: 0 });
 
 function BreadthChart({
   data,
@@ -116,7 +119,7 @@ function BreadthChart({
       timeScale: { borderColor: grid },
     });
     // 主圖改為「區間起點＝0%」的累計漲跌幅；指數點位看圖例
-    const { base } = rangeBase(data, range);
+    const { from: baseIdx, base } = rangeBase(data, range);
     const pct = (v: number) => (v / base - 1) * 100;
     const price = chart.addSeries(
       LineSeries,
@@ -157,6 +160,19 @@ function BreadthChart({
       color: color[e.type],
       text: MARKER_TEXT[e.type],
     }));
+    // 基準點（0% 從哪一根起算）：空心感的小圓點＋自繪文字（在圓點四周找不壓到折線的最近位置，見 lib/baseLabel.ts）；往左拖曳後才知道 0% 是哪一天
+    const baseRow = data.rows[baseIdx];
+    if (baseRow) {
+      const baseColor = cssVar('--text-2');
+      markers.push({ time: baseRow[0] as Time, position: 'inBar', shape: 'circle', color: baseColor, size: 0.8 });
+      markers.sort((a, b) => (a.time < b.time ? -1 : a.time > b.time ? 1 : 0));
+      price.attachPrimitive(
+        new BaseLabel(
+          { time: baseRow[0] as Time, value: 0, text: `基準 ${baseDateLabel(baseRow[0], data.rows.at(-1)![0])} ${fmtIndex(baseRow[1])}`, color: baseColor },
+          { background: cssVar('--surface'), fontSize: 11, fontFamily: getComputedStyle(document.body).fontFamily },
+        ),
+      );
+    }
     createSeriesMarkers(price, markers);
 
     const up = cssVar('--up');
@@ -218,7 +234,8 @@ function BreadthChart({
 
   const i = hoverIdx ?? data.rows.length - 1;
   const row = data.rows[i];
-  const { base } = rangeBase(data, range);
+  const { from: baseIdx, base } = rangeBase(data, range);
+  const baseRow = data.rows[baseIdx];
   const pctOf = (v: number) => {
     const p = (v / base - 1) * 100;
     return `${p > 0 ? '+' : ''}${p.toFixed(1)}%`;
@@ -227,8 +244,8 @@ function BreadthChart({
     <div className="pricechart ms-chart">
       {row && (
         <div className="legend num" aria-live="off">
-          <span className="muted">{row[0]}</span> {indexLabel} <b>{row[1].toLocaleString('en-US', { maximumFractionDigits: 0 })}</b>
-          <span className="muted">（區間 {pctOf(row[1])}）</span>{' '}
+          <span className="muted">{row[0]}</span> {indexLabel} <b>{fmtIndex(row[1])}</b>
+          <span className="muted">（{baseRow ? `自 ${baseDateLabel(baseRow[0], row[0])} 起` : '區間'} {pctOf(row[1])}）</span>{' '}
           <span className="up">漲停 {row[2]}</span> <span className="down">跌停 {row[3]}</span>（占比 {f2(data.downPct[i])}%）{' '}
           <span className="up">漲 {row[4]}</span> <span className="down">跌 {row[5]}</span>{' '}
           10日漲跌比 {f2(data.adRatio10[i])} {data.panic[i] && <span className="ms-state ms-zone">恐慌日</span>}
@@ -361,7 +378,7 @@ export function BreadthPanel({ twse, otc, themeKey }: { twse: BreadthStressFile 
 
       <PanelNote>
         <p className="small muted ms-rule">
-          圖怎麼看（上市、上櫃兩張圖相同）：上格指數線（右軸＝區間起點起算的漲跌幅 %，兩張圖同一刻度：同一高度＝同一 %，可直接比誰跌得深；往左拖曳時刻度跟著畫面內高低點伸縮；點位看圖例）——▼ 恐慌、■ 投降、● 背離、▲ 止跌；中格
+          圖怎麼看（上市、上櫃兩張圖相同）：上格指數線（右軸＝區間起點起算的漲跌幅 %，兩張圖同一刻度：同一高度＝同一 %，可直接比誰跌得深；往左拖曳時刻度跟著畫面內高低點伸縮；灰色圓點「基準」＝0% 起算的那一根，日期與點位標在旁邊，圖例「自 M/D 起」同一天；點位看圖例）——▼ 恐慌、■ 投降、● 背離、▲ 止跌；中格
           {mid === 'ad' ? '上漲家數（0 以上）／下跌家數（0 以下，恐慌日加深）' : '漲停（0 以上）／跌停（0 以下，恐慌日加深）'}；下格 10 日上漲÷下跌家數（虛線＝1.0 漲跌持平）。
         </p>
         <p className="small muted ms-rule">
