@@ -45,6 +45,9 @@ import { rangeStart, type RangeKey } from '../shared/timeseries';
 import { cssVar, f1, f2, pctCell } from '../lib/stressFormat';
 import { LineLabels } from '../lib/lineLabels';
 import { MarkerLabels } from '../lib/markerLabels';
+import { BaseLabelGroup } from '../lib/baseLabel';
+import { completionBaseLabels } from '../lib/completionBase';
+import { baseDateLabel } from '../lib/breadthPct';
 import { StatsRow } from './StatsRow';
 
 const RANGES: { k: RangeKey; label: string }[] = [
@@ -212,6 +215,18 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
     ddLine.createPriceLine({ price: 0, color: lineColor, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false, title: '' });
     ddLine.createPriceLine({ price: -COMPLETION_MIN_DD, color: lineColor, lineWidth: 1, lineStyle: LineStyle.Dotted, axisLabelVisible: false, title: '' });
     ddLine.priceScale().applyOptions({ scaleMargins: { top: 0.08, bottom: 0.08 } });
+    // 基準點（最新一天的 0% 從哪一根起算）：指數高點（黑）與融資餘額高點（藍）各一個圓點＋日期，畫在 0% 線上；
+    // 兩個高點通常不同天。高點是近 120 日滾動的，只標最新一天用的那一組
+    const baseLabels = completionBaseLabels(completionAt(data.rows, data.rows.length - 1), data.rows.at(-1)?.[0] ?? '', cssVar('--text-1'), cssVar('--accent'));
+    if (baseLabels.length) {
+      ddLine.attachPrimitive(
+        new BaseLabelGroup(
+          baseLabels,
+          { background: cssVar('--surface'), fontSize: 10, fontFamily: getComputedStyle(document.body).fontFamily },
+          { avoid: [ddLine, cutLine], dot: true, spread: 160, minBarSpacing: 2 },
+        ),
+      );
+    }
     // 借券賣出（上市，萬張）：第 4 格，餘額折線 ＋ 日增減柱（增加＝空方加碼，用空方色）
     const sbl = data.sbl ?? [];
     let sblLine: ReturnType<typeof chart.addSeries> | null = null;
@@ -328,6 +343,9 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
   const sblByDate = useMemo(() => new Map((data.sbl ?? []).map((r) => [r[0], r])), [data]);
   const sblRow = row ? sblByDate.get(row[0]) : undefined;
   const comp = completion[i];
+  // 滑到哪一天就用那一天的基準（高點是滾動的）
+  const compAt = row ? completionAt(data.rows, i) : null;
+  const since = (d: string | null | undefined) => (d && row ? ` 自 ${baseDateLabel(d, row[0])}` : '');
   return (
     <div className="pricechart ms-chart">
       {row && (
@@ -361,7 +379,9 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
             <>
               {' '}
               完成度 <b>{comp[3] === null ? '—' : comp[3].toFixed(2)}</b>
-              <span className="muted">（指數 {f1(comp[1])}%／融資 {comp[2] === null ? '—' : `${f1(comp[2])}%`}）</span>
+              <span className="muted">
+                （指數 {f1(comp[1])}%{since(compAt?.peakDate)}／融資 {comp[2] === null ? '—' : `${f1(comp[2])}%${since(compAt?.balPeakDate)}`}）
+              </span>
             </>
           )}
         </div>
@@ -455,7 +475,7 @@ export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile |
       <PanelNote>
         <p className="small muted ms-rule">
           圖怎麼看：上格加權指數——K 棒上方 ▼ 跌破 150／140、■ 斷頭潮；下方 ■ 去槓桿、▲ 清洗完成、▲ 追上（藍，完成度 ≥ 1）、● 限空令／國安基金。中格維持率（線，警戒時 Y 軸含 140 線；門檻線在畫面外時不標）＋融資增減（下方柱，億，紅增綠減）。
-          第三格去槓桿完成度：指數自高點跌幅（黑）與融資餘額自高點減幅（藍）兩條 % 線，藍線追上黑線＝完成度 ≥ 1；虛線 0、點線 −{COMPLETION_MIN_DD}%。
+          第三格去槓桿完成度：指數自高點跌幅（黑）與融資餘額自高點減幅（藍）兩條 % 線，藍線追上黑線＝完成度 ≥ 1；虛線 0、點線 −{COMPLETION_MIN_DD}%。0% 線上的圓點＝最新一天的基準點：黑「指數高」＝近 {COMPLETION_LOOKBACK} 日加權高點、藍「融資高」＝融資餘額高點（兩者通常不同天；高點是滾動的，圖上只標最新一天用的，滑到別天時上方數字列的「自 M/D」會跟著換；1 年以上的長視角只留圓點不標字）。
           {data.sbl?.length ? '下格借券賣出餘額（粗線，萬張；追空極端段紅、回補極端段綠）＋已借未賣（藍虛線，獨立刻度，現值標在線尾）＋日增減（柱，增加＝空方加碼）；K 棒上方 ● 追空（紅）、下方 ● 回補（綠）。' : ''}
         </p>
         <p className="small muted ms-rule">
