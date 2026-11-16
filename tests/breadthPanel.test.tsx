@@ -21,7 +21,7 @@ vi.mock('lightweight-charts', () => {
     removeSeries: () => {},
     panes: () => [{ setStretchFactor: () => {} }, { setStretchFactor: () => {} }, { setStretchFactor: () => {} }],
     priceScale: () => ({ applyOptions: () => {} }),
-    timeScale: () => ({ setVisibleLogicalRange: () => {}, width: () => 0, applyOptions: () => {}, subscribeVisibleLogicalRangeChange: () => {}, unsubscribeVisibleLogicalRangeChange: () => {}, subscribeVisibleTimeRangeChange: () => {}, unsubscribeVisibleTimeRangeChange: () => {} }),
+    timeScale: () => ({ getVisibleRange: () => null, setVisibleLogicalRange: () => {}, width: () => 0, applyOptions: () => {}, subscribeVisibleLogicalRangeChange: () => {}, unsubscribeVisibleLogicalRangeChange: () => {}, subscribeVisibleTimeRangeChange: () => {}, unsubscribeVisibleTimeRangeChange: () => {} }),
     subscribeCrosshairMove: () => {},
     unsubscribeCrosshairMove: () => {},
     applyOptions: () => {},
@@ -46,6 +46,7 @@ vi.mock('../src/lib/chartInteraction', () => ({
 }));
 
 import { BreadthPanel } from '../src/components/BreadthPanel';
+import { sharedPctRange, timeToDate } from '../src/lib/breadthPct';
 
 const rows: BreadthRow[] = Array.from({ length: 30 }, (_, i) => {
   const d = new Date(Date.UTC(2026, 0, 5 + i));
@@ -100,5 +101,30 @@ describe('BreadthPanel（上市＋上櫃同一模組）', () => {
   it('沒有資料時不渲染', () => {
     const { container } = render(<BreadthPanel twse={null} otc={null} themeKey="light" />);
     expect(container.innerHTML).toBe('');
+  });
+
+  it('百分比 Y 軸：預設取區間起點到最新；往左拖曳時改取畫面內兩市高低點聯集（基準不變）', () => {
+    // 上市：100 → 75 → 125（區間 ALL，基準＝第一根 100）；上櫃：100 → 50 → 150
+    const mk = (closes: number[]) => ({ rows: closes.map((c, i) => [`2026-01-${String(i + 1).padStart(2, '0')}`, c]) }) as unknown as typeof data;
+    const a = mk([100, 75, 125]);
+    const b = mk([100, 50, 150]);
+    expect(sharedPctRange([a], 'ALL')).toBeNull(); // 只有一個市場：照常自動縮放
+    expect(sharedPctRange([a, b], 'ALL')).toEqual({ min: -50, max: 50 });
+    // 畫面只剩前兩根：不再被第三根的 +50% 撐開
+    expect(sharedPctRange([a, b], 'ALL', { from: '2026-01-01', to: '2026-01-02' })).toEqual({ min: -50, max: 0 });
+    // 畫面只剩最後一根：兩市 +25%／+50%，0% 線可以在畫面外
+    expect(sharedPctRange([a, b], 'ALL', { from: '2026-01-03', to: '2026-01-03' })).toEqual({ min: 25, max: 50 });
+    // 畫面內沒有 K 棒：交還自動縮放
+    expect(sharedPctRange([a, b], 'ALL', { from: '2025-01-01', to: '2025-01-02' })).toBeNull();
+    // 幾乎水平：至少留 1 個百分點
+    const flat = mk([100, 100, 100]);
+    expect(sharedPctRange([flat, flat], 'ALL', { from: '2026-01-01', to: '2026-01-03' })).toEqual({ min: -0.5, max: 0.5 });
+  });
+
+  it('timeToDate：字串／BusinessDay／秒數都轉成 YYYY-MM-DD', () => {
+    expect(timeToDate('2026-11-16')).toBe('2026-11-16');
+    expect(timeToDate({ year: 2026, month: 3, day: 5 })).toBe('2026-03-05');
+    expect(timeToDate(Date.UTC(2026, 10, 16) / 1000)).toBe('2026-11-16');
+    expect(timeToDate(null)).toBeNull();
   });
 });
