@@ -33,6 +33,19 @@ export function spliceCloses(primary: readonly Bar[], legacy: readonly Bar[] = [
   return out;
 }
 
+/**
+ * USD/TWD：以 FRED（DEXTAUS，1983-10 起，紐約中午買入匯率）為主，Yahoo（TWD=X）只接 FRED 最後一天之後的部分。
+ * Yahoo 的 TWD=X 在 2011～2016 年每天 ±3～4% 來回跳（另有 2011-10-25＝1.80、2014-12-31＝3.67 兩筆錯價），
+ * 不能拿來算 3 個月變化；FRED 乾淨但晚約一週，所以最近幾天用 Yahoo 補。沒有 FRED 資料時退回全用 Yahoo。
+ */
+export function spliceUsdTwd(fred: readonly Bar[], yahoo: readonly Bar[]): Point[] {
+  if (!fred.length) return yahoo.map((b) => [b[0], b[4]]);
+  const last = fred.at(-1)![0];
+  const out: Point[] = fred.map((b) => [b[0], b[4]]);
+  for (const b of yahoo) if (b[0] > last) out.push([b[0], b[4]]);
+  return out;
+}
+
 const pctChange = (pts: readonly Point[], from: string, to: string): number | null => {
   const a = valueAtOrBefore(pts, from);
   const b = valueAtOrBefore(pts, to);

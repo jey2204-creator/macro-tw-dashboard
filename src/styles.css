@@ -1208,6 +1208,19 @@ th {
 .wide .pi-host {
   height: 440px;
 }
+/* 開美元／台幣窗格時加高，讓原本三格大致維持原來的高度 */
+.pi-host.pi-host-3 {
+  height: max(420px, 58vh);
+}
+.pi-host.pi-host-4 {
+  height: max(500px, 66vh);
+}
+.wide .pi-host.pi-host-3 {
+  height: 500px;
+}
+.wide .pi-host.pi-host-4 {
+  height: 560px;
+}
 .pi-state {
   margin: 2px 0 0;
 }

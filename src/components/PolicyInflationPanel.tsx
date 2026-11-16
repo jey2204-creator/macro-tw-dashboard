@@ -33,6 +33,8 @@ import {
   phaseStats,
 } from '../shared/fedEquity';
 import { assessCuts, readingsAt, verdictStats } from '../shared/cutRegime';
+import { baseDateLabel } from '../lib/breadthPct';
+import { CRASH_PCT, FX_GROUP_TEXT, FX_LOOKBACK_MONTHS, fxPctLine, fxSamples, fxStats, hikeCycles, spliceCloses, spliceUsdTwd, type FxStat } from '../shared/fedFx';
 import { daysBetween } from '../shared/dates';
 import {
   FED_TARGET,
@@ -60,6 +62,11 @@ const RANGES: { k: RangeKey; label: string }[] = [
 const PANE_STRETCH = [0.6, 0.4] as const;
 /** 開 S&P 窗格時三格比例 */
 const PANE_STRETCH_SPX = [0.42, 0.25, 0.33] as const;
+/** 再開美元／台幣窗格（第四格）；沒開指數時美元／台幣排第三格 */
+const PANE_STRETCH_FX = [0.45, 0.27, 0.28] as const;
+const PANE_STRETCH_SPX_FX = [0.33, 0.18, 0.25, 0.24] as const;
+/** 第四格兩條線的顏色（美元指數橘、USD/TWD 主色） */
+const FX_COLOR = { dxy: '--ma60', twd: '--accent' } as const;
 
 /** 可切換的副線（核心 CPI 固定顯示） */
 const EXTRA_LINES = [
@@ -81,9 +88,14 @@ type IndexId = (typeof INDICES)[number]['id'];
 type IndexPick = IndexId | 'off';
 const INDEX_PICKS: readonly IndexPick[] = ['spx', 'nasdaq', 'sox', 'taiex', 'off'];
 
-const IDS = ['fed', 'fed_target_legacy', 'core_cpi', 'cpi', 'core_pce', 'us2y', 'unrate', 'baa10y', 'hy_oas', ...INDICES.map((i) => i.id)];
+const IDS = ['fed', 'fed_target_legacy', 'core_cpi', 'cpi', 'core_pce', 'us2y', 'unrate', 'baa10y', 'hy_oas', 'dxy', 'usdtwd', 'usdtwd_legacy', ...INDICES.map((i) => i.id)];
+/** FRED 的 USD/TWD（長期、乾淨）抓不到時退回 Yahoo，照常顯示（回測只剩 2004 起且較吵），不報載入失敗 */
+const OPTIONAL_IDS = new Set(['usdtwd_legacy']);
 
 const NO_BARS: Bar[] = [];
+const signed = (v: number | null | undefined, digits = 1) =>
+  v === null || v === undefined || !Number.isFinite(v) ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(digits)}%`;
+const FX_ROW_TEXT: Record<FxStat['group'], string> = { ...FX_GROUP_TEXT, all: '全部' };
 
 function buildEquity(fed: readonly Point[], bars: readonly Bar[], unrate: readonly Point[]) {
   const segments = phaseSegments(fed, bars.map((b) => b[0]));
@@ -139,13 +151,15 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
     us2y: loadPref('pi-2y', ['1', '0'] as const, '1') === '1',
   }));
   const [indexPick, setIndexPick] = useState<IndexPick>(() => loadPref<IndexPick>('pi-idx', INDEX_PICKS, 'spx'));
+  const [showFx, setShowFx] = useState(() => loadPref('pi-fx', ['1', '0'] as const, '0') === '1');
   const [showEvents, setShowEvents] = useState(false);
+  const [showCycles, setShowCycles] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const [hoverTime, setHoverTime] = useState<string | null>(null);
   const [chartGen, setChartGen] = useState(0);
 
   const files = useSeriesMap(near ? IDS : [], version);
-  const { fed, coreCpi, cpi, corePce, us2y, unrate, credit, hy, indexBars } = useMemo(() => {
+  const { fed, coreCpi, cpi, corePce, us2y, unrate, credit, hy, dxy, twd, indexBars } = useMemo(() => {
     const ready = (id: string) => (files[id]?.status === 'ready' ? files[id]!.data.data : null);
     const upper = ready('fed');
     return {
@@ -157,6 +171,8 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       unrate: (ready('unrate') ?? []).map((b) => [b[0], b[4]] as Point),
       credit: (ready('baa10y') ?? []).map((b) => [b[0], b[4]] as Point),
       hy: (ready('hy_oas') ?? []).map((b) => [b[0], b[4]] as Point),
+      dxy: spliceCloses(ready('dxy') ?? []),
+      twd: spliceUsdTwd(ready('usdtwd_legacy') ?? [], ready('usdtwd') ?? []),
       indexBars: Object.fromEntries(INDICES.map((i) => [i.id, ready(i.id) ?? []])) as Record<IndexId, Bar[]>,
     };
   }, [files]);
@@ -175,6 +191,41 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
     const rows = assessCuts(inp, spxBars, indexBars.taiex);
     return { now: readingsAt(inp, spxBars.at(-1)![0]), rows, stats: verdictStats(rows), hasTaiex: indexBars.taiex.length > 0 };
   }, [fed, unrate, credit, hy, coreCpi, indexBars]);
+  // 升息 × 美元／台幣 vs 加權：每個升息循環期間各走多少＋每月底樣本依台幣 3 個月變化分組
+  const fxBt = useMemo(() => {
+    const taiex = indexBars.taiex;
+    if (!fed.length || !taiex.length || !twd.length) return null;
+    const samples = fxSamples(fed, taiex, twd);
+    const lastDate = taiex.at(-1)![0];
+    const eq = equities?.taiex ?? null;
+    const a = valueAtOrBefore(twd, rangeStart(lastDate, '3M')!);
+    const b = valueAtOrBefore(twd, lastDate);
+    const twd3m = a !== null && b !== null ? (b / a - 1) * 100 : null;
+    return {
+      cycles: hikeCycles(fed, taiex, dxy, twd),
+      stats: fxStats(samples),
+      from: samples[0]?.date.slice(0, 4) ?? '—',
+      now: { date: lastDate, hike: eq ? phaseAt(eq.segments, lastDate) === 'hike' : false, twd3m },
+    };
+  }, [fed, indexBars, dxy, twd, equities]);
+  // 第四格：DXY、USD/TWD 自區間起點起的累計 %（同一刻度）
+  const fxLines = useMemo(() => {
+    const last = fed.at(-1)?.[0];
+    if (!showFx || !last || !dxy.length || !twd.length) return null;
+    const d = fxPctLine(dxy, last, range);
+    const t = fxPctLine(twd, last, range);
+    // 「全部」時兩序列起點不同（DXY 1971、台幣 1983）→ 以較晚的起點為共同基準
+    if (d && t && d.baseDate !== t.baseDate) {
+      const base = d.baseDate > t.baseDate ? d.baseDate : t.baseDate;
+      const re = (pts: readonly Point[]) => {
+        const i = pts.findIndex((p) => p[0] >= base);
+        const b0 = pts[Math.max(0, i)]!;
+        return { baseDate: b0[0], base: b0[1], points: pts.map(([x, v]) => [x, (v / b0[1] - 1) * 100] as Point), last: (pts.at(-1)![1] / b0[1] - 1) * 100 };
+      };
+      return { dxy: re(dxy), twd: re(twd) };
+    }
+    return d && t ? { dxy: d, twd: t } : null;
+  }, [showFx, fed, dxy, twd, range]);
   const indexId: IndexId | null = indexPick === 'off' ? null : indexPick;
   const equity = indexId && equities ? equities[indexId] : null;
   const spx = indexId ? indexBars[indexId] : NO_BARS;
@@ -192,6 +243,10 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
     setIndexPick(p);
     savePref('pi-idx', p);
   };
+  const pickFx = (on: boolean) => {
+    setShowFx(on);
+    savePref('pi-fx', on ? '1' : '0');
+  };
   const toggleExtra = (id: ExtraId) => {
     const next = { ...extras, [id]: !extras[id] };
     setExtras(next);
@@ -199,6 +254,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
   };
 
   const loaded = fed.length > 0 && coreCpi.length > 0;
+  const hasFx = fxLines !== null;
 
   useEffect(() => {
     const host = hostRef.current;
@@ -315,10 +371,33 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
         2,
       );
       s.setData(spx.map((b) => ({ time: b[0] as Time, value: b[4], color: colorOf(b[0]) })));
-      // priceScale(...).applyOptions 會把選項併進圖表層級預設，之後建立的窗格都繼承 → 所有窗格建好後再逐一設定
+    }
+
+    // 第四格（沒開指數時排第三格）：DXY 與 USD/TWD 自區間起點起的累計 %，同一刻度；0% 虛線＝起點
+    const fxPane = showSpx ? 3 : 2;
+    if (fxLines) {
+      const fxFormat = { type: 'custom' as const, minMove: 0.1, formatter: (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%` };
+      const dxyS = chart.addSeries(
+        LineSeries,
+        { color: cssVar(FX_COLOR.dxy), lineWidth: 2, priceFormat: fxFormat, lastValueVisible: false, priceLineVisible: false },
+        fxPane,
+      );
+      dxyS.setData(toData(fxLines.dxy.points));
+      const twdS = chart.addSeries(
+        LineSeries,
+        { color: cssVar(FX_COLOR.twd), lineWidth: 2, priceFormat: fxFormat, lastValueVisible: false, priceLineVisible: false, autoscaleInfoProvider: includeRange(0, 0) },
+        fxPane,
+      );
+      twdS.setData(toData(fxLines.twd.points));
+      twdS.createPriceLine({ price: 0, color: textColor, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false });
+    }
+    // priceScale(...).applyOptions 會把選項併進圖表層級預設，之後建立的窗格都繼承 → 所有窗格建好後再逐一設定
+    if (showSpx || fxLines) {
       chart.priceScale('right', 0).applyOptions({ mode: PriceScaleMode.Normal });
       chart.priceScale('right', 1).applyOptions({ mode: PriceScaleMode.Normal });
-      chart.priceScale('right', 2).applyOptions({ mode: PriceScaleMode.Logarithmic });
+      if (showSpx) chart.priceScale('right', 2).applyOptions({ mode: PriceScaleMode.Logarithmic });
+      // 上方留給窗格標題、下方留給時間軸上緣，線不貼邊
+      if (fxLines) chart.priceScale('right', fxPane).applyOptions({ mode: PriceScaleMode.Normal, scaleMargins: { top: 0.22, bottom: 0.1 } });
     }
 
     const wm = (paneIndex: number, text: string) => {
@@ -328,6 +407,8 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
     wm(0, `Fed 利率 vs 通膨年增（%）｜虛線 2% 目標`);
     wm(1, `實質＝Fed − 核心CPI（pp）｜虛線 +${REAL_RATE_TIGHT} 緊縮、0 中性`);
     if (showSpx) wm(2, `${indexLabel}（對數）｜線色＝Fed 階段（見圖例、下表）`);
+    // 文字太長圖表庫會整行縮小到看不清楚 → 只留一句，基準日與數值看上方圖例
+    if (fxLines) wm(fxPane, '美元／台幣 累計 %｜藍線往上＝台幣貶');
 
     const handler = (param: MouseEventParams<Time>) => setHoverTime(typeof param.time === 'string' ? param.time : null);
     chart.subscribeCrosshairMove(handler);
@@ -339,7 +420,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       chart.remove();
       chartRef.current = null;
     };
-  }, [loaded, fed, coreCpi, cpi, corePce, us2y, spx, equity, showSpx, indexLabel, real, extras, themeKey]);
+  }, [loaded, fed, coreCpi, cpi, corePce, us2y, spx, equity, showSpx, indexLabel, real, extras, fxLines, themeKey]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -348,14 +429,14 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
     const start = rangeStart(last[0], range);
     const apply = () => {
       resetPriceScales(chart);
-      resetPaneStretch(chart, showSpx ? PANE_STRETCH_SPX : PANE_STRETCH);
+      resetPaneStretch(chart, showSpx ? (hasFx ? PANE_STRETCH_SPX_FX : PANE_STRETCH_SPX) : hasFx ? PANE_STRETCH_FX : PANE_STRETCH);
       if (!start || start <= fed[0]![0]) chart.timeScale().fitContent();
       else chart.timeScale().setVisibleRange({ from: start as Time, to: last[0] as Time });
     };
     apply();
     const raf = requestAnimationFrame(apply);
     return () => cancelAnimationFrame(raf);
-  }, [chartGen, range, resetKey, fed, showSpx]);
+  }, [chartGen, range, resetKey, fed, showSpx, hasFx]);
 
   // 圖例：十字線所在日期（沒有時顯示最新）
   const legend = useMemo(() => {
@@ -382,14 +463,19 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       phase,
       move,
       sinceMove: move ? daysBetween(move.date, date) : null,
+      fx: fxLines
+        ? { base: fxLines.twd.baseDate, dxy: valueAtOrBefore(fxLines.dxy.points, date), twd: valueAtOrBefore(fxLines.twd.points, date), rate: valueAtOrBefore(twd, date) }
+        : null,
     };
-  }, [loaded, hoverTime, fed, coreCpi, cpi, corePce, us2y, spx, equity, showSpx, extras]);
+  }, [loaded, hoverTime, fed, coreCpi, cpi, corePce, us2y, spx, equity, showSpx, extras, fxLines, twd]);
   const currentPhase = equity ? phaseAt(equity.segments, spx.at(-1)![0]) : null;
   // 2Y − Fed：低於 −0.25pp 市場押降息、高於 +0.25pp 押升息（約一碼）
   const spreadText = (v: number | null) =>
     v === null ? '' : v <= -0.25 ? '市場押降息' : v >= 0.25 ? '市場押升息' : '市場押不變';
 
-  const failed = IDS.flatMap((id) => (files[id]?.status === 'error' ? [`${id}：${(files[id] as { error: string }).error}`] : []));
+  const failed = IDS.flatMap((id) =>
+    files[id]?.status === 'error' && !OPTIONAL_IDS.has(id) ? [`${id}：${(files[id] as { error: string }).error}`] : [],
+  );
 
   return (
     <section ref={sectionRef} id="sec-pi" className="regime ms pi" aria-label="政策利率與通膨">
@@ -425,6 +511,8 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
         第三格指數（S&P 500／NASDAQ／費半／加權，一次看一個）的線色是 Fed 階段（升息期／高原／降息期／谷底；超過 6 個月沒動作算暫停）。1982 年起四個階段 S&P 年化都是正的，階段本身不是方向訊號；差別在「為什麼降息」：降息後一年內失業率觸發 Sahm 規則的衰退式降息（2001、2007）之後一年 S&P 是負的，保險式降息（1995、1998、2019、2024）則續漲——分類器是失業率和 2Y−Fed，不是 Fed 動作本身。
         「降息性質判定」用降息當天看得到的資料判：就業（Sahm 值 ≥ 0.5）與信用（Baa 公司債 − 美債 10Y ≥ 3.5pp）兩個都到才叫衰退式、只到一個是衰退警訊（例如 2024-09 只有就業到），通膨（核心 CPI 距 2% 超過 1pp）另外標「未解」＝停滯型風險；門檻事先定、不依結果調整，利差單獨看太吵（2011、2016 到過 3.4pp 沒衰退）。高收益債利差 FRED 只給近 3 年，只顯示不進規則。
         四個指數高度連動（費半對加權 ρ60 約 0.66），四欄同向不是四個證據；費半 1994、加權 1997 起，循環次數只有 S&P 的一半，加權對 Fed 的傳導還隔著台幣與外資。
+        第四格「美元＋台幣」把 DXY 與 USD/TWD 換成自區間起點起的累計 %（同一刻度，USD/TWD 往上＝台幣貶）；第三格切到加權就能三者一起看。
+        下方「升息 × 台幣」表：升息期裡台幣 3 個月貶 2% 以上的月份，加權之後 3 個月平均較差、跌逾 10% 的比例約是升息期其他月份的兩倍，但一年後沒有比較差；非升息期台幣貶反而常是恐慌尾聲。壞的月份集中在 1997、2000、2018、2022 四次，2004～2006、2016、2023 台幣貶之後照漲——是風險提示，不是崩盤訊號，不計分。USD/TWD 用 FRED 日資料（1983 起），最近幾天以 Yahoo 補。
         這張圖與「Fed 120 天」「核心CPI ±0.2pp」規則重疊，只用來解釋 FOMC 為什麼那樣做，不計分。2008 年前 Fed 為單一目標利率。
       </p>
       </PanelNote>
@@ -449,6 +537,15 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
           </button>
         ))}
         <button type="button" className="ma-chip" aria-pressed={indexPick === 'off'} onClick={() => pickIndex('off')}>
+          關
+        </button>
+      </div>
+      <div className="cp-mas" role="group" aria-label="第四格美元與台幣">
+        <span className="small muted">第四格</span>
+        <button type="button" className="ma-chip" aria-pressed={showFx} onClick={() => pickFx(true)}>
+          美元＋台幣
+        </button>
+        <button type="button" className="ma-chip" aria-pressed={!showFx} aria-label="關閉第四格" onClick={() => pickFx(false)}>
           關
         </button>
       </div>
@@ -505,9 +602,20 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
                   )}
                 </div>
               )}
+              {legend.fx && (
+                <div>
+                  <span className="muted">自 {baseDateLabel(legend.fx.base, legend.date)} 起</span>{' '}
+                  <i className="swatch" style={{ background: `var(${FX_COLOR.dxy})` }} aria-hidden="true" /> DXY <b>{signed(legend.fx.dxy)}</b> ｜{' '}
+                  <i className="swatch" style={{ background: `var(${FX_COLOR.twd})` }} aria-hidden="true" /> USD/TWD <b>{signed(legend.fx.twd)}</b>
+                  {legend.fx.rate !== null && <span className="muted">（{legend.fx.rate.toFixed(2)}）</span>}
+                  {legend.fx.twd !== null && (
+                    <span className="muted"> ｜ 台幣{legend.fx.twd > 0 ? '貶' : legend.fx.twd < 0 ? '升' : '持平'}</span>
+                  )}
+                </div>
+              )}
             </div>
           )}
-          <div ref={hostRef} className="chart-host pi-host" />
+          <div ref={hostRef} className={`chart-host pi-host${hasFx ? (showSpx ? ' pi-host-4' : ' pi-host-3') : ''}`} />
         </div>
       )}
 
@@ -632,6 +740,115 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
           )}
         </>
       )}
+      {fxBt && (
+        <>
+          <div className="table-wrap">
+            <table className="bt-table num">
+              <caption className="small muted">
+                升息 × 台幣 vs 加權（{fxBt.from} 起，每月最後一個交易日取樣）：依當時 USD/TWD 過去 {FX_LOOKBACK_MONTHS} 個月變化分組，看加權之後 3、12 個月平均報酬（3 個月上漲比例）、3
+                個月內最深跌幅平均（曾跌逾 {-CRASH_PCT}% 的比例）。
+                {fxBt.now.twd3m !== null && (
+                  <>
+                    {' '}目前（{fxBt.now.date}）：{fxBt.now.hike ? '升息期' : '非升息期'}、USD/TWD 近 3 個月 <b>{signed(fxBt.now.twd3m)}</b>
+                  </>
+                )}
+              </caption>
+              <thead>
+                <tr>
+                  <th>台幣 3 個月</th>
+                  <th className="r">月數</th>
+                  <th className="r">之後 3月</th>
+                  <th className="r">之後 12月</th>
+                  <th className="r">3月內最深</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(['hike', 'other'] as const).map((k) => (
+                  <FxRows key={k} title={k === 'hike' ? '升息期' : '其他時期'} rows={fxBt.stats[k]} current={fxBt.now.hike === (k === 'hike') ? fxBt.now.twd3m : null} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <button type="button" className="linkbtn small" onClick={() => setShowCycles(!showCycles)} aria-expanded={showCycles}>
+            {showCycles ? '收起' : '展開'}歷次升息循環：美元、台幣、加權各走多少（{fxBt.cycles.length}）
+          </button>
+          {showCycles && (
+            <div className="table-wrap">
+              <table className="bt-table num">
+                <caption className="small muted">
+                  期間＝第一次升息日 → 最後一次升息後 6 個月（升息期結束）；最大跌幅＝期間內加權自高點的最深收盤跌幅
+                </caption>
+                <thead>
+                  <tr>
+                    <th>升息循環</th>
+                    <th className="r">升息</th>
+                    <th className="r">DXY</th>
+                    <th className="r">USD/TWD</th>
+                    <th className="r">加權</th>
+                    <th className="r">最大跌幅</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fxBt.cycles.map((c) => (
+                    <tr key={c.from} className={c.ongoing ? 'hl' : ''}>
+                      <td>
+                        {c.from.slice(0, 7)}
+                        <br />
+                        <span className="small muted">～{c.ongoing ? '進行中' : c.to.slice(0, 7)}</span>
+                      </td>
+                      <td className="r">
+                        +{c.bp}bp
+                        <br />
+                        <span className="small muted">{c.hikes} 次</span>
+                      </td>
+                      <td className="r">{pctCell(c.dxy)}</td>
+                      <td className="r">
+                        {pctCell(c.twd)}
+                        {c.twd !== null && (
+                          <>
+                            <br />
+                            <span className="small muted">{c.twd >= 2 ? '貶' : c.twd <= -2 ? '升' : '持平'}</span>
+                          </>
+                        )}
+                      </td>
+                      <td className="r">{pctCell(c.index)}</td>
+                      <td className="r">{pctCell(c.drawdown)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
     </section>
+  );
+}
+
+function FxRows({ title, rows, current }: { title: string; rows: readonly FxStat[]; current: number | null }) {
+  const cur = current === null ? null : current >= 2 ? 'weak' : current <= -2 ? 'strong' : 'flat';
+  return (
+    <>
+      <tr className="grp">
+        <td colSpan={5}>{title}</td>
+      </tr>
+      {rows.map((r) => (
+        <tr key={r.group} className={r.group === cur ? 'hl' : ''}>
+          <td>{FX_ROW_TEXT[r.group]}</td>
+          <td className="r">{r.n}</td>
+          <td className="r">
+            {pctCell(r.avg3m)}
+            <br />
+            <span className="small muted">{r.up3m === null ? '—' : `${r.up3m.toFixed(0)}%`}</span>
+          </td>
+          <td className="r">{pctCell(r.avg12m)}</td>
+          <td className="r">
+            {pctCell(r.avgWorst3m)}
+            <br />
+            <span className="small muted">{r.crash3m === null ? '—' : `${r.crash3m.toFixed(0)}%`}</span>
+          </td>
+        </tr>
+      ))}
+    </>
   );
 }

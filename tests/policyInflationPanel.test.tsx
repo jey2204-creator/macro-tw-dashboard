@@ -182,6 +182,37 @@ describe('政策利率 vs 通膨面板', () => {
     expect(document.querySelector('.cm-legend')!.textContent).not.toMatch(/美債2Y/);
   });
 
+  it('第四格「美元＋台幣」預設關；打開後多一格兩條 % 線、圖例與回測表，選擇記住', async () => {
+    // 2025-07 起每月一根：台幣 3 個月貶 3.3%（30 → 31）
+    FILES.dxy = series('dxy', [flat('2025-07-15', 100), flat('2025-10-15', 102)]);
+    FILES.usdtwd = series('usdtwd', [flat('2025-07-15', 30), flat('2025-10-15', 31)]);
+    // FRED 為主（到 2025-07-15＝30），Yahoo 只補之後的 2025-10-15＝31
+    FILES.usdtwd_legacy = series('usdtwd_legacy', [flat('2025-01-02', 33), flat('2025-07-15', 30)]);
+    try {
+      render(<PolicyInflationPanel version="v1" themeKey="auto-false-tw" />);
+      await waitFor(() => expect(chartLog.series.length).toBe(6));
+      expect(screen.getByRole('button', { name: '關閉第四格' }).getAttribute('aria-pressed')).toBe('true');
+      // 回測表不必開第四格就有：目前讀數寫在表頭說明
+      await waitFor(() => expect(document.body.textContent).toMatch(/升息 × 台幣 vs 加權/));
+      fireEvent.click(screen.getByRole('button', { name: '美元＋台幣' }));
+      await waitFor(() => expect(chartLog.series.length).toBe(14));
+      expect(chartLog.series.slice(-2)).toEqual([
+        { pane: 3, title: undefined, label: false },
+        { pane: 3, title: undefined, label: false },
+      ]);
+      expect(window.localStorage.getItem('pi-fx')).toBe('1');
+      expect(chartLog.watermarks.at(-1)).toBe('美元／台幣 累計 %｜藍線往上＝台幣貶');
+      expect(chartLog.priceLines.at(-1)).toEqual({ price: 0, title: undefined, axis: false });
+      // 5 年區間起點早於兩序列 → 共同基準＝較晚開始的 DXY 第一筆（2025-07-15）；台幣 30 → 31
+      expect(document.querySelector('.cm-legend')!.textContent).toMatch(/DXY \+2\.0% ｜\s+USD\/TWD \+3\.3%（31\.00） ｜ 台幣貶/);
+      expect(document.querySelector('.pi-host')!.className).toMatch(/pi-host-4/);
+    } finally {
+      delete FILES.dxy;
+      delete FILES.usdtwd;
+      delete FILES.usdtwd_legacy;
+    }
+  });
+
   it('切換核心 PCE 會加序列並記住；區間預設 5 年', async () => {
     render(<PolicyInflationPanel version="v1" themeKey="auto-false-tw" />);
     await waitFor(() => expect(chartLog.series.length).toBe(6));
