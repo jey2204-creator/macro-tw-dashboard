@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { analyzeBreadth, type BreadthRow } from '../src/shared/breadthStress';
 
 // lightweight-charts 需要 canvas，jsdom 沒有：以假物件記錄中格序列的資料
-const chartLog = { series: [] as { pane: number; label: boolean; values: number[] }[] };
+const chartLog = { series: [] as { pane: number; label: boolean; values: number[] }[], baseLabels: [] as string[] };
 vi.mock('lightweight-charts', () => {
   const makeChart = () => ({
     addSeries: (_type: string, opts: { lastValueVisible?: boolean }, paneIndex = 0) => {
@@ -15,6 +15,9 @@ vi.mock('lightweight-charts', () => {
           s.values = d.map((x) => x.value);
         },
         createPriceLine: () => {},
+        attachPrimitive: (p: { label?: { text: string } }) => {
+          if (p.label) chartLog.baseLabels.push(p.label.text);
+        },
         priceScale: () => ({ applyOptions: () => {} }),
       };
     },
@@ -46,7 +49,8 @@ vi.mock('../src/lib/chartInteraction', () => ({
 }));
 
 import { BreadthPanel } from '../src/components/BreadthPanel';
-import { sharedPctRange, timeToDate } from '../src/lib/breadthPct';
+import { placeBaseLabel } from '../src/lib/baseLabel';
+import { baseDateLabel, sharedPctRange, timeToDate } from '../src/lib/breadthPct';
 
 const rows: BreadthRow[] = Array.from({ length: 30 }, (_, i) => {
   const d = new Date(Date.UTC(2026, 0, 5 + i));
@@ -56,6 +60,7 @@ const data = analyzeBreadth(rows, new Date('2026-02-20T00:00:00Z'));
 
 beforeEach(() => {
   chartLog.series = [];
+  chartLog.baseLabels = [];
 });
 afterEach(cleanup);
 
@@ -126,5 +131,27 @@ describe('BreadthPanel（上市＋上櫃同一模組）', () => {
     expect(timeToDate({ year: 2026, month: 3, day: 5 })).toBe('2026-03-05');
     expect(timeToDate(Date.UTC(2026, 10, 16) / 1000)).toBe('2026-11-16');
     expect(timeToDate(null)).toBeNull();
+  });
+
+  it('基準點：圖上標「基準 日期 點位」，圖例寫「自 M/D 起」', () => {
+    render(<BreadthPanel twse={data} themeKey="light" />);
+    // 預設 3 個月，資料只有 30 天 → 基準＝第一根 2026-01-05 收 20,000
+    expect(chartLog.baseLabels).toContain('基準 1/5 20,000');
+    expect(screen.getAllByText(/自 1\/5 起 -1\.4%/).length).toBeGreaterThan(0);
+    expect(baseDateLabel('2025-11-17', '2026-11-16')).toBe('2025/11/17');
+    expect(baseDateLabel('2026-08-17', '2026-11-16')).toBe('8/17');
+  });
+
+  it('基準點文字位置：貼著圓點放，折線擋住就換邊，放不下回傳 null', () => {
+    const size = { width: 300, height: 200 };
+    // 沒有折線障礙：放在圓點正上方
+    expect(placeBaseLabel(150, 100, 80, 14, size, () => null)).toEqual({ cx: 150, cy: 100 - 5 - 4 - 7 });
+    // 圓點貼左緣：文字往內收，不被切掉
+    expect(placeBaseLabel(0, 100, 80, 14, size, () => null)!.cx).toBeGreaterThanOrEqual(40);
+    // 折線在圓點上方一路衝高（lo 很小）：改放下方
+    const up = placeBaseLabel(150, 100, 80, 14, size, () => ({ lo: 10, hi: 100 }))!;
+    expect(up.cy).toBeGreaterThan(100);
+    // 上下都放不下
+    expect(placeBaseLabel(150, 100, 80, 14, size, () => ({ lo: 2, hi: 198 }))).toBeNull();
   });
 });
