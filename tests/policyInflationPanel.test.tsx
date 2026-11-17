@@ -182,6 +182,57 @@ describe('政策利率 vs 通膨面板', () => {
     expect(document.querySelector('.cm-legend')!.textContent).not.toMatch(/美債2Y/);
   });
 
+  it('第四格 DXY／USD/TWD 各自開關：都關不顯示、開一條畫原始價位、兩條都開改累計 %，選擇記住', async () => {
+    FILES.dxy = series('dxy', [flat('2025-07-15', 100), flat('2025-10-15', 102)]);
+    FILES.usdtwd = series('usdtwd', [flat('2025-07-15', 30), flat('2025-10-15', 31)]);
+    // FRED 為主（到 2025-07-15＝30），Yahoo 只補之後的 2025-10-15＝31
+    FILES.usdtwd_legacy = series('usdtwd_legacy', [flat('2025-01-02', 33), flat('2025-07-15', 30)]);
+    try {
+      render(<PolicyInflationPanel version="v1" themeKey="auto-false-tw" />);
+      await waitFor(() => expect(chartLog.series.length).toBe(6));
+      const dxyBtn = screen.getByRole('button', { name: 'DXY' });
+      const twdBtn = screen.getByRole('button', { name: 'USD/TWD' });
+      expect([dxyBtn.getAttribute('aria-pressed'), twdBtn.getAttribute('aria-pressed')]).toEqual(['false', 'false']);
+      expect(document.querySelector('.pi-host')!.className).not.toMatch(/pi-host-4/);
+      // 回測表不必開第四格就有
+      await waitFor(() => expect(document.body.textContent).toMatch(/升息 × 台幣 vs 加權/));
+
+      // 只開 USD/TWD：第四格一條原始價位線、沒有 0% 線
+      fireEvent.click(twdBtn);
+      await waitFor(() => expect(chartLog.series.length).toBe(13));
+      expect(chartLog.series.at(-1)).toEqual({ pane: 3, title: undefined, label: false });
+      expect(chartLog.watermarks.at(-1)).toBe('USD/TWD（元）｜往上＝台幣貶');
+      expect(chartLog.priceLines.filter((l) => l.price === 0).length).toBe(2);
+      expect(window.localStorage.getItem('pi-fx-twd')).toBe('1');
+      // 5 年區間起點早於資料 → 基準＝台幣第一筆 2025-01-02＝33；33 → 31
+      expect(document.querySelector('.cm-legend')!.textContent).toMatch(/USD\/TWD 31\.00\s+｜ 自 1\/2 起 -6\.1%（台幣升）/);
+      expect(document.querySelector('.pi-host')!.className).toMatch(/pi-host-4/);
+
+      // 再開 DXY：兩條累計 % 同一刻度＋0% 虛線；共同基準＝較晚開始的 DXY 第一筆（2025-07-15）；台幣 30 → 31
+      fireEvent.click(dxyBtn);
+      await waitFor(() => expect(chartLog.series.length).toBe(21));
+      expect(chartLog.series.slice(-2)).toEqual([
+        { pane: 3, title: undefined, label: false },
+        { pane: 3, title: undefined, label: false },
+      ]);
+      expect(chartLog.watermarks.at(-1)).toBe('美元／台幣 累計 %｜藍線往上＝台幣貶');
+      expect(chartLog.priceLines.at(-1)).toEqual({ price: 0, title: undefined, axis: false });
+      expect(document.querySelector('.cm-legend')!.textContent).toMatch(/DXY \+2\.0% ｜\s+USD\/TWD \+3\.3%（31\.00） ｜ 台幣貶/);
+      expect(window.localStorage.getItem('pi-fx-dxy')).toBe('1');
+
+      // 關掉 USD/TWD：只剩 DXY 原始點數
+      fireEvent.click(twdBtn);
+      await waitFor(() => expect(chartLog.series.length).toBe(28));
+      expect(chartLog.watermarks.at(-1)).toBe('DXY 美元指數（點）');
+      expect(document.querySelector('.cm-legend')!.textContent).toMatch(/DXY 102\.00/);
+      expect(window.localStorage.getItem('pi-fx-twd')).toBe('0');
+    } finally {
+      delete FILES.dxy;
+      delete FILES.usdtwd;
+      delete FILES.usdtwd_legacy;
+    }
+  });
+
   it('切換核心 PCE 會加序列並記住；區間預設 5 年', async () => {
     render(<PolicyInflationPanel version="v1" themeKey="auto-false-tw" />);
     await waitFor(() => expect(chartLog.series.length).toBe(6));
