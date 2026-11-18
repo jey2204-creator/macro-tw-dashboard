@@ -10,8 +10,6 @@ import {
   createChart,
   createTextWatermark,
   type IChartApi,
-  type ISeriesApi,
-  type SeriesType,
   type MouseEventParams,
   type Time,
 } from 'lightweight-charts';
@@ -22,6 +20,7 @@ import { useSeriesMap } from '../hooks/useData';
 import { CHART_INTERACTION, resetPaneStretch, resetPriceScales, attachTimeAxis, TIME_AXIS } from '../lib/chartInteraction';
 import { loadPref, savePref } from '../lib/storage';
 import { LineLabels, type LineLabel } from '../lib/lineLabels';
+import { END_LABEL_FONT, endLabelGapPx, rightGapBars } from '../lib/endLabels';
 import { cssVar, pctCell } from '../lib/stressFormat';
 import {
   PHASE_COLOR,
@@ -153,6 +152,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
   const sectionRef = useRef<HTMLElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const endTextsRef = useRef<string[]>([]);
   const near = useNearViewport(sectionRef);
   const [range, setRange] = useState<RangeKey>(() => loadPref<RangeKey>('pi-range', ['3M', '6M', '1Y', '5Y', '10Y', 'ALL'], '5Y'));
   const [extras, setExtras] = useState<Record<ExtraId, boolean>>(() => ({
@@ -292,7 +292,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       autoSize: true,
       crosshair: { mode: CrosshairMode.Normal },
       localization: { locale: 'zh-TW', dateFormat: 'yyyy-MM-dd' },
-      timeScale: { ...TIME_AXIS, rightOffset: 2, fixLeftEdge: true, fixRightEdge: true, minBarSpacing: 0.05, borderColor: grid },
+      timeScale: { ...TIME_AXIS, rightOffset: 2, fixLeftEdge: true, fixRightEdge: false, minBarSpacing: 0.05, borderColor: grid },
       ...CHART_INTERACTION,
       layout: {
         ...CHART_INTERACTION.layout,
@@ -332,20 +332,20 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       axisLabelVisible: false,
     });
     const surface = cssVar('--surface');
-    // 線尾標籤：名稱＋最新值，外框＝線色；放不下縮成只剩數字
+    // 線尾標籤：名稱＋最新值，外框＝線色；排在最後一根右邊的留白裡（留白寬度見下方區間 effect）
     const ends: LineLabel[] = [];
-    const topLines: ISeriesApi<SeriesType>[] = [fedS];
     const addTop = (name: string, pts: readonly Point[], colorVar: string, width: 1 | 2, digits: number) => {
       const color = cssVar(colorVar);
       const s = chart.addSeries(LineSeries, { color, lineWidth: width, priceFormat: pct, lastValueVisible: false, priceLineVisible: false }, 0);
       s.setData(toData(pts));
-      topLines.push(s);
       const last = pts.at(-1)!;
       ends.push({ price: last[1], text: `${name} ${last[1].toFixed(digits)}`, short: last[1].toFixed(digits), color, endTime: last[0] as Time });
     };
     {
       const last = fed.at(-1)!;
       ends.push({ price: last[1], text: `Fed ${last[1].toFixed(2)}`, short: last[1].toFixed(2), color: cssVar('--text-1'), endTime: last[0] as Time });
+      // 2% 目標也標在同一欄（虛線一路畫到標籤），不另外蓋住左側的歷史線
+      ends.push({ price: FED_TARGET, text: `目標 ${FED_TARGET}%`, short: `${FED_TARGET}%`, color: textColor, endTime: last[0] as Time });
     }
     if (coreOn) addTop('核心', coreCpi, '--accent', 2, 1);
     // 整體 CPI：實線（虛線只留給 2% 目標），原本的細虛線在手機上看不清楚
@@ -353,12 +353,19 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
     if (extras.core_pce && corePce.length > 0) addTop('PCE', corePce, '--ma240', 1, 1);
     // 美債 2Y：市場對未來一年 Fed 利率的押注，跑在 Fed 階梯前面
     if (extras.us2y && us2y.length > 0) addTop('2Y', us2y, '--ma120', 1, 2);
-    fedS.attachPrimitive(
-      new LineLabels([{ price: FED_TARGET, text: `${FED_TARGET}% 目標` }], { color: cssVar('--text-2'), background: surface, border: textColor, fontSize: 11, fontFamily }),
-    );
-    fedS.attachPrimitive(
-      new LineLabels(ends, { color: cssVar('--text-1'), background: surface, border: textColor, fontSize: 11, fontFamily, align: 'right', avoid: topLines }),
-    );
+    // 每格的線尾標籤共用同一段右側留白；allEnds 收集全部文字，用來算留白寬度
+    const allEnds: string[] = [];
+    // 標籤欄排在時間軸最後一根右邊：各格的線終點不同（月資料較早結束），取所有標籤終點裡最晚的那天
+    let scaleEnd: string | null = null;
+    const endLabels = (series: { attachPrimitive: (p: LineLabels) => void }, labels: LineLabel[]) => {
+      if (!labels.length) return;
+      allEnds.push(...labels.map((l) => l.text));
+      for (const l of labels) if (typeof l.endTime === 'string' && (scaleEnd === null || l.endTime > scaleEnd)) scaleEnd = l.endTime;
+      series.attachPrimitive(
+        new LineLabels(labels, { color: cssVar('--text-1'), background: surface, border: textColor, fontSize: END_LABEL_FONT, fontFamily, align: 'right', stack: true, stackAt: () => scaleEnd as Time | null }),
+      );
+    };
+    endLabels(fedS, ends);
 
     // 中窗格：實質政策利率，0 以上緊縮方向、以下寬鬆方向
     const realS = chart.addSeries(
@@ -379,6 +386,10 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       1,
     );
     realS.setData(real.map((r) => ({ time: r[0] as Time, value: r[3] })));
+    {
+      const last = real.at(-1);
+      if (last) endLabels(realS, [{ price: last[3], text: `${last[3] > 0 ? '+' : ''}${last[3].toFixed(2)}`, color: cssVar('--text-1'), endTime: last[0] as Time }]);
+    }
     // 參考線只畫虛線，不加圖內文字與軸標籤（標籤會被圖表庫上下推開、蓋住最近的線），說明放在窗格標題
     for (const v of [0, REAL_RATE_TIGHT]) {
       realS.createPriceLine({ price: v, color: textColor, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false });
@@ -396,6 +407,8 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
         2,
       );
       s.setData(spx.map((b) => ({ time: b[0] as Time, value: b[4], color: colorOf(b[0]) })));
+      const last = spx.at(-1);
+      if (last) endLabels(s, [{ price: last[4], text: last[4].toLocaleString('en-US', { maximumFractionDigits: 0 }), color: colorOf(last[0]), endTime: last[0] as Time }]);
     }
 
     // 第四格（沒開指數時排第三格）：DXY 與 USD/TWD 自區間起點起的累計 %，同一刻度；0% 虛線＝起點
@@ -415,6 +428,11 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       );
       twdS.setData(toData(fxLines.twd.points));
       twdS.createPriceLine({ price: 0, color: textColor, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false });
+      const endOf = (name: string, pts: readonly Point[], colorVar: string): LineLabel[] => {
+        const last = pts.at(-1);
+        return last ? [{ price: last[1], text: `${name} ${fxFormat.formatter(last[1])}`, short: fxFormat.formatter(last[1]), color: cssVar(colorVar), endTime: last[0] as Time }] : [];
+      };
+      endLabels(twdS, [...endOf('DXY', fxLines.dxy.points, FX_COLOR.dxy), ...endOf('TWD', fxLines.twd.points, FX_COLOR.twd)]);
     } else if (fxLines) {
       // 只開一條：原始價位（DXY 點數／USD/TWD 匯價），不畫 0% 線
       const rawS = chart.addSeries(
@@ -423,6 +441,8 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
         fxPane,
       );
       rawS.setData(toData(fxLines.raw));
+      const last = fxLines.raw.at(-1);
+      if (last) endLabels(rawS, [{ price: last[1], text: last[1].toFixed(2), color: cssVar(FX_COLOR[fxLines.id]), endTime: last[0] as Time }]);
     }
     // priceScale(...).applyOptions 會把選項併進圖表層級預設，之後建立的窗格都繼承 → 所有窗格建好後再逐一設定
     if (showSpx || fxLines) {
@@ -447,6 +467,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
     chart.subscribeCrosshairMove(handler);
     attachTimeAxis(chart);
     chartRef.current = chart;
+    endTextsRef.current = allEnds;
     setChartGen((g) => g + 1);
     return () => {
       chart.unsubscribeCrosshairMove(handler);
@@ -460,15 +481,40 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
     const last = fed.at(-1);
     if (!chart || !last) return;
     const start = rangeStart(last[0], range);
+    const ts = chart.timeScale();
+    // 右側留白＝最寬的線尾標籤＋邊距（像素），換算成 K 棒數；fixRightEdge 會吃掉留白，所以自己限制右界：
+    // 往左拖不會拉出更多空白
+    const gapPx = endLabelGapPx(endTextsRef.current, getComputedStyle(document.body).fontFamily);
+    let maxTo = Infinity;
+    const clamp = () => {
+      const r = ts.getVisibleLogicalRange();
+      if (r && r.to > maxTo + 0.01) ts.setVisibleLogicalRange({ from: r.from - (r.to - maxTo), to: maxTo });
+    };
     const apply = () => {
       resetPriceScales(chart);
       resetPaneStretch(chart, showSpx ? (hasFx ? PANE_STRETCH_SPX_FX : PANE_STRETCH_SPX) : hasFx ? PANE_STRETCH_FX : PANE_STRETCH);
-      if (!start || start <= fed[0]![0]) chart.timeScale().fitContent();
-      else chart.timeScale().setVisibleRange({ from: start as Time, to: last[0] as Time });
+      const lastIdx = ts.timeToIndex('9999-12-31' as Time, true);
+      const fromIdx = !start || start <= fed[0]![0] ? 0 : ts.timeToIndex(start as Time, true);
+      if (lastIdx === null || fromIdx === null) {
+        ts.fitContent();
+        return;
+      }
+      const gap = rightGapBars(ts.width(), lastIdx - fromIdx, gapPx);
+      maxTo = Infinity;
+      // 兩端都固定時圖表庫會自動把最小 K 棒寬降到「剛好放得下全部」；右端改成自己限制後要自己算，
+      // 否則「全部」（一萬多根）會被預設下限卡住、只顯示一小段
+      const fitAll = (ts.width() - gapPx) / (lastIdx + 1);
+      ts.applyOptions({ rightOffset: gap, minBarSpacing: fitAll > 0 ? Math.min(0.05, fitAll * 0.98) : 0.05 });
+      ts.setVisibleLogicalRange({ from: fromIdx, to: lastIdx + gap });
+      maxTo = lastIdx + gap;
     };
     apply();
     const raf = requestAnimationFrame(apply);
-    return () => cancelAnimationFrame(raf);
+    ts.subscribeVisibleLogicalRangeChange(clamp);
+    return () => {
+      cancelAnimationFrame(raf);
+      ts.unsubscribeVisibleLogicalRangeChange(clamp);
+    };
   }, [chartGen, range, resetKey, fed, showSpx, hasFx]);
 
   // 圖例：十字線所在日期（沒有時顯示最新）
@@ -542,7 +588,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
         看 Fed 跟通膨的距離，不看方向：實質政策利率（Fed − 核心CPI）小於 0 是寬鬆，Fed 歷來不會在這裡停止升息；大於 +1pp 才算緊縮，才有降息空間。
         2000、2006、2019、2023 幾次升息頂點都出現在實質利率翻正之後，但翻正不等於馬上降息（2023 翻正後又撐了一年）。
         核心 CPI 是落後指標；整體 CPI 用來解釋油價飆時 Fed 為什麼不動，核心 PCE 是 Fed 正式目標但晚兩週。
-        圖上各線尾端的小標籤是最新值（外框顏色＝線色，擠在一起時會錯開並用細線連回線尾），左側「2% 目標」標的是 Fed 的通膨目標虛線；讀數列「核心距 2%」是十字線那天核心 CPI 離目標多遠。
+        圖上每一格各線尾端的小標籤是最新值（外框顏色＝線色，排在圖表右側留白，月資料的線較早結束、用細線連過去；擠在一起時上下錯開），「目標 2%」標的是 Fed 的通膨目標虛線；往左拖曳看舊資料時標籤會先收起來；讀數列「核心距 2%」是十字線那天核心 CPI 離目標多遠。
         核心 CPI 的線可以關掉專心看整體 CPI，但關掉只是不畫線：實質利率、緊縮／寬鬆判讀一律以核心 CPI 計，不要拿圖上「Fed − 整體 CPI」的距離來讀（油價飆時整體 CPI 會讓 Fed 看起來不夠緊，那不是 Fed 的算法）。
         美債 2Y 是市場對未來一年 Fed 利率的押注，通常跑在 Fed 階梯前面：2Y 低於 Fed 一碼以上＝押降息、高於一碼以上＝押升息；它比 CPI 早反應，但押錯也常見（2024 上半年押六次降息，實際三次）。
         第三格指數（S&P 500／NASDAQ／費半／加權，一次看一個）的線色是 Fed 階段（升息期／高原／降息期／谷底；超過 6 個月沒動作算暫停）。1982 年起四個階段 S&P 年化都是正的，階段本身不是方向訊號；差別在「為什麼降息」：降息後一年內失業率觸發 Sahm 規則的衰退式降息（2001、2007）之後一年 S&P 是負的，保險式降息（1995、1998、2019、2024）則續漲——分類器是失業率和 2Y−Fed，不是 Fed 動作本身。

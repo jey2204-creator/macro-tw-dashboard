@@ -52,6 +52,32 @@ export interface LineLabelStyle {
    * 再畫一條細線指回原本的位置
    */
   avoid?: readonly ISeriesApi<SeriesType>[];
+  /**
+   * 貼右的另一種排法：圖表右側已留白（rightOffset）時，標籤排在最後一根右邊的空白裡、各自停在自己的價位，
+   * 只做上下互相錯開（不蓋折線，所以不用閃線）；每個標籤要給 endTime。任何一條線的終點不在畫面內
+   * （往左拖曳後）就全部不畫
+   */
+  stack?: boolean;
+  /**
+   * stack 排法的標籤欄位置：時間軸上最後一根的時間（多個窗格共用同一欄時給，月資料的線較早結束也排到同一欄、
+   * 用細線連過去）。沒給就排在自己這組標籤最晚的終點右邊
+   */
+  stackAt?: () => Time | null;
+}
+
+/** 由上到下排好的標籤中心 y：彼此至少隔 gap，整組不超出 [lo, hi]（放不下時從上緣往下排，超出下緣） */
+export function stackYs(ys: readonly number[], gap: number, lo: number, hi: number): number[] {
+  const out = ys.map((y) => Math.min(Math.max(y, lo), hi));
+  for (let i = 1; i < out.length; i++) out[i] = Math.max(out[i]!, out[i - 1]! + gap);
+  if (out.length && out[out.length - 1]! > hi) {
+    out[out.length - 1] = hi;
+    for (let i = out.length - 2; i >= 0; i--) out[i] = Math.min(out[i]!, out[i + 1]! - gap);
+    if (out[0]! < lo) {
+      out[0] = lo;
+      for (let i = 1; i < out.length; i++) out[i] = Math.max(out[i]!, out[i - 1]! + gap);
+    }
+  }
+  return out;
 }
 
 type DrawTarget = Parameters<IPrimitivePaneRenderer['draw']>[0];
@@ -120,9 +146,66 @@ export class LineLabels implements ISeriesPrimitive<Time> {
     return this.views;
   }
 
+  /** stack 排法：標籤排在最後一根右邊的留白裡，停在自己的價位，上下互相錯開；細線從各線終點拉到標籤左緣 */
+  private drawStack(target: DrawTarget): void {
+    const s = this.series;
+    const ts = this.chart?.timeScale();
+    if (!s || !ts) return;
+    target.useMediaCoordinateSpace(({ context: ctx, mediaSize }) => {
+      const { fontSize, fontFamily } = this.style;
+      ctx.font = `${fontSize}px ${fontFamily}`;
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'left';
+      const h = fontSize + PAD_Y * 2;
+      const items: { l: LineLabel; y0: number; xEnd: number }[] = [];
+      for (const l of this.labels) {
+        const y0 = s.priceToCoordinate(l.price);
+        const xEnd = l.endTime === undefined ? null : ts.timeToCoordinate(l.endTime);
+        if (xEnd === null || xEnd > mediaSize.width + 1) return;
+        if (y0 !== null) items.push({ l, y0, xEnd });
+      }
+      if (!items.length) return;
+      items.sort((a, b) => a.y0 - b.y0);
+      const at = this.style.stackAt?.() ?? null;
+      const xAt = at === null ? null : ts.timeToCoordinate(at);
+      if (at !== null && (xAt === null || xAt > mediaSize.width + 1)) return;
+      const x = Math.max(xAt ?? 0, ...items.map((i) => i.xEnd)) + GAP + 2;
+      const bottom = mediaSize.height * (this.style.maxYFrac ?? 1);
+      const ys = stackYs(items.map((i) => i.y0), h + 2, h / 2 + 1, bottom - h / 2 - 1);
+      // 留白不夠寬（視窗很窄）時全部改短版
+      const full = items.every((i) => x + ctx.measureText(i.l.text).width + PAD_X * 2 <= mediaSize.width - 1);
+      // 連短版都放不下（稍微往左拖、留白被擠掉）就全部不畫，不畫被切一半的標籤
+      if (!full && !items.every((i) => x + ctx.measureText(i.l.short ?? i.l.text).width + PAD_X * 2 <= mediaSize.width - 1)) return;
+      items.forEach((it, k) => {
+        const y = ys[k]!;
+        const text = full ? it.l.text : (it.l.short ?? it.l.text);
+        const w = ctx.measureText(text).width + PAD_X * 2;
+        const color = it.l.color ?? this.style.border;
+        if (x - it.xEnd > 4 || Math.abs(y - it.y0) > 1) {
+          ctx.beginPath();
+          ctx.moveTo(it.xEnd, Math.round(it.y0) + 0.5);
+          ctx.lineTo(x, Math.round(y) + 0.5);
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = color;
+          ctx.stroke();
+        }
+        ctx.beginPath();
+        ctx.roundRect(x, Math.round(y - h / 2) + 0.5, w, h, 3);
+        ctx.fillStyle = this.style.background;
+        ctx.fill();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = color;
+        ctx.stroke();
+        ctx.fillStyle = this.style.color;
+        ctx.fillText(text, x + PAD_X, Math.round(y));
+      });
+    });
+  }
+
   private drawLabels(target: DrawTarget): void {
     const s = this.series;
     if (!s) return;
+    if (this.style.stack) return this.drawStack(target);
     target.useMediaCoordinateSpace(({ context: ctx, mediaSize }) => {
       const { fontSize, fontFamily } = this.style;
       ctx.font = `${fontSize}px ${fontFamily}`;

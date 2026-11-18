@@ -25,7 +25,7 @@ vi.mock('lightweight-charts', () => {
       },
       panes: () => [...panes.keys()].sort((a, b) => a - b).map((k) => panes.get(k)!),
       priceScale: () => ({ applyOptions: () => {} }),
-      timeScale: () => ({ fitContent: () => {}, setVisibleRange: () => {}, setVisibleLogicalRange: () => {}, applyOptions: () => {}, subscribeVisibleLogicalRangeChange: () => {}, getVisibleRange: () => null, timeToCoordinate: () => null }),
+      timeScale: () => ({ fitContent: () => {}, setVisibleRange: () => {}, setVisibleLogicalRange: () => {}, applyOptions: () => {}, subscribeVisibleLogicalRangeChange: () => {}, unsubscribeVisibleLogicalRangeChange: () => {}, getVisibleLogicalRange: () => null, getVisibleRange: () => null, timeToCoordinate: () => null, timeToIndex: () => 0, width: () => 300 }),
       subscribeCrosshairMove: () => {},
       unsubscribeCrosshairMove: () => {},
       applyOptions: () => {},
@@ -49,6 +49,8 @@ vi.mock('lightweight-charts', () => {
 });
 
 const { PolicyInflationPanel } = await import('../src/components/PolicyInflationPanel');
+const { rightGapBars, endLabelGapPx } = await import('../src/lib/endLabels');
+const { stackYs } = await import('../src/lib/lineLabels');
 
 function series(id: string, bars: Bar[]): SeriesFile {
   return {
@@ -136,8 +138,9 @@ describe('政策利率 vs 通膨面板', () => {
       { price: 0, title: undefined, axis: false },
       { price: 1, title: undefined, axis: false },
     ]);
-    // 圖內標籤：左側「2% 目標」＋各線線尾最新值（Fed、核心、CPI、2Y）；讀數列有核心距 2%
-    expect(chartLog.labels).toEqual([['2% 目標'], ['Fed 4.10', '核心 3.0', 'CPI 4.0', '2Y 3.70']]);
+    // 圖內標籤（右側留白一欄）：2% 目標＋各線線尾最新值（Fed、核心、CPI、2Y）；讀數列有核心距 2%
+    // 下面各格也標線尾值：實質利率線的最後一點是 2025-09 月底（Fed 4.25 − 核心 3.0），與頁首「最新 Fed」讀數 +1.10 不同屬正常
+    expect(chartLog.labels).toEqual([['Fed 4.10', '目標 2%', '核心 3.0', 'CPI 4.0', '2Y 3.70'], ['+1.25'], ['6,700']]);
     expect(document.querySelector('.cm-legend')!.textContent).toMatch(/實質 \+1\.10pp ｜ 緊縮（≥ \+1pp） ｜ 核心距 2% \+1\.00pp/);
     expect(screen.getByRole('button', { name: '整體 CPI' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('button', { name: '核心 PCE' }).getAttribute('aria-pressed')).toBe('false');
@@ -261,6 +264,19 @@ describe('政策利率 vs 通膨面板', () => {
     expect(legend).not.toMatch(/Fed 4\.10% ｜ 核心CPI/);
     // 頁首讀數不受影響
     expect(document.querySelector('.pi-state')!.textContent).toMatch(/\+1\.10pp（Fed 4\.10% − 核心CPI 3\.0%）/);
+  });
+
+  it('線尾標籤的右側留白與上下錯開', () => {
+    // 300px 寬放 1000 根＋60px 留白 → 每根 0.24px，留白 250 根；至少 2 根
+    expect(rightGapBars(300, 1000, 60)).toBeCloseTo(250);
+    expect(rightGapBars(300, 3, 60)).toBe(2);
+    expect(rightGapBars(50, 100, 60)).toBe(2);
+    // 量不到字寬時每字 7px：'Fed 4.10' 8 字 → 56＋邊距 17
+    expect(endLabelGapPx(['Fed 4.10', '2Y 3.70'], 'sans-serif')).toBe(73);
+    // 不擠：原位；兩個擠在一起：往下推開；頂到下緣：整組往上
+    expect(stackYs([20, 60], 17, 9, 191)).toEqual([20, 60]);
+    expect(stackYs([50, 55, 120], 17, 9, 191)).toEqual([50, 67, 120]);
+    expect(stackYs([180, 185, 190], 17, 9, 191)).toEqual([157, 174, 191]);
   });
 
   it('切換核心 PCE 會加序列並記住；區間預設 5 年', async () => {
