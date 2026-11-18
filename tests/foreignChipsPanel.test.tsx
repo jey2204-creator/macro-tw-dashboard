@@ -189,9 +189,9 @@ describe('rightGapBars', () => {
     expect(legend).toContain('USD/TWD 36.602');
     expect(legend).toContain('日 +0.10%');
     expect(window.localStorage.getItem('fc-pane4')).toBe('fx');
-    expect(screen.queryByText(/賣超偏重・台幣貶/)).toBeNull();
+    expect(screen.queryByText('賣超・貶')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /展開外資買賣超 × 台幣回測/ }));
-    expect(screen.getByText(/賣超偏重・台幣貶 ≥ 1%/)).toBeTruthy();
+    expect(screen.getByText('賣超・貶')).toBeTruthy();
     expect(screen.getAllByText('所有交易日（基準）')).toHaveLength(2); // 事件表＋台幣回測表各一列
   });
 

@@ -33,7 +33,7 @@ import {
   type ForeignChipsFile,
   type ForeignEventType,
 } from '../shared/foreignChips';
-import { FF_BUY_PCTL, FF_DAYS, FF_MOVE_PCT, FF_SELL_PCTL, FLOW_TEXT, FX_MOVE_TEXT, type FlowFxCell } from '../shared/foreignFx';
+import { FF_BUY_PCTL, FF_DAYS, FF_MOVE_PCT, FF_SELL_PCTL, type FlowFxCell } from '../shared/foreignFx';
 import { rangeStart, type RangeKey } from '../shared/timeseries';
 import { StatsRow } from './StatsRow';
 import { SBL_STATE_LABEL, STATE_LABEL, WARN_RATIO, ZONE_RATIO, sblStateAt, sblUnsold, type MarginStressFile } from '../shared/marginStress';
@@ -545,16 +545,20 @@ const FX_ROWS: { flow: FlowFxCell['flow']; move: FlowFxCell['move'] }[] = [
   { flow: 'buy', move: 'strong' },
 ];
 
+/** 表格列名用短版（手機 7 欄放不下全名） */
+const FX_ROW_FLOW: Record<FlowFxCell['flow'], string> = { sell: '賣超', mid: '一般', buy: '買超' };
+const FX_ROW_MOVE: Record<Exclude<FlowFxCell['move'], 'all'>, string> = { weak: '貶', flat: '持平', strong: '升' };
+
 /** 外資 20 日累計買賣超 × 台幣 20 日變化，之後加權的表現（每個交易日一筆） */
 function FxBacktest({ fx, from }: { fx: NonNullable<ForeignChipsFile['fx']>; from: string | null }) {
   const cur = fx.latest;
   const find = (flow: FlowFxCell['flow'], move: FlowFxCell['move']) => fx.cells.find((c) => c.flow === flow && c.move === move);
-  const line = (c: FlowFxCell, label: string, cls = '') => (
+  const line = (c: FlowFxCell, label: string, cls = '', runs = true) => (
     <tr key={label} className={cls}>
       <td>{label}</td>
       <td className="r">
         {c.n}
-        <span className="muted">／{c.runs}</span>
+        {runs && <span className="muted">／{c.runs}</span>}
       </td>
       <td className="r">{pctCell(c.avg20)}</td>
       <td className="r">{pctCell(c.avg60)}</td>
@@ -564,20 +568,21 @@ function FxBacktest({ fx, from }: { fx: NonNullable<ForeignChipsFile['fx']>; fro
     </tr>
   );
   return (
-    <div className="table-wrap">
+    <>
+      <p className="small muted ms-rule">
+        外資 20 日累計買賣超 × 台幣 20 日變化之後的加權表現（{from ?? '—'} 起，每個交易日一筆）。賣超＝≤ 第 {FF_SELL_PCTL * 100} 百分位、買超＝≥ 第 {FF_BUY_PCTL * 100}{' '}
+        百分位；貶／升＝USD/TWD 20 日 ±{FF_MOVE_PCT}%。<b>結論：賣超時台幣貶不貶，之後差不多 → 不貼標籤。</b>同一段會連續出現很多天，「段」才是獨立次數；段數少於 10 的列不要看。
+      </p>
+      <div className="table-wrap">
       <table className="bt-table num">
-        <caption className="small muted">
-          外資 20 日累計買賣超 × 台幣 20 日變化之後的加權表現（{from ?? '—'} 起，每個交易日一筆；賣超偏重＝≤ 第 {FF_SELL_PCTL * 100} 百分位、買超偏重＝≥ 第{' '}
-          {FF_BUY_PCTL * 100} 百分位；台幣貶／升＝USD/TWD 20 日 ±{FF_MOVE_PCT}%）。結論：賣超時台幣貶不貶，之後差不多 → 不貼標籤。同一段會連續出現很多天，「段」才是獨立次數；台幣升的賣超只有 8 段，不要看。
-        </caption>
         <thead>
           <tr>
-            <th>外資 × 台幣</th>
+            <th>外資×台幣</th>
             <th className="r">天／段</th>
             <th className="r">20日</th>
             <th className="r">60日</th>
             <th className="r">60日上漲</th>
-            <th className="r">60日內最大跌幅</th>
+            <th className="r">最大跌幅</th>
             <th className="r">跌逾10%</th>
           </tr>
         </thead>
@@ -586,12 +591,13 @@ function FxBacktest({ fx, from }: { fx: NonNullable<ForeignChipsFile['fx']>; fro
             const c = find(flow, move);
             if (!c) return null;
             const here = cur?.flow === flow && cur.move === move;
-            return line(c, `${FLOW_TEXT[flow]}・${move === 'all' ? '全部' : FX_MOVE_TEXT[move]}${here ? ' ◀ 目前' : ''}`, here ? 'hl' : '');
+            return line(c, `${FX_ROW_FLOW[flow]}・${move === 'all' ? '全部' : FX_ROW_MOVE[move]}${here ? ' ◀' : ''}`, here ? 'hl' : '');
           })}
-          {line(fx.baseline, '所有交易日（基準）', 'all')}
+          {line(fx.baseline, '所有交易日（基準）', 'all', false)}
         </tbody>
       </table>
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -757,7 +763,7 @@ export function ForeignChipsPanel({
         </div>
       )}
       {data.fx && (
-        <button type="button" className="linkbtn small" onClick={() => setShowFxBt(!showFxBt)} aria-expanded={showFxBt}>
+        <button type="button" className="linkbtn small fc-fxbt-btn" onClick={() => setShowFxBt(!showFxBt)} aria-expanded={showFxBt}>
           {showFxBt ? '收起' : '展開'}外資買賣超 × 台幣回測
         </button>
       )}
