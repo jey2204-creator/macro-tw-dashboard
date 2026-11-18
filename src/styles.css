@@ -1298,6 +1298,9 @@ th {
 .ms-pane-labels {
   white-space: normal;
 }
+.fc-fxbt-btn {
+  margin-left: 14px;
+}
 .fc-day-events {
   margin-left: 6px;
   color: var(--warn);

@@ -33,6 +33,7 @@ import {
   type ForeignChipsFile,
   type ForeignEventType,
 } from '../shared/foreignChips';
+import { FF_BUY_PCTL, FF_DAYS, FF_MOVE_PCT, FF_SELL_PCTL, type FlowFxCell } from '../shared/foreignFx';
 import { rangeStart, type RangeKey } from '../shared/timeseries';
 import { StatsRow } from './StatsRow';
 import { SBL_STATE_LABEL, STATE_LABEL, WARN_RATIO, ZONE_RATIO, sblStateAt, sblUnsold, type MarginStressFile } from '../shared/marginStress';
@@ -41,13 +42,14 @@ import { LineLabels } from '../lib/lineLabels';
 import { MarkerLabels, type MarkerLabel } from '../lib/markerLabels';
 import { loadPref, savePref } from '../lib/storage';
 
-/** 第 4 格顯示：散戶小台淨 OI／融資維持率＋融資增減（散戶籌碼）、借券（法人空單），或上市漲跌停家數／漲跌家數（市場廣度），切換對照 */
-export type Pane4Mode = 'retail' | 'margin' | 'sbl' | 'limit' | 'ad';
-const PANE4_KEYS = ['retail', 'margin', 'sbl', 'limit', 'ad'] as const;
+/** 第 4 格顯示：散戶小台淨 OI／融資維持率＋融資增減（散戶籌碼）、借券（法人空單）、台幣（USD/TWD，外資匯出入），或上市漲跌停家數／漲跌家數（市場廣度），切換對照 */
+export type Pane4Mode = 'retail' | 'margin' | 'sbl' | 'fx' | 'limit' | 'ad';
+const PANE4_KEYS = ['retail', 'margin', 'sbl', 'fx', 'limit', 'ad'] as const;
 const PANE4_MODES: { k: Pane4Mode; label: string; title: string }[] = [
   { k: 'retail', label: '散戶小台', title: '散戶的期貨部位（小台淨未平倉，法人反推）' },
   { k: 'margin', label: '融資維持率', title: '散戶的現股槓桿（融資維持率＋融資增減）' },
   { k: 'sbl', label: '借券', title: '法人空單（借券賣出餘額＋已借未賣＋日增減）' },
+  { k: 'fx', label: '台幣', title: 'USD/TWD 匯率（往上＝台幣貶）＋日變動' },
   { k: 'limit', label: '漲跌停', title: '上市漲停（0 以上）／跌停（0 以下）家數' },
   { k: 'ad', label: '漲跌家數', title: '上市上漲（0 以上）／下跌（0 以下）家數' },
 ];
@@ -81,6 +83,11 @@ const MARKER_GAP: Record<RangeKey, number> = { '3M': 3, '6M': 5, '1Y': 8, '5Y': 
 
 const lots = (v: number | null | undefined) =>
   v === null || v === undefined || !Number.isFinite(v) ? '—' : `${v > 0 ? '+' : ''}${v.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+/** 台幣變化文字：USD/TWD 漲＝台幣貶 */
+const twdText = (chg: number | null | undefined) =>
+  chg === null || chg === undefined ? '—' : chg === 0 ? '持平' : `${chg > 0 ? '貶' : '升'} ${Math.abs(chg).toFixed(2)}%`;
+/** 台幣貶用空方色、升用多方色（對台股的方向） */
+const twdClass = (chg: number | null | undefined) => (chg === null || chg === undefined || chg === 0 ? '' : chg > 0 ? 'down' : 'up');
 const pctlText = (p: number | null | undefined) => (p === null || p === undefined ? '—' : `第 ${Math.round(p * 100)} 百分位`);
 /** 百分位落在極端時的樣式類別 */
 const pctlClass = (p: number | null | undefined) =>
@@ -115,7 +122,10 @@ function ChipsChart({
   const sblRows = useMemo(() => (margin?.sbl ?? []).filter((r) => indexByDate.has(r[0])), [margin, indexByDate]);
   const sblByDate = useMemo(() => new Map(sblRows.map((r) => [r[0], r])), [sblRows]);
   const showSbl = pane4 === 'sbl' && sblRows.length > 0;
-  const tall = showMargin || showSbl;
+  // 台幣：fx 與 rows 同長度同順序，直接用索引
+  const fxRows = data.fx?.fx;
+  const showFx = pane4 === 'fx' && !!fxRows?.some((x) => x[0] !== null);
+  const tall = showMargin || showSbl || showFx;
   // 家數資料同樣只取外資資料也有的交易日；恐慌日旗標要跟著列一起過濾
   const breadthRows = useMemo(
     () => (breadth?.rows ?? []).flatMap((r, k) => (indexByDate.has(r[0]) ? [{ row: r, panic: breadth!.panic[k] ?? false, downPct: breadth!.downPct[k] ?? null, adRatio10: breadth!.adRatio10[k] ?? null }] : [])),
@@ -343,6 +353,25 @@ function ChipsChart({
       const sblChg = add(chart.addSeries(HistogramSeries, { priceFormat: { type: 'price', precision: 1, minMove: 0.1 }, priceScaleId: 'fc-sbl-chg', priceLineVisible: false }, 3));
       sblChg.setData(sblRows.filter((r) => Number.isFinite(r[2])).map((r) => ({ time: r[0] as Time, value: r[2], color: r[2] >= 0 ? down : up })));
       sblChg.priceScale().applyOptions({ scaleMargins: { top: 0.74, bottom: 0 }, visible: false });
+    } else if (showFx && fxRows) {
+      // 第 4 格：USD/TWD（線，往上＝台幣貶，不反轉，與跨市場對照一致）＋日變動 %（柱；貶＝空方色、升＝多方色）
+      const pts = data.rows.flatMap((r, k) => (fxRows[k]?.[0] != null ? [{ time: r[0] as Time, value: fxRows[k]![0]!, k }] : []));
+      const fxLine = add(chart.addSeries(LineSeries, { color: accent, lineWidth: 2, priceFormat: { type: 'price', precision: 3, minMove: 0.001 } }, 3));
+      fxLine.setData(pts.map(({ time, value }) => ({ time, value })));
+      fxLine.priceScale().applyOptions({ scaleMargins: { top: 0.08, bottom: 0.32 } });
+      const fxChg = add(
+        chart.addSeries(HistogramSeries, { priceFormat: { type: 'price', precision: 2, minMove: 0.01 }, priceScaleId: 'fc-fx-chg', priceLineVisible: false, lastValueVisible: false }, 3),
+      );
+      fxChg.setData(
+        pts.flatMap((p, n) => {
+          const prev = pts[n - 1];
+          // 只算相鄰交易日（中間缺資料不算）
+          if (!prev || p.k - prev.k !== 1) return [];
+          const v = (p.value / prev.value - 1) * 100;
+          return [{ time: p.time, value: v, color: v >= 0 ? `${down}99` : `${up}99` }];
+        }),
+      );
+      fxChg.priceScale().applyOptions({ scaleMargins: { top: 0.74, bottom: 0 }, visible: false });
     } else if (breadthMode) {
       // 第 4 格：上市漲停／跌停或上漲／下跌家數，0 以上為漲、0 以下為跌（鏡像柱，比照漲跌停面板）；跌的那側恐慌日加深
       const ad = breadthMode === 'ad';
@@ -360,7 +389,7 @@ function ChipsChart({
     return () => {
       for (const s of all.reverse()) chart.removeSeries(s);
     };
-  }, [data, themeKey, indexByDate, range, showMargin, marginRows, showSbl, sblRows, breadthMode, breadthRows, tall]);
+  }, [data, themeKey, indexByDate, range, showMargin, marginRows, showSbl, sblRows, showFx, fxRows, breadthMode, breadthRows, tall]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -413,6 +442,9 @@ function ChipsChart({
   const b = row && breadthMode ? breadthByDate.get(row[0]) : undefined;
   const sb = row && showSbl ? sblByDate.get(row[0]) : undefined;
   const sbState = sb ? sblStateAt(sb) : null;
+  const fx = fxRows?.[i] ?? null;
+  const fxPrev = i > 0 ? (fxRows?.[i - 1]?.[0] ?? null) : null;
+  const fxDay = fx?.[0] != null && fxPrev !== null ? (fx[0] / fxPrev - 1) * 100 : null;
   const dayEvents = row
     ? [
         ...data.events.filter((e) => e.date === row[0]).map((e) => FOREIGN_EVENT_LABEL[e.type]),
@@ -428,6 +460,11 @@ function ChipsChart({
           <br />
           外資買賣超 <b className={sgn(row[2])}>{f2(row[2], true)}</b> 億｜5日 <b className={sgn(row[3])}>{f2(row[3], true)}</b>｜20日{' '}
           <b className={sgn(row[4])}>{f2(row[4], true)}</b> <span className={`muted ${pctlClass(data.pctl.cum20[i])}`}>（{pctlText(data.pctl.cum20[i])}）</span>
+          {fx && fx[1] !== null && (
+            <>
+              ｜台幣20日 <b className={twdClass(fx[1])}>{twdText(fx[1])}</b>
+            </>
+          )}
           <br />
           外資期淨OI <b className={sgn(row[5])}>{lots(row[5])}</b> 口 <span className={`muted ${pctlClass(data.pctl.foreignOi[i])}`}>（{pctlText(data.pctl.foreignOi[i])}）</span>
           ｜
@@ -460,6 +497,14 @@ function ChipsChart({
             ) : (
               <>借券 —</>
             )
+          ) : showFx ? (
+            fx?.[0] != null ? (
+              <>
+                USD/TWD <b>{fx[0].toFixed(3)}</b> <span className={twdClass(fxDay)}>{fxDay === null ? '' : `日 ${fxDay > 0 ? '+' : ''}${fxDay.toFixed(2)}%`}</span>
+              </>
+            ) : (
+              <>USD/TWD —</>
+            )
           ) : breadthMode === 'limit' ? (
             b ? (
               <>
@@ -491,6 +536,71 @@ function ChipsChart({
   );
 }
 
+const FX_ROWS: { flow: FlowFxCell['flow']; move: FlowFxCell['move'] }[] = [
+  { flow: 'sell', move: 'weak' },
+  { flow: 'sell', move: 'flat' },
+  { flow: 'sell', move: 'strong' },
+  { flow: 'buy', move: 'weak' },
+  { flow: 'buy', move: 'flat' },
+  { flow: 'buy', move: 'strong' },
+];
+
+/** 表格列名用短版（手機 7 欄放不下全名） */
+const FX_ROW_FLOW: Record<FlowFxCell['flow'], string> = { sell: '賣超', mid: '一般', buy: '買超' };
+const FX_ROW_MOVE: Record<Exclude<FlowFxCell['move'], 'all'>, string> = { weak: '貶', flat: '持平', strong: '升' };
+
+/** 外資 20 日累計買賣超 × 台幣 20 日變化，之後加權的表現（每個交易日一筆） */
+function FxBacktest({ fx, from }: { fx: NonNullable<ForeignChipsFile['fx']>; from: string | null }) {
+  const cur = fx.latest;
+  const find = (flow: FlowFxCell['flow'], move: FlowFxCell['move']) => fx.cells.find((c) => c.flow === flow && c.move === move);
+  const line = (c: FlowFxCell, label: string, cls = '', runs = true) => (
+    <tr key={label} className={cls}>
+      <td>{label}</td>
+      <td className="r">
+        {c.n}
+        {runs && <span className="muted">／{c.runs}</span>}
+      </td>
+      <td className="r">{pctCell(c.avg20)}</td>
+      <td className="r">{pctCell(c.avg60)}</td>
+      <td className="r">{pctCell(c.win60, false)}</td>
+      <td className="r">{pctCell(c.avgMdd60)}</td>
+      <td className="r">{pctCell(c.crash60, false)}</td>
+    </tr>
+  );
+  return (
+    <>
+      <p className="small muted ms-rule">
+        外資 20 日累計買賣超 × 台幣 20 日變化之後的加權表現（{from ?? '—'} 起，每個交易日一筆）。賣超＝≤ 第 {FF_SELL_PCTL * 100} 百分位、買超＝≥ 第 {FF_BUY_PCTL * 100}{' '}
+        百分位；貶／升＝USD/TWD 20 日 ±{FF_MOVE_PCT}%。<b>結論：賣超時台幣貶不貶，之後差不多 → 不貼標籤。</b>同一段會連續出現很多天，「段」才是獨立次數；段數少於 10 的列不要看。上漲＝60 日後上漲的比例、最深＝60 日內最大跌幅平均、大跌＝60 日內曾跌逾 10% 的比例。
+      </p>
+      <div className="table-wrap">
+      <table className="bt-table num">
+        <thead>
+          <tr>
+            <th>外資×台幣</th>
+            <th className="r">天／段</th>
+            <th className="r">20日</th>
+            <th className="r">60日</th>
+            <th className="r">上漲</th>
+            <th className="r">最深</th>
+            <th className="r">大跌</th>
+          </tr>
+        </thead>
+        <tbody>
+          {FX_ROWS.map(({ flow, move }) => {
+            const c = find(flow, move);
+            if (!c) return null;
+            const here = cur?.flow === flow && cur.move === move;
+            return line(c, `${FX_ROW_FLOW[flow]}・${move === 'all' ? '全部' : FX_ROW_MOVE[move]}${here ? ' ◀' : ''}`, here ? 'hl' : '');
+          })}
+          {line(fx.baseline, '所有交易日（基準）', 'all', false)}
+        </tbody>
+      </table>
+      </div>
+    </>
+  );
+}
+
 export function ForeignChipsPanel({
   data,
   themeKey,
@@ -511,8 +621,10 @@ export function ForeignChipsPanel({
   const hasMargin = !!margin?.rows.length;
   const hasSbl = !!margin?.sbl?.length;
   const hasBreadth = !!breadth?.rows.length;
+  const hasFx = !!data?.fx?.fx.some((x) => x[0] !== null);
+  const [showFxBt, setShowFxBt] = useState(false);
   // 沒有對應資料的選項不顯示；記住的選項沒資料時退回散戶小台
-  const modes = PANE4_MODES.filter((o) => o.k === 'retail' || (o.k === 'margin' ? hasMargin : o.k === 'sbl' ? hasSbl : hasBreadth));
+  const modes = PANE4_MODES.filter((o) => o.k === 'retail' || (o.k === 'margin' ? hasMargin : o.k === 'sbl' ? hasSbl : o.k === 'fx' ? hasFx : hasBreadth));
   const pane4Eff: Pane4Mode = modes.some((o) => o.k === pane4) ? pane4 : 'retail';
   const [resetKey, setResetKey] = useState(0);
   const [showEvents, setShowEvents] = useState(false);
@@ -553,17 +665,19 @@ export function ForeignChipsPanel({
             ? '融資維持率（%，虛線＝警戒 160／斷頭區 140／追繳 130）＋融資增減（億，紅增綠減）'
             : pane4Eff === 'sbl'
               ? '借券賣出餘額（粗線，萬張；追空極端段紅、回補極端段綠）＋已借未賣（藍虛線，獨立刻度，現值標在線尾）＋日增減（柱，增加＝空方加碼）'
+            : pane4Eff === 'fx'
+              ? 'USD/TWD 匯率（線，往上＝台幣貶）＋日變動（柱，貶綠升紅）'
             : pane4Eff === 'limit'
               ? '上市漲停（0 以上）／跌停（0 以下，恐慌日加深）家數'
               : pane4Eff === 'ad'
                 ? '上市上漲（0 以上）／下跌（0 以下，恐慌日加深）家數'
                 : '散戶小台淨 OI（口）＋日增減柱'}
-          ，可用區間列旁的按鈕切換（散戶小台／融資維持率／借券／漲跌停／漲跌家數）。
+          ，可用區間列旁的按鈕切換（散戶小台／融資維持率／借券／台幣／漲跌停／漲跌家數）。
         </p>
         <p className="small muted ms-rule">
         買賣超是流量、淨未平倉是部位，兩者與當日漲跌幾乎同步，單看柱子不會比看 K 棒多知道什麼；要看的是<b>累計 vs 指數的背離</b>與<b>部位極端</b>。
         百分位＝該值在近 {PCTL_WINDOW} 個交易日中的位置；事件只在首次 ≤ 第 {EXTREME_LOW * 100}／≥ 第 {EXTREME_HIGH * 100} 百分位時標一次，回到第 {RESET_PCTL * 100} 百分位另一側才算新的一波。賣超不跌：20 日累計 ≤ 第 {DIVERGE_PCTL * 100} 百分位且加權 20 日不跌。賣壓衰竭：20 日累計在 0 以下、「5 日累計 × {PACE_RATIO}」由下往上穿過 20 日累計（最近一週的賣超步調慢過整月平均），再掉回去才可再標。
-        同一波內外資期淨 OI 比前次標記再多 {DEEPER_STEP * 100}% 補一個小標記「OI空↓／OI多↑」，只畫在圖上不進回測。外資期空單多為現貨避險，空單極端不等於看空；散戶小台為法人反推值。第 4 格可切換「融資維持率」：散戶小台是散戶的期貨部位、融資是散戶的現股槓桿，兩者都是散戶籌碼；外資連續賣超時看維持率是否逼近 160／140，判斷賣壓會不會擴大成斷頭（完整事件與回測在下方「融資斷頭監測」面板）。切到「借券」看的是法人空單：借券放空者幾乎都是外資／法人，外資期空單（三格）是避險部位、借券賣出餘額是現貨空單，兩者對照——外資賣超＋借券賣出餘額暴增＝現貨與放空同時出手；外資仍賣超、借券餘額卻連續下降＝空方回補、賣壓接近尾聲；已借未賣擴大＝借了券還沒砸出來的潛在空單。追空／回補極端與回測在下方「融資斷頭監測」面板。也可切到「漲跌停」「漲跌家數」：外資賣超是籌碼、家數是廣度，兩者對照看的是「外資賣超時跌停家數是否同步暴增（恐慌）」與「賣超仍在、跌停卻減半（賣壓衰竭）」；恐慌日與回測在下方「漲跌停家數監測」面板。
+        同一波內外資期淨 OI 比前次標記再多 {DEEPER_STEP * 100}% 補一個小標記「OI空↓／OI多↑」，只畫在圖上不進回測。外資期空單多為現貨避險，空單極端不等於看空；散戶小台為法人反推值。第 4 格可切換「融資維持率」：散戶小台是散戶的期貨部位、融資是散戶的現股槓桿，兩者都是散戶籌碼；外資連續賣超時看維持率是否逼近 160／140，判斷賣壓會不會擴大成斷頭（完整事件與回測在下方「融資斷頭監測」面板）。切到「借券」看的是法人空單：借券放空者幾乎都是外資／法人，外資期空單（三格）是避險部位、借券賣出餘額是現貨空單，兩者對照——外資賣超＋借券賣出餘額暴增＝現貨與放空同時出手；外資仍賣超、借券餘額卻連續下降＝空方回補、賣壓接近尾聲；已借未賣擴大＝借了券還沒砸出來的潛在空單。追空／回補極端與回測在下方「融資斷頭監測」面板。切到「台幣」看的是匯率：外資賣股後把錢換成美元匯出，USD/TWD 會往上（台幣貶），所以兩者大多同步（買賣超百分位與台幣 20 日變化相關約 −0.5），台幣是外資動向的另一個鏡子、不是另一個獨立證據；讀數列的「台幣20日」＝USD/TWD 近 {FF_DAYS} 個交易日變化。匯率以 FRED 為主、最近幾天用 Yahoo 補。也可切到「漲跌停」「漲跌家數」：外資賣超是籌碼、家數是廣度，兩者對照看的是「外資賣超時跌停家數是否同步暴增（恐慌）」與「賣超仍在、跌停卻減半（賣壓衰竭）」；恐慌日與回測在下方「漲跌停家數監測」面板。
       </p>
       </PanelNote>
 
@@ -648,9 +762,15 @@ export function ForeignChipsPanel({
           </table>
         </div>
       )}
+      {data.fx && (
+        <button type="button" className="linkbtn small fc-fxbt-btn" onClick={() => setShowFxBt(!showFxBt)} aria-expanded={showFxBt}>
+          {showFxBt ? '收起' : '展開'}外資買賣超 × 台幣回測
+        </button>
+      )}
+      {data.fx && showFxBt && <FxBacktest fx={data.fx} from={data.rows.find((_, k) => data.fx!.fx[k]?.[1] != null && data.pctl.cum20[k] != null)?.[0] ?? null} />}
       <PanelNote label="ⓘ 用法">
         <p className="small muted ms-rule">
-        用法：買賣超看「最近一週的步調 vs 這個月」而不是正負——5 日 × {PACE_RATIO} 比 20 日還低＝賣壓集中在最近幾天、還在加速；5 日拐頭往 0 收到步調慢過整月＝衰竭。三格同向不等於三個證據（外資期空單增加常伴隨賣超現貨）。有用的是「連續賣超但指數不跌」「散戶偏多極端時外資反向」這類關係斷裂；資料累積滿一年後再回測決定是否計分，目前不計分。
+        用法：買賣超看「最近一週的步調 vs 這個月」而不是正負——5 日 × {PACE_RATIO} 比 20 日還低＝賣壓集中在最近幾天、還在加速；5 日拐頭往 0 收到步調慢過整月＝衰竭。三格同向不等於三個證據（外資期空單增加常伴隨賣超現貨）。有用的是「連續賣超但指數不跌」「散戶偏多極端時外資反向」這類關係斷裂；資料累積滿一年後再回測決定是否計分，目前不計分。台幣：原本想用「賣超＋台幣貶＝匯出、賣超但台幣沒貶＝停泊」分辨賣壓輕重，回測沒過（兩組之後 60 日報酬與大跌比例幾乎一樣），所以只顯示數字、不貼標籤；外資大賣時不要因為「台幣沒貶」就認為比較安全。
       </p>
       </PanelNote>
     </section>

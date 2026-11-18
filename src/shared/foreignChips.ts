@@ -12,6 +12,7 @@
  * 僅供參考：不計入總經分數。
  */
 import { forward, mdd, stats, type EventStats } from './marginStress';
+import type { ForeignFxFile } from './foreignFx';
 import type { Bar } from './types';
 
 /**
@@ -133,6 +134,8 @@ export interface ForeignChipsFile {
   deeper: DeeperMark[];
   eventStats: Record<ForeignEventType, EventStats>;
   baseline: EventStats;
+  /** USD/TWD 對照（第 4 格「台幣」與讀數列）；沒有匯率資料時不存在 */
+  fx?: ForeignFxFile;
   latest: {
     date: string;
     taiex: number;

@@ -7,6 +7,8 @@ import {
   type ChipsHistoryFile,
   type ForeignChipsFile,
 } from '../../src/shared/foreignChips';
+import { spliceUsdTwd } from '../../src/shared/fedFx';
+import { analyzeForeignFx } from '../../src/shared/foreignFx';
 import type { Bar, SeriesFile } from '../../src/shared/types';
 
 async function readJson<T>(file: string): Promise<T | null> {
@@ -20,7 +22,7 @@ async function readJson<T>(file: string): Promise<T | null> {
 /**
  * 讀取 repo 內的長期歷史（data/chips-history.json，由 chipsBackfill.ts 回補）與
  * 每日排程資料（outDir/series 的 net_foreign、fut_foreign_oi、retail_oi、taiex），
- * 合併後寫出 outDir/foreign-chips.json（外資籌碼對照面板）。同一天以每日排程為準。
+ * 合併後寫出 outDir/foreign-chips.json（外資籌碼對照面板，含 USD/TWD 對照 fx）。同一天以每日排程為準。
  */
 export async function writeForeignChips(
   outDir: string,
@@ -39,6 +41,9 @@ export async function writeForeignChips(
   });
   const rows = combineForeignRows(merged, taiex);
   const out = analyzeForeignChips(rows, now);
+  // 台幣：FRED 為主、Yahoo 補最近幾天（Yahoo 2011～2016 有雜訊，見 fedFx.ts）；兩個都沒有就不寫 fx，面板不顯示「台幣」
+  const twd = spliceUsdTwd((await series('usdtwd_legacy')) ?? [], (await series('usdtwd')) ?? []);
+  if (twd.length) out.fx = analyzeForeignFx(rows, out.pctl.cum20, twd);
   const file = path.join(outDir, 'foreign-chips.json');
   await writeFile(`${file}.tmp`, JSON.stringify(out));
   await rename(`${file}.tmp`, file);
@@ -52,6 +57,10 @@ if (process.argv[1]?.endsWith('writeForeignChips.ts')) {
       console.log(`期間 ${r.start}～${r.end}，${r.rows.length} 天；最新 ${JSON.stringify(r.latest)}`);
       console.table(r.eventStats);
       console.log('基準', r.baseline);
+      if (r.fx) {
+        console.log('台幣', r.fx.latest);
+        console.table(r.fx.cells);
+      }
       console.table(r.events);
     })
     .catch((e) => {
