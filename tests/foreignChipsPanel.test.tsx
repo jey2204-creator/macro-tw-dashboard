@@ -168,6 +168,40 @@ describe('rightGapBars', () => {
     expect(window.localStorage.getItem('fc-pane4')).toBe('sbl');
   });
 
+  it('第 4 格切換成台幣：USD/TWD 線＋日變動柱；讀數列常駐「台幣20日」，回測表預設收合', async () => {
+    window.localStorage.removeItem('fc-pane4');
+    const { analyzeForeignFx } = await import('../src/shared/foreignFx');
+    // 台幣每天貶 0.1% → 20 日約 +2%（台幣貶）；最新 20 日累計在第 50 百分位＝一般
+    const fx = analyzeForeignFx(rows, data.pctl.cum20, rows.map((r, i) => [r[0], 30 * 1.001 ** i]));
+    const withFx = { ...data, fx };
+    render(<ForeignChipsPanel data={withFx} themeKey="auto-false-tw" />);
+    // 不切到台幣，讀數列也有台幣 20 日
+    expect(document.querySelector('.fc-legend')!.textContent).toContain('台幣20日 貶 2.02%');
+    chartLog.series = [];
+    chartLog.stretch = [];
+    fireEvent.click(screen.getByRole('button', { name: '台幣' }));
+    expect(chartLog.series.filter((x) => x.pane === 3)).toEqual([
+      { pane: 3, type: 'Line', label: true, scale: undefined },
+      { pane: 3, type: 'Histogram', label: false, scale: 'fc-fx-chg' },
+    ]);
+    expect(chartLog.stretch.slice(0, 4)).toEqual([0.32, 0.2, 0.2, 0.28]);
+    const legend = document.querySelector('.fc-legend')!.textContent ?? '';
+    expect(legend).toContain('USD/TWD 36.602');
+    expect(legend).toContain('日 +0.10%');
+    expect(window.localStorage.getItem('fc-pane4')).toBe('fx');
+    expect(screen.queryByText(/賣超偏重・台幣貶/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /展開外資買賣超 × 台幣回測/ }));
+    expect(screen.getByText(/賣超偏重・台幣貶 ≥ 1%/)).toBeTruthy();
+    expect(screen.getAllByText('所有交易日（基準）')).toHaveLength(2); // 事件表＋台幣回測表各一列
+  });
+
+  it('沒有匯率資料時不顯示「台幣」按鈕與回測', () => {
+    render(<ForeignChipsPanel data={data} themeKey="auto-false-tw" />);
+    expect(screen.queryByRole('button', { name: '台幣' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /台幣回測/ })).toBeNull();
+    expect(document.querySelector('.fc-legend')!.textContent).not.toContain('台幣20日');
+  });
+
   it('沒有借券資料時不顯示「借券」按鈕', () => {
     const mrows = rows.map((r) => [r[0], r[1], 170, 3000, 0] as [string, number, number, number, number]);
     const margin = { rows: mrows, states: mrows.map(() => 'normal') } as unknown as import('../src/shared/marginStress').MarginStressFile;
