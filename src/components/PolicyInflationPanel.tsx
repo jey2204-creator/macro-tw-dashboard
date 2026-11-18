@@ -75,7 +75,7 @@ const FX_LINES = [
 type FxId = (typeof FX_LINES)[number]['id'];
 const FX_RAW_TITLE: Record<FxId, string> = { dxy: 'DXY 美元指數（點）', twd: 'USD/TWD（元）｜往上＝台幣貶' };
 
-/** 可切換的副線（核心 CPI 固定顯示） */
+/** 可切換的副線（核心 CPI 另有開關 `pi-core`：關掉只是不畫線，實質利率與讀數仍以核心 CPI 計） */
 const EXTRA_LINES = [
   { id: 'cpi', label: '整體 CPI', key: 'pi-cpi', def: '1' },
   { id: 'core_pce', label: '核心 PCE', key: 'pi-pce', def: '0' },
@@ -157,6 +157,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
     core_pce: loadPref('pi-pce', ['1', '0'] as const, '0') === '1',
     us2y: loadPref('pi-2y', ['1', '0'] as const, '1') === '1',
   }));
+  const [coreOn, setCoreOn] = useState(() => loadPref('pi-core', ['1', '0'] as const, '1') === '1');
   const [indexPick, setIndexPick] = useState<IndexPick>(() => loadPref<IndexPick>('pi-idx', INDEX_PICKS, 'spx'));
   const [fxOn, setFxOn] = useState<Record<FxId, boolean>>(() => ({
     dxy: loadPref('pi-fx-dxy', ['1', '0'] as const, '0') === '1',
@@ -265,6 +266,10 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
     setFxOn(next);
     savePref(FX_LINES.find((f) => f.id === id)!.key, next[id] ? '1' : '0');
   };
+  const toggleCore = () => {
+    setCoreOn(!coreOn);
+    savePref('pi-core', coreOn ? '0' : '1');
+  };
   const toggleExtra = (id: ExtraId) => {
     const next = { ...extras, [id]: !extras[id] };
     setExtras(next);
@@ -307,30 +312,34 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       return { ...r, priceRange: { minValue: Math.min(r.priceRange.minValue, lo), maxValue: Math.max(r.priceRange.maxValue, hi) } };
     };
 
-    // 上窗格：Fed（階梯，深色粗線）、核心 CPI（強調色）、整體 CPI（細虛線）、核心 PCE（細線）
+    // 上窗格：Fed（階梯，深色粗線）、核心 CPI（強調色，可關）、整體 CPI（橘色實線）、核心 PCE（細線）
+    // 2% 目標線與 Y 軸涵蓋範圍掛在 Fed 序列：核心 CPI 關掉時目標線仍在
     const fedS = chart.addSeries(
       LineSeries,
-      { color: cssVar('--text-1'), lineWidth: 2, lineType: LineType.WithSteps, priceFormat: pct, lastValueVisible: false },
+      { color: cssVar('--text-1'), lineWidth: 2, lineType: LineType.WithSteps, priceFormat: pct, lastValueVisible: false, autoscaleInfoProvider: includeRange(FED_TARGET, FED_TARGET) },
       0,
     );
     fedS.setData(toData(fed));
-    const coreS = chart.addSeries(
-      LineSeries,
-      { color: cssVar('--accent'), lineWidth: 2, priceFormat: pct, lastValueVisible: false, autoscaleInfoProvider: includeRange(FED_TARGET, FED_TARGET) },
-      0,
-    );
-    coreS.setData(toData(coreCpi));
-    coreS.createPriceLine({
+    fedS.createPriceLine({
       price: FED_TARGET,
       color: textColor,
       lineWidth: 1,
       lineStyle: LineStyle.Dashed,
       axisLabelVisible: false,
     });
+    if (coreOn) {
+      const coreS = chart.addSeries(
+        LineSeries,
+        { color: cssVar('--accent'), lineWidth: 2, priceFormat: pct, lastValueVisible: false, priceLineVisible: false },
+        0,
+      );
+      coreS.setData(toData(coreCpi));
+    }
+    // 整體 CPI：實線（虛線只留給 2% 目標），原本的細虛線在手機上看不清楚
     if (extras.cpi && cpi.length > 0) {
       const s = chart.addSeries(
         LineSeries,
-        { color: cssVar('--ma60'), lineWidth: 1, lineStyle: LineStyle.Dashed, priceFormat: pct, lastValueVisible: false, priceLineVisible: false },
+        { color: cssVar('--ma60'), lineWidth: 2, priceFormat: pct, lastValueVisible: false, priceLineVisible: false },
         0,
       );
       s.setData(toData(cpi));
@@ -446,7 +455,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       chart.remove();
       chartRef.current = null;
     };
-  }, [loaded, fed, coreCpi, cpi, corePce, us2y, spx, equity, showSpx, indexLabel, real, extras, fxLines, themeKey]);
+  }, [loaded, fed, coreCpi, cpi, corePce, us2y, spx, equity, showSpx, indexLabel, real, extras, coreOn, fxLines, themeKey]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -535,6 +544,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
         看 Fed 跟通膨的距離，不看方向：實質政策利率（Fed − 核心CPI）小於 0 是寬鬆，Fed 歷來不會在這裡停止升息；大於 +1pp 才算緊縮，才有降息空間。
         2000、2006、2019、2023 幾次升息頂點都出現在實質利率翻正之後，但翻正不等於馬上降息（2023 翻正後又撐了一年）。
         核心 CPI 是落後指標；整體 CPI 用來解釋油價飆時 Fed 為什麼不動，核心 PCE 是 Fed 正式目標但晚兩週。
+        核心 CPI 的線可以關掉專心看整體 CPI，但關掉只是不畫線：實質利率、緊縮／寬鬆判讀一律以核心 CPI 計，不要拿圖上「Fed − 整體 CPI」的距離來讀（油價飆時整體 CPI 會讓 Fed 看起來不夠緊，那不是 Fed 的算法）。
         美債 2Y 是市場對未來一年 Fed 利率的押注，通常跑在 Fed 階梯前面：2Y 低於 Fed 一碼以上＝押降息、高於一碼以上＝押升息；它比 CPI 早反應，但押錯也常見（2024 上半年押六次降息，實際三次）。
         第三格指數（S&P 500／NASDAQ／費半／加權，一次看一個）的線色是 Fed 階段（升息期／高原／降息期／谷底；超過 6 個月沒動作算暫停）。1982 年起四個階段 S&P 年化都是正的，階段本身不是方向訊號；差別在「為什麼降息」：降息後一年內失業率觸發 Sahm 規則的衰退式降息（2001、2007）之後一年 S&P 是負的，保險式降息（1995、1998、2019、2024）則續漲——分類器是失業率和 2Y−Fed，不是 Fed 動作本身。
         「降息性質判定」用降息當天看得到的資料判：就業（Sahm 值 ≥ 0.5）與信用（Baa 公司債 − 美債 10Y ≥ 3.5pp）兩個都到才叫衰退式、只到一個是衰退警訊（例如 2024-09 只有就業到），通膨（核心 CPI 距 2% 超過 1pp）另外標「未解」＝停滯型風險；門檻事先定、不依結果調整，利差單獨看太吵（2011、2016 到過 3.4pp 沒衰退）。高收益債利差 FRED 只給近 3 年，只顯示不進規則。
@@ -546,10 +556,10 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       </PanelNote>
 
       <div className="cp-mas" role="group" aria-label="通膨序列">
-        <span className="ma-chip" aria-pressed="true" aria-disabled="true" title="固定顯示">
+        <button type="button" className="ma-chip" aria-pressed={coreOn} onClick={toggleCore}>
           <i className="swatch" style={{ background: 'var(--accent)' }} />
           核心 CPI
-        </span>
+        </button>
         {EXTRA_LINES.map((e) => (
           <button key={e.id} type="button" className="ma-chip" aria-pressed={extras[e.id]} onClick={() => toggleExtra(e.id)}>
             <i className="swatch" style={{ background: EXTRA_COLOR[e.id] }} />
@@ -601,13 +611,15 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
           {legend && (
             <div className="legend num cm-legend" aria-live="off">
               <div>
-                <span className="muted">{legend.date}</span> Fed <b>{f2(legend.fed)}%</b> ｜ 核心CPI <b>{f1(legend.core)}%</b>
-                {legend.cpi !== null && <> ｜ CPI {f1(legend.cpi)}%</>}
+                <span className="muted">{legend.date}</span> Fed <b>{f2(legend.fed)}%</b>
+                {coreOn && <> ｜ 核心CPI <b>{f1(legend.core)}%</b></>}
+                {legend.cpi !== null && <> ｜ CPI {coreOn ? `${f1(legend.cpi)}%` : <b>{f1(legend.cpi)}%</b>}</>}
                 {legend.pce !== null && <> ｜ 核心PCE {f1(legend.pce)}%</>}
               </div>
               <div>
                 實質 <b>{fpp(legend.real)}</b>
                 {legend.real !== null && <span className="muted"> ｜ {REAL_RATE_STATE_TEXT[legend.real < 0 ? 'loose' : legend.real >= REAL_RATE_TIGHT ? 'tight' : 'mid']}</span>}
+                {!coreOn && <span className="muted"> ｜ 以核心CPI {f1(legend.core)}% 計（線已關）</span>}
               </div>
               {legend.us2y !== null && (
                 <div>
