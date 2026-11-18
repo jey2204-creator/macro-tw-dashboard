@@ -138,9 +138,9 @@ describe('政策利率 vs 通膨面板', () => {
       { price: 0, title: undefined, axis: false },
       { price: 1, title: undefined, axis: false },
     ]);
-    // 圖內標籤（右側留白一欄）：2% 目標＋各線線尾最新值（Fed、核心、CPI、2Y）；讀數列有核心距 2%
+    // 圖內標籤（右側留白一欄）：2% 目標＋各線線尾最新值（只標數字：Fed、目標、核心、CPI、2Y）；讀數列有核心距 2%
     // 下面各格也標線尾值：實質利率線的最後一點是 2025-09 月底（Fed 4.25 − 核心 3.0），與頁首「最新 Fed」讀數 +1.10 不同屬正常
-    expect(chartLog.labels).toEqual([['Fed 4.10', '目標 2%', '核心 3.0', 'CPI 4.0', '2Y 3.70'], ['+1.25'], ['6,700']]);
+    expect(chartLog.labels).toEqual([['4.10', '2%', '3.0', '4.0', '3.70'], ['+1.25'], ['6,700']]);
     expect(document.querySelector('.cm-legend')!.textContent).toMatch(/實質 \+1\.10pp ｜ 緊縮（≥ \+1pp） ｜ 核心距 2% \+1\.00pp/);
     expect(screen.getByRole('button', { name: '整體 CPI' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('button', { name: '核心 PCE' }).getAttribute('aria-pressed')).toBe('false');

@@ -332,27 +332,27 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       axisLabelVisible: false,
     });
     const surface = cssVar('--surface');
-    // 線尾標籤：名稱＋最新值，外框＝線色；排在最後一根右邊的留白裡（留白寬度見下方區間 effect）
+    // 線尾標籤：只標最新值（不帶名稱，留白才窄），靠外框顏色＝線色認線；排在最後一根右邊的留白裡（留白寬度見下方區間 effect）
     const ends: LineLabel[] = [];
-    const addTop = (name: string, pts: readonly Point[], colorVar: string, width: 1 | 2, digits: number) => {
+    const addTop = (pts: readonly Point[], colorVar: string, width: 1 | 2, digits: number) => {
       const color = cssVar(colorVar);
       const s = chart.addSeries(LineSeries, { color, lineWidth: width, priceFormat: pct, lastValueVisible: false, priceLineVisible: false }, 0);
       s.setData(toData(pts));
       const last = pts.at(-1)!;
-      ends.push({ price: last[1], text: `${name} ${last[1].toFixed(digits)}`, short: last[1].toFixed(digits), color, endTime: last[0] as Time });
+      ends.push({ price: last[1], text: last[1].toFixed(digits), color, endTime: last[0] as Time });
     };
     {
       const last = fed.at(-1)!;
-      ends.push({ price: last[1], text: `Fed ${last[1].toFixed(2)}`, short: last[1].toFixed(2), color: cssVar('--text-1'), endTime: last[0] as Time });
+      ends.push({ price: last[1], text: last[1].toFixed(2), color: cssVar('--text-1'), endTime: last[0] as Time });
       // 2% 目標也標在同一欄（虛線一路畫到標籤），不另外蓋住左側的歷史線
-      ends.push({ price: FED_TARGET, text: `目標 ${FED_TARGET}%`, short: `${FED_TARGET}%`, color: textColor, endTime: last[0] as Time });
+      ends.push({ price: FED_TARGET, text: `${FED_TARGET}%`, color: textColor, endTime: last[0] as Time });
     }
-    if (coreOn) addTop('核心', coreCpi, '--accent', 2, 1);
+    if (coreOn) addTop(coreCpi, '--accent', 2, 1);
     // 整體 CPI：實線（虛線只留給 2% 目標），原本的細虛線在手機上看不清楚
-    if (extras.cpi && cpi.length > 0) addTop('CPI', cpi, '--ma60', 2, 1);
-    if (extras.core_pce && corePce.length > 0) addTop('PCE', corePce, '--ma240', 1, 1);
+    if (extras.cpi && cpi.length > 0) addTop(cpi, '--ma60', 2, 1);
+    if (extras.core_pce && corePce.length > 0) addTop(corePce, '--ma240', 1, 1);
     // 美債 2Y：市場對未來一年 Fed 利率的押注，跑在 Fed 階梯前面
-    if (extras.us2y && us2y.length > 0) addTop('2Y', us2y, '--ma120', 1, 2);
+    if (extras.us2y && us2y.length > 0) addTop(us2y, '--ma120', 1, 2);
     // 每格的線尾標籤共用同一段右側留白；allEnds 收集全部文字，用來算留白寬度
     const allEnds: string[] = [];
     // 標籤欄排在時間軸最後一根右邊：各格的線終點不同（月資料較早結束），取所有標籤終點裡最晚的那天
@@ -428,11 +428,11 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       );
       twdS.setData(toData(fxLines.twd.points));
       twdS.createPriceLine({ price: 0, color: textColor, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false });
-      const endOf = (name: string, pts: readonly Point[], colorVar: string): LineLabel[] => {
+      const endOf = (pts: readonly Point[], colorVar: string): LineLabel[] => {
         const last = pts.at(-1);
-        return last ? [{ price: last[1], text: `${name} ${fxFormat.formatter(last[1])}`, short: fxFormat.formatter(last[1]), color: cssVar(colorVar), endTime: last[0] as Time }] : [];
+        return last ? [{ price: last[1], text: fxFormat.formatter(last[1]), color: cssVar(colorVar), endTime: last[0] as Time }] : [];
       };
-      endLabels(twdS, [...endOf('DXY', fxLines.dxy.points, FX_COLOR.dxy), ...endOf('TWD', fxLines.twd.points, FX_COLOR.twd)]);
+      endLabels(twdS, [...endOf(fxLines.dxy.points, FX_COLOR.dxy), ...endOf(fxLines.twd.points, FX_COLOR.twd)]);
     } else if (fxLines) {
       // 只開一條：原始價位（DXY 點數／USD/TWD 匯價），不畫 0% 線
       const rawS = chart.addSeries(
@@ -588,7 +588,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
         看 Fed 跟通膨的距離，不看方向：實質政策利率（Fed − 核心CPI）小於 0 是寬鬆，Fed 歷來不會在這裡停止升息；大於 +1pp 才算緊縮，才有降息空間。
         2000、2006、2019、2023 幾次升息頂點都出現在實質利率翻正之後，但翻正不等於馬上降息（2023 翻正後又撐了一年）。
         核心 CPI 是落後指標；整體 CPI 用來解釋油價飆時 Fed 為什麼不動，核心 PCE 是 Fed 正式目標但晚兩週。
-        圖上每一格各線尾端的小標籤是最新值（外框顏色＝線色，排在圖表右側留白，月資料的線較早結束、用細線連過去；擠在一起時上下錯開），「目標 2%」標的是 Fed 的通膨目標虛線；往左拖曳看舊資料時標籤會先收起來；讀數列「核心距 2%」是十字線那天核心 CPI 離目標多遠。
+        圖上每一格各線尾端的小標籤是最新值（只標數字，外框顏色＝線色、對照上方晶片的顏色認線，排在圖表右側留白，月資料的線較早結束、用細線連過去；擠在一起時上下錯開），灰框「2%」標的是 Fed 的通膨目標虛線；往左拖曳看舊資料時標籤會先收起來；讀數列「核心距 2%」是十字線那天核心 CPI 離目標多遠。
         核心 CPI 的線可以關掉專心看整體 CPI，但關掉只是不畫線：實質利率、緊縮／寬鬆判讀一律以核心 CPI 計，不要拿圖上「Fed − 整體 CPI」的距離來讀（油價飆時整體 CPI 會讓 Fed 看起來不夠緊，那不是 Fed 的算法）。
         美債 2Y 是市場對未來一年 Fed 利率的押注，通常跑在 Fed 階梯前面：2Y 低於 Fed 一碼以上＝押降息、高於一碼以上＝押升息；它比 CPI 早反應，但押錯也常見（2024 上半年押六次降息，實際三次）。
         第三格指數（S&P 500／NASDAQ／費半／加權，一次看一個）的線色是 Fed 階段（升息期／高原／降息期／谷底；超過 6 個月沒動作算暫停）。1982 年起四個階段 S&P 年化都是正的，階段本身不是方向訊號；差別在「為什麼降息」：降息後一年內失業率觸發 Sahm 規則的衰退式降息（2001、2007）之後一年 S&P 是負的，保險式降息（1995、1998、2019、2024）則續漲——分類器是失業率和 2Y−Fed，不是 Fed 動作本身。
