@@ -7,6 +7,7 @@ import type { Bar, SeriesFile } from '../src/shared/types';
 const chartLog = {
   series: [] as { pane: number; title?: string; label: boolean }[],
   styles: [] as { color?: string; dashed: boolean }[],
+  labels: [] as string[][],
   watermarks: [] as string[],
   priceLines: [] as { price: number; title?: string; axis: boolean }[],
 };
@@ -18,13 +19,13 @@ vi.mock('lightweight-charts', () => {
         chartLog.series.push({ pane: paneIndex, title: opts.title, label: opts.lastValueVisible !== false });
         chartLog.styles.push({ color: opts.color, dashed: opts.lineStyle === 2 });
         if (!panes.has(paneIndex)) panes.set(paneIndex, { setStretchFactor: () => {} });
-        return { setData: () => {}, createPriceLine: (o: { price: number; title?: string; axisLabelVisible?: boolean }) =>
+        return { setData: () => {}, attachPrimitive: (p: { labels?: { text: string }[] }) => chartLog.labels.push((p.labels ?? []).map((l) => l.text)), createPriceLine: (o: { price: number; title?: string; axisLabelVisible?: boolean }) =>
             chartLog.priceLines.push({ price: o.price, title: o.title, axis: o.axisLabelVisible !== false }),
         };
       },
       panes: () => [...panes.keys()].sort((a, b) => a - b).map((k) => panes.get(k)!),
       priceScale: () => ({ applyOptions: () => {} }),
-      timeScale: () => ({ fitContent: () => {}, setVisibleRange: () => {}, setVisibleLogicalRange: () => {}, applyOptions: () => {}, subscribeVisibleLogicalRangeChange: () => {}, getVisibleRange: () => null, timeToCoordinate: () => null }),
+      timeScale: () => ({ fitContent: () => {}, setVisibleRange: () => {}, setVisibleLogicalRange: () => {}, applyOptions: () => {}, subscribeVisibleLogicalRangeChange: () => {}, unsubscribeVisibleLogicalRangeChange: () => {}, getVisibleLogicalRange: () => null, getVisibleRange: () => null, timeToCoordinate: () => null, timeToIndex: () => 0, width: () => 300 }),
       subscribeCrosshairMove: () => {},
       unsubscribeCrosshairMove: () => {},
       applyOptions: () => {},
@@ -48,6 +49,8 @@ vi.mock('lightweight-charts', () => {
 });
 
 const { PolicyInflationPanel } = await import('../src/components/PolicyInflationPanel');
+const { rightGapBars, endLabelGapPx } = await import('../src/lib/endLabels');
+const { stackYs } = await import('../src/lib/lineLabels');
 
 function series(id: string, bars: Bar[]): SeriesFile {
   return {
@@ -91,6 +94,7 @@ const FILES: Record<string, SeriesFile> = {
 beforeEach(() => {
   chartLog.series = [];
   chartLog.styles = [];
+  chartLog.labels = [];
   chartLog.watermarks = [];
   chartLog.priceLines = [];
   window.localStorage.clear();
@@ -134,6 +138,10 @@ describe('政策利率 vs 通膨面板', () => {
       { price: 0, title: undefined, axis: false },
       { price: 1, title: undefined, axis: false },
     ]);
+    // 圖內標籤（右側留白一欄）：2% 目標＋各線線尾最新值（只標數字：Fed、目標、核心、CPI、2Y）；讀數列有核心距 2%
+    // 下面各格也標線尾值：實質利率線的最後一點是 2025-09 月底（Fed 4.25 − 核心 3.0），與頁首「最新 Fed」讀數 +1.10 不同屬正常
+    expect(chartLog.labels).toEqual([['4.10', '2%', '3.0', '4.0', '3.70'], ['+1.25'], ['6,700']]);
+    expect(document.querySelector('.cm-legend')!.textContent).toMatch(/實質 \+1\.10pp ｜ 緊縮（≥ \+1pp） ｜ 核心距 2% \+1\.00pp/);
     expect(screen.getByRole('button', { name: '整體 CPI' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('button', { name: '核心 PCE' }).getAttribute('aria-pressed')).toBe('false');
     // 美債 2Y 預設開：圖例顯示 2Y 與 2Y−Fed（3.70 − 4.10 = −0.40pp → 市場押降息）
@@ -252,10 +260,23 @@ describe('政策利率 vs 通膨面板', () => {
     // 2% 目標線掛在 Fed 序列，兩次建圖都有
     expect(chartLog.priceLines.filter((l) => l.price === 2).length).toBe(2);
     const legend = document.querySelector('.cm-legend')!.textContent ?? '';
-    expect(legend).toMatch(/實質 \+1\.10pp ｜ 緊縮（≥ \+1pp） ｜ 以核心CPI 3\.0% 計（線已關）/);
+    expect(legend).toMatch(/實質 \+1\.10pp ｜ 緊縮（≥ \+1pp） ｜ 核心距 2% \+1\.00pp ｜ 以核心CPI 3\.0% 計（線已關）/);
     expect(legend).not.toMatch(/Fed 4\.10% ｜ 核心CPI/);
     // 頁首讀數不受影響
     expect(document.querySelector('.pi-state')!.textContent).toMatch(/\+1\.10pp（Fed 4\.10% − 核心CPI 3\.0%）/);
+  });
+
+  it('線尾標籤的右側留白與上下錯開', () => {
+    // 300px 寬放 1000 根＋60px 留白 → 每根 0.24px，留白 250 根；至少 2 根
+    expect(rightGapBars(300, 1000, 60)).toBeCloseTo(250);
+    expect(rightGapBars(300, 3, 60)).toBe(2);
+    expect(rightGapBars(50, 100, 60)).toBe(2);
+    // 量不到字寬時每字 7px：'Fed 4.10' 8 字 → 56＋邊距 17
+    expect(endLabelGapPx(['Fed 4.10', '2Y 3.70'], 'sans-serif')).toBe(73);
+    // 不擠：原位；兩個擠在一起：往下推開；頂到下緣：整組往上
+    expect(stackYs([20, 60], 17, 9, 191)).toEqual([20, 60]);
+    expect(stackYs([50, 55, 120], 17, 9, 191)).toEqual([50, 67, 120]);
+    expect(stackYs([180, 185, 190], 17, 9, 191)).toEqual([157, 174, 191]);
   });
 
   it('切換核心 PCE 會加序列並記住；區間預設 5 年', async () => {
