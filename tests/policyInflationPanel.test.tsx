@@ -7,6 +7,7 @@ import type { Bar, SeriesFile } from '../src/shared/types';
 const chartLog = {
   series: [] as { pane: number; title?: string; label: boolean }[],
   styles: [] as { color?: string; dashed: boolean }[],
+  labels: [] as string[][],
   watermarks: [] as string[],
   priceLines: [] as { price: number; title?: string; axis: boolean }[],
 };
@@ -18,7 +19,7 @@ vi.mock('lightweight-charts', () => {
         chartLog.series.push({ pane: paneIndex, title: opts.title, label: opts.lastValueVisible !== false });
         chartLog.styles.push({ color: opts.color, dashed: opts.lineStyle === 2 });
         if (!panes.has(paneIndex)) panes.set(paneIndex, { setStretchFactor: () => {} });
-        return { setData: () => {}, createPriceLine: (o: { price: number; title?: string; axisLabelVisible?: boolean }) =>
+        return { setData: () => {}, attachPrimitive: (p: { labels?: { text: string }[] }) => chartLog.labels.push((p.labels ?? []).map((l) => l.text)), createPriceLine: (o: { price: number; title?: string; axisLabelVisible?: boolean }) =>
             chartLog.priceLines.push({ price: o.price, title: o.title, axis: o.axisLabelVisible !== false }),
         };
       },
@@ -91,6 +92,7 @@ const FILES: Record<string, SeriesFile> = {
 beforeEach(() => {
   chartLog.series = [];
   chartLog.styles = [];
+  chartLog.labels = [];
   chartLog.watermarks = [];
   chartLog.priceLines = [];
   window.localStorage.clear();
@@ -134,6 +136,9 @@ describe('政策利率 vs 通膨面板', () => {
       { price: 0, title: undefined, axis: false },
       { price: 1, title: undefined, axis: false },
     ]);
+    // 圖內標籤：左側「2% 目標」＋各線線尾最新值（Fed、核心、CPI、2Y）；讀數列有核心距 2%
+    expect(chartLog.labels).toEqual([['2% 目標'], ['Fed 4.10', '核心 3.0', 'CPI 4.0', '2Y 3.70']]);
+    expect(document.querySelector('.cm-legend')!.textContent).toMatch(/實質 \+1\.10pp ｜ 緊縮（≥ \+1pp） ｜ 核心距 2% \+1\.00pp/);
     expect(screen.getByRole('button', { name: '整體 CPI' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('button', { name: '核心 PCE' }).getAttribute('aria-pressed')).toBe('false');
     // 美債 2Y 預設開：圖例顯示 2Y 與 2Y−Fed（3.70 − 4.10 = −0.40pp → 市場押降息）
@@ -252,7 +257,7 @@ describe('政策利率 vs 通膨面板', () => {
     // 2% 目標線掛在 Fed 序列，兩次建圖都有
     expect(chartLog.priceLines.filter((l) => l.price === 2).length).toBe(2);
     const legend = document.querySelector('.cm-legend')!.textContent ?? '';
-    expect(legend).toMatch(/實質 \+1\.10pp ｜ 緊縮（≥ \+1pp） ｜ 以核心CPI 3\.0% 計（線已關）/);
+    expect(legend).toMatch(/實質 \+1\.10pp ｜ 緊縮（≥ \+1pp） ｜ 核心距 2% \+1\.00pp ｜ 以核心CPI 3\.0% 計（線已關）/);
     expect(legend).not.toMatch(/Fed 4\.10% ｜ 核心CPI/);
     // 頁首讀數不受影響
     expect(document.querySelector('.pi-state')!.textContent).toMatch(/\+1\.10pp（Fed 4\.10% − 核心CPI 3\.0%）/);

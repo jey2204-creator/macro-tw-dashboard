@@ -24,6 +24,13 @@ export interface LineLabel {
   text: string;
   /** 放不下時的短版（例如只剩數字）；連短版都放不下就不畫 */
   short?: string;
+  /** 這個標籤自己的外框／連線色（多條線共用一個 primitive 時用）；沒給用 style.border */
+  color?: string;
+  /**
+   * 貼右時：這個標籤所屬折線的最後一點（多條線共用一個 primitive、各線終點不同時用）。
+   * 有給就以它當細線指回的位置；該點不在畫面內（往左拖曳後）就不畫，免得把最新值標在舊資料旁
+   */
+  endTime?: Time;
 }
 
 export interface LineLabelStyle {
@@ -61,7 +68,7 @@ export class LineLabels implements ISeriesPrimitive<Time> {
   private readonly views: readonly IPrimitivePaneView[];
 
   constructor(
-    private readonly labels: readonly LineLabel[],
+    readonly labels: readonly LineLabel[],
     private readonly style: LineLabelStyle,
   ) {
     const renderer: IPrimitivePaneRenderer = { draw: (target) => this.drawLabels(target) };
@@ -122,6 +129,8 @@ export class LineLabels implements ISeriesPrimitive<Time> {
       ctx.textBaseline = 'middle';
       ctx.textAlign = 'left';
       const h = fontSize + PAD_Y * 2;
+      // 同一個 primitive 已經放好的標籤（貼右時互相閃開）
+      const placed: { x: number; y: number; w: number }[] = [];
       for (const l of this.labels) {
         const y0 = s.priceToCoordinate(l.price);
         const bottom = mediaSize.height * (this.style.maxYFrac ?? 1);
@@ -131,7 +140,12 @@ export class LineLabels implements ISeriesPrimitive<Time> {
         let w = ctx.measureText(text).width + PAD_X * 2;
         let x = this.style.align === 'right' ? mediaSize.width - LEFT - w : LEFT;
         let moved = false;
+        let xEnd: number | null = null;
         if (this.style.align === 'right') {
+          if (l.endTime !== undefined) {
+            xEnd = this.chart?.timeScale().timeToCoordinate(l.endTime) ?? null;
+            if (xEnd === null || xEnd > mediaSize.width + 1) continue;
+          }
           // 線尾現值：只能放在 maxYFrac 以上（下方是柱子區，不進去）；先夾進範圍，再閃開壓到的折線
           // （上下交替找第一個空位）；全版放不下就換短版再找一次；還是沒有就不畫（狀態列有數字）
           const step = h + GAP;
@@ -142,7 +156,9 @@ export class LineLabels implements ISeriesPrimitive<Time> {
               const lx = mediaSize.width - LEFT - lw - (j * lw) / 2;
               if (lx < LEFT) break;
               const obs = this.obstacleYs(lx, lx + lw);
-              const free = (cy: number) => obs.every((oy) => oy < cy - h / 2 - GAP || oy > cy + h / 2 + GAP);
+              const clear = (cy: number) =>
+                placed.every((p) => lx >= p.x + p.w + GAP || lx + lw + GAP <= p.x || Math.abs(cy - p.y) >= h + GAP);
+              const free = (cy: number) => clear(cy) && obs.every((oy) => oy < cy - h / 2 - GAP || oy > cy + h / 2 + GAP);
               const c0 = Math.min(Math.max(y0, h / 2), bottom - h / 2);
               if (free(c0)) return { x: lx, y: c0 };
               for (let k = 1; k * step <= bottom; k++) {
@@ -162,6 +178,7 @@ export class LineLabels implements ISeriesPrimitive<Time> {
           x = got.x;
           y = got.y;
           moved = Math.abs(y - y0) > 1 || x < xRight - 1;
+          placed.push({ x, y, w });
         } else if (y - h / 2 < 0 || y + h / 2 > bottom) {
           // 門檻線在窗格外（含標籤會被切到）就不畫，不貼邊，免得以為門檻就在窗格底部
           continue;
@@ -169,12 +186,12 @@ export class LineLabels implements ISeriesPrimitive<Time> {
         const top = Math.round(y - h / 2) + 0.5;
         if (moved) {
           // 細線從標籤右緣中點指回線尾原本的位置
-          const xEnd = this.lineEndX() ?? mediaSize.width - LEFT;
+          const xe = xEnd ?? this.lineEndX() ?? mediaSize.width - LEFT;
           ctx.beginPath();
-          ctx.moveTo(xEnd, Math.round(y0) + 0.5);
+          ctx.moveTo(xe, Math.round(y0) + 0.5);
           ctx.lineTo(x + w, Math.round(y) + 0.5);
           ctx.lineWidth = 1;
-          ctx.strokeStyle = this.style.border;
+          ctx.strokeStyle = l.color ?? this.style.border;
           ctx.stroke();
         }
         ctx.beginPath();
@@ -182,7 +199,7 @@ export class LineLabels implements ISeriesPrimitive<Time> {
         ctx.fillStyle = this.style.background;
         ctx.fill();
         ctx.lineWidth = 1;
-        ctx.strokeStyle = this.style.border;
+        ctx.strokeStyle = l.color ?? this.style.border;
         ctx.stroke();
         ctx.fillStyle = this.style.color;
         ctx.fillText(text, x + PAD_X, Math.round(y));

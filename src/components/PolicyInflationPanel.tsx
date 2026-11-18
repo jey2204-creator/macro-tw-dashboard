@@ -10,6 +10,8 @@ import {
   createChart,
   createTextWatermark,
   type IChartApi,
+  type ISeriesApi,
+  type SeriesType,
   type MouseEventParams,
   type Time,
 } from 'lightweight-charts';
@@ -19,6 +21,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSeriesMap } from '../hooks/useData';
 import { CHART_INTERACTION, resetPaneStretch, resetPriceScales, attachTimeAxis, TIME_AXIS } from '../lib/chartInteraction';
 import { loadPref, savePref } from '../lib/storage';
+import { LineLabels, type LineLabel } from '../lib/lineLabels';
 import { cssVar, pctCell } from '../lib/stressFormat';
 import {
   PHASE_COLOR,
@@ -312,11 +315,12 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       return { ...r, priceRange: { minValue: Math.min(r.priceRange.minValue, lo), maxValue: Math.max(r.priceRange.maxValue, hi) } };
     };
 
-    // 上窗格：Fed（階梯，深色粗線）、核心 CPI（強調色，可關）、整體 CPI（橘色實線）、核心 PCE（細線）
+    // 上窗格：Fed（階梯，深色粗線）、核心 CPI（強調色，可關）、整體 CPI（橘色實線）、核心 PCE（細線）、美債 2Y
     // 2% 目標線與 Y 軸涵蓋範圍掛在 Fed 序列：核心 CPI 關掉時目標線仍在
+    // Fed 最新值的水平位置線不畫（和 2% 目標虛線長得一樣，容易看成另一條目標）；各線最新值改標在線尾
     const fedS = chart.addSeries(
       LineSeries,
-      { color: cssVar('--text-1'), lineWidth: 2, lineType: LineType.WithSteps, priceFormat: pct, lastValueVisible: false, autoscaleInfoProvider: includeRange(FED_TARGET, FED_TARGET) },
+      { color: cssVar('--text-1'), lineWidth: 2, lineType: LineType.WithSteps, priceFormat: pct, lastValueVisible: false, priceLineVisible: false, autoscaleInfoProvider: includeRange(FED_TARGET, FED_TARGET) },
       0,
     );
     fedS.setData(toData(fed));
@@ -327,40 +331,34 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       lineStyle: LineStyle.Dashed,
       axisLabelVisible: false,
     });
-    if (coreOn) {
-      const coreS = chart.addSeries(
-        LineSeries,
-        { color: cssVar('--accent'), lineWidth: 2, priceFormat: pct, lastValueVisible: false, priceLineVisible: false },
-        0,
-      );
-      coreS.setData(toData(coreCpi));
+    const surface = cssVar('--surface');
+    // 線尾標籤：名稱＋最新值，外框＝線色；放不下縮成只剩數字
+    const ends: LineLabel[] = [];
+    const topLines: ISeriesApi<SeriesType>[] = [fedS];
+    const addTop = (name: string, pts: readonly Point[], colorVar: string, width: 1 | 2, digits: number) => {
+      const color = cssVar(colorVar);
+      const s = chart.addSeries(LineSeries, { color, lineWidth: width, priceFormat: pct, lastValueVisible: false, priceLineVisible: false }, 0);
+      s.setData(toData(pts));
+      topLines.push(s);
+      const last = pts.at(-1)!;
+      ends.push({ price: last[1], text: `${name} ${last[1].toFixed(digits)}`, short: last[1].toFixed(digits), color, endTime: last[0] as Time });
+    };
+    {
+      const last = fed.at(-1)!;
+      ends.push({ price: last[1], text: `Fed ${last[1].toFixed(2)}`, short: last[1].toFixed(2), color: cssVar('--text-1'), endTime: last[0] as Time });
     }
+    if (coreOn) addTop('核心', coreCpi, '--accent', 2, 1);
     // 整體 CPI：實線（虛線只留給 2% 目標），原本的細虛線在手機上看不清楚
-    if (extras.cpi && cpi.length > 0) {
-      const s = chart.addSeries(
-        LineSeries,
-        { color: cssVar('--ma60'), lineWidth: 2, priceFormat: pct, lastValueVisible: false, priceLineVisible: false },
-        0,
-      );
-      s.setData(toData(cpi));
-    }
-    if (extras.core_pce && corePce.length > 0) {
-      const s = chart.addSeries(
-        LineSeries,
-        { color: cssVar('--ma240'), lineWidth: 1, priceFormat: pct, lastValueVisible: false, priceLineVisible: false },
-        0,
-      );
-      s.setData(toData(corePce));
-    }
+    if (extras.cpi && cpi.length > 0) addTop('CPI', cpi, '--ma60', 2, 1);
+    if (extras.core_pce && corePce.length > 0) addTop('PCE', corePce, '--ma240', 1, 1);
     // 美債 2Y：市場對未來一年 Fed 利率的押注，跑在 Fed 階梯前面
-    if (extras.us2y && us2y.length > 0) {
-      const s = chart.addSeries(
-        LineSeries,
-        { color: cssVar('--ma120'), lineWidth: 1, priceFormat: pct, lastValueVisible: false, priceLineVisible: false },
-        0,
-      );
-      s.setData(toData(us2y));
-    }
+    if (extras.us2y && us2y.length > 0) addTop('2Y', us2y, '--ma120', 1, 2);
+    fedS.attachPrimitive(
+      new LineLabels([{ price: FED_TARGET, text: `${FED_TARGET}% 目標` }], { color: cssVar('--text-2'), background: surface, border: textColor, fontSize: 11, fontFamily }),
+    );
+    fedS.attachPrimitive(
+      new LineLabels(ends, { color: cssVar('--text-1'), background: surface, border: textColor, fontSize: 11, fontFamily, align: 'right', avoid: topLines }),
+    );
 
     // 中窗格：實質政策利率，0 以上緊縮方向、以下寬鬆方向
     const realS = chart.addSeries(
@@ -544,6 +542,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
         看 Fed 跟通膨的距離，不看方向：實質政策利率（Fed − 核心CPI）小於 0 是寬鬆，Fed 歷來不會在這裡停止升息；大於 +1pp 才算緊縮，才有降息空間。
         2000、2006、2019、2023 幾次升息頂點都出現在實質利率翻正之後，但翻正不等於馬上降息（2023 翻正後又撐了一年）。
         核心 CPI 是落後指標；整體 CPI 用來解釋油價飆時 Fed 為什麼不動，核心 PCE 是 Fed 正式目標但晚兩週。
+        圖上各線尾端的小標籤是最新值（外框顏色＝線色，擠在一起時會錯開並用細線連回線尾），左側「2% 目標」標的是 Fed 的通膨目標虛線；讀數列「核心距 2%」是十字線那天核心 CPI 離目標多遠。
         核心 CPI 的線可以關掉專心看整體 CPI，但關掉只是不畫線：實質利率、緊縮／寬鬆判讀一律以核心 CPI 計，不要拿圖上「Fed − 整體 CPI」的距離來讀（油價飆時整體 CPI 會讓 Fed 看起來不夠緊，那不是 Fed 的算法）。
         美債 2Y 是市場對未來一年 Fed 利率的押注，通常跑在 Fed 階梯前面：2Y 低於 Fed 一碼以上＝押降息、高於一碼以上＝押升息；它比 CPI 早反應，但押錯也常見（2024 上半年押六次降息，實際三次）。
         第三格指數（S&P 500／NASDAQ／費半／加權，一次看一個）的線色是 Fed 階段（升息期／高原／降息期／谷底；超過 6 個月沒動作算暫停）。1982 年起四個階段 S&P 年化都是正的，階段本身不是方向訊號；差別在「為什麼降息」：降息後一年內失業率觸發 Sahm 規則的衰退式降息（2001、2007）之後一年 S&P 是負的，保險式降息（1995、1998、2019、2024）則續漲——分類器是失業率和 2Y−Fed，不是 Fed 動作本身。
@@ -619,6 +618,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
               <div>
                 實質 <b>{fpp(legend.real)}</b>
                 {legend.real !== null && <span className="muted"> ｜ {REAL_RATE_STATE_TEXT[legend.real < 0 ? 'loose' : legend.real >= REAL_RATE_TIGHT ? 'tight' : 'mid']}</span>}
+                {legend.core !== null && <span className="muted"> ｜ 核心距 {FED_TARGET}% {fpp(legend.core - FED_TARGET)}</span>}
                 {!coreOn && <span className="muted"> ｜ 以核心CPI {f1(legend.core)}% 計（線已關）</span>}
               </div>
               {legend.us2y !== null && (
