@@ -6,6 +6,7 @@ import type { Bar, SeriesFile } from '../src/shared/types';
 // lightweight-charts 需要 canvas，jsdom 沒有：以假物件記錄序列配置
 const chartLog = {
   series: [] as { pane: number; title?: string; label: boolean }[],
+  styles: [] as { color?: string; dashed: boolean }[],
   watermarks: [] as string[],
   priceLines: [] as { price: number; title?: string; axis: boolean }[],
 };
@@ -13,8 +14,9 @@ vi.mock('lightweight-charts', () => {
   const makeChart = () => {
     const panes = new Map<number, { setStretchFactor: () => void }>();
     return {
-      addSeries: (_type: unknown, opts: { title?: string; lastValueVisible?: boolean }, paneIndex = 0) => {
+      addSeries: (_type: unknown, opts: { title?: string; lastValueVisible?: boolean; color?: string; lineStyle?: number }, paneIndex = 0) => {
         chartLog.series.push({ pane: paneIndex, title: opts.title, label: opts.lastValueVisible !== false });
+        chartLog.styles.push({ color: opts.color, dashed: opts.lineStyle === 2 });
         if (!panes.has(paneIndex)) panes.set(paneIndex, { setStretchFactor: () => {} });
         return { setData: () => {}, createPriceLine: (o: { price: number; title?: string; axisLabelVisible?: boolean }) =>
             chartLog.priceLines.push({ price: o.price, title: o.title, axis: o.axisLabelVisible !== false }),
@@ -88,6 +90,7 @@ const FILES: Record<string, SeriesFile> = {
 
 beforeEach(() => {
   chartLog.series = [];
+  chartLog.styles = [];
   chartLog.watermarks = [];
   chartLog.priceLines = [];
   window.localStorage.clear();
@@ -231,6 +234,28 @@ describe('政策利率 vs 通膨面板', () => {
       delete FILES.usdtwd;
       delete FILES.usdtwd_legacy;
     }
+  });
+
+  it('核心 CPI 可關：少一條線、2% 目標線仍在、實質仍以核心 CPI 計並註明，選擇記住；整體 CPI 是實線', async () => {
+    render(<PolicyInflationPanel version="v1" themeKey="auto-false-tw" />);
+    await waitFor(() => expect(chartLog.series.length).toBe(6));
+    // 上窗格沒有任何虛線序列（虛線只留給 2% 目標參考線）
+    expect(chartLog.styles.some((s) => s.dashed)).toBe(false);
+    const core = screen.getByRole('button', { name: '核心 CPI' });
+    expect(core.getAttribute('aria-pressed')).toBe('true');
+    expect(document.querySelector('.cm-legend')!.textContent).not.toMatch(/線已關/);
+    fireEvent.click(core);
+    // 重建圖表：6 條 → 少核心 CPI 剩 5 條
+    await waitFor(() => expect(chartLog.series.length).toBe(11));
+    expect(window.localStorage.getItem('pi-core')).toBe('0');
+    expect(screen.getByRole('button', { name: '核心 CPI' }).getAttribute('aria-pressed')).toBe('false');
+    // 2% 目標線掛在 Fed 序列，兩次建圖都有
+    expect(chartLog.priceLines.filter((l) => l.price === 2).length).toBe(2);
+    const legend = document.querySelector('.cm-legend')!.textContent ?? '';
+    expect(legend).toMatch(/實質 \+1\.10pp ｜ 緊縮（≥ \+1pp） ｜ 以核心CPI 3\.0% 計（線已關）/);
+    expect(legend).not.toMatch(/Fed 4\.10% ｜ 核心CPI/);
+    // 頁首讀數不受影響
+    expect(document.querySelector('.pi-state')!.textContent).toMatch(/\+1\.10pp（Fed 4\.10% − 核心CPI 3\.0%）/);
   });
 
   it('切換核心 PCE 會加序列並記住；區間預設 5 年', async () => {
