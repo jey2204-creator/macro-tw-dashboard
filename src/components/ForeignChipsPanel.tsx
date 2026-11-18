@@ -571,7 +571,7 @@ function FxBacktest({ fx, from }: { fx: NonNullable<ForeignChipsFile['fx']>; fro
     <>
       <p className="small muted ms-rule">
         外資 20 日累計買賣超 × 台幣 20 日變化之後的加權表現（{from ?? '—'} 起，每個交易日一筆）。賣超＝≤ 第 {FF_SELL_PCTL * 100} 百分位、買超＝≥ 第 {FF_BUY_PCTL * 100}{' '}
-        百分位；貶／升＝USD/TWD 20 日 ±{FF_MOVE_PCT}%。<b>結論：賣超時台幣貶不貶，之後差不多 → 不貼標籤。</b>同一段會連續出現很多天，「段」才是獨立次數；段數少於 10 的列不要看。
+        百分位；貶／升＝USD/TWD 20 日 ±{FF_MOVE_PCT}%。<b>結論：賣超時台幣貶不貶，之後差不多 → 不貼標籤。</b>同一段會連續出現很多天，「段」才是獨立次數；段數少於 10 的列不要看。上漲＝60 日後上漲的比例、最深＝60 日內最大跌幅平均、大跌＝60 日內曾跌逾 10% 的比例。
       </p>
       <div className="table-wrap">
       <table className="bt-table num">
@@ -581,9 +581,9 @@ function FxBacktest({ fx, from }: { fx: NonNullable<ForeignChipsFile['fx']>; fro
             <th className="r">天／段</th>
             <th className="r">20日</th>
             <th className="r">60日</th>
-            <th className="r">60日上漲</th>
-            <th className="r">最大跌幅</th>
-            <th className="r">跌逾10%</th>
+            <th className="r">上漲</th>
+            <th className="r">最深</th>
+            <th className="r">大跌</th>
           </tr>
         </thead>
         <tbody>
