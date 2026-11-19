@@ -4,8 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Bar, SeriesFile } from '../src/shared/types';
 
 // lightweight-charts 需要 canvas，jsdom 沒有：以假物件記錄呼叫，驗證窗格與序列的配置
-const chartLog = { seriesOpts: [] as { pane: number; opts: Record<string, unknown> }[], seriesPanes: [] as number[], watermarks: [] as string[], removed: 0, markers: [] as { time: string; text?: string }[], fibMarkers: [] as { time: string; text?: string }[], markerPlugins: 0 };
-const markerOwners = new WeakSet<object>();
+const chartLog = { seriesOpts: [] as { pane: number; opts: Record<string, unknown> }[], seriesPanes: [] as number[], watermarks: [] as string[], removed: 0, markers: [] as { time: string; text?: string }[], fibMarkers: [] as { time: string; text?: string }[], geoMarkers: [] as { time: string; text?: string; position?: string; shape?: string }[], markerPlugins: 0 };
+const markerOwners = new WeakMap<object, number>();
 let twMarkerSeries: object | null = null;
 vi.mock('lightweight-charts', () => {
   const makeChart = () => {
@@ -31,19 +31,21 @@ vi.mock('lightweight-charts', () => {
   };
   return {
     createChart: () => makeChart(),
-    // 加權序列上第一個 markers plugin 是公布日標記（記進 chartLog.markers）；加權第二個是費波波段高低點（記進 fibMarkers）；
+    // 加權序列上第一個 markers plugin 是公布日標記（記進 chartLog.markers）；加權第二個是費波波段高低點（記進 fibMarkers）；第三個是重大事件（記進 geoMarkers）；
     // 對照窗格（櫃買、費半、KOSPI）各只有一個費波標記 plugin，不記
     createSeriesMarkers: (series: object) => {
       // 每次重建圖表第一個拿到 plugin 的是加權序列
       if (chartLog.markerPlugins === 0) twMarkerSeries = series;
       chartLog.markerPlugins++;
       const twSeries = series === twMarkerSeries;
-      const first = twSeries && !markerOwners.has(series);
-      if (first) markerOwners.add(series);
+      const nth = markerOwners.get(series) ?? 0;
+      markerOwners.set(series, nth + 1);
       return {
         setMarkers: (m: { time: string; text?: string }[]) => {
-          if (first) chartLog.markers = m;
-          else if (twSeries) chartLog.fibMarkers = m;
+          if (!twSeries) return;
+          if (nth === 0) chartLog.markers = m;
+          else if (nth === 1) chartLog.fibMarkers = m;
+          else chartLog.geoMarkers = m;
         },
       };
     },
@@ -101,6 +103,7 @@ beforeEach(() => {
   chartLog.watermarks = [];
   chartLog.removed = 0;
   chartLog.markers = [];
+  chartLog.geoMarkers = [];
   window.localStorage.clear();
   fetched.length = 0;
   vi.stubGlobal('fetch', (url: string) => {
@@ -276,5 +279,29 @@ describe('跨市場對照面板', () => {
     fireEvent.click(screen.getByRole('button', { name: /公布日標記/ }));
     await waitFor(() => expect(chartLog.markers).toEqual([]));
     expect(window.localStorage.getItem('cm-events')).toBe('0');
+  });
+
+  it('重大事件標記：react 當天（休市順延）加權 K 棒上方方塊＋文字；5 年以上不顯示；關閉後清空並記住', async () => {
+    const geoEvents = [
+      { id: 'a', type: 'summit' as const, name: '測試峰會', short: '峰會', start: '2026-10-02', end: '2026-10-03', react: '2026-10-03', note: '結果摘要' },
+      { id: 'b', type: 'deadline' as const, name: '測試期限', short: '期限', start: '2026-10-05', react: '2026-10-05' },
+      { id: 'c', type: 'summit' as const, name: '還沒到', short: '未來', start: '2026-10-20', react: '2026-10-21' },
+    ];
+    render(<CrossMarketPanel version="v1" themeKey="auto-false-tw" mas={[]} onMas={() => {}} now={new Date('2026-10-16T08:00:00Z')} geoEvents={geoEvents} />);
+    await waitFor(() => expect(chartLog.geoMarkers.length).toBeGreaterThan(0));
+    // 10/03 是週六 → 順延到 10/05，和同日的期限合併成一個方塊
+    expect(chartLog.geoMarkers).toEqual([
+      { time: '2026-10-05', position: 'aboveBar', shape: 'square', size: 0.6, color: expect.any(String), text: '峰會+期限' },
+    ]);
+    expect(screen.getByRole('button', { name: /重大事件/ }).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: '5年' }));
+    await waitFor(() => expect(chartLog.geoMarkers).toEqual([]));
+    fireEvent.click(screen.getByRole('button', { name: '1年' }));
+    await waitFor(() => expect(chartLog.geoMarkers[0]?.text).toBe('峰會+期限')); // 筆數少，1 年也附文字
+    fireEvent.click(screen.getByRole('button', { name: /重大事件/ }));
+    await waitFor(() => expect(chartLog.geoMarkers).toEqual([]));
+    expect(window.localStorage.getItem('cm-geo')).toBe('0');
+    // 公布日標記不受影響
+    expect(chartLog.markers.length).toBe(1);
   });
 });

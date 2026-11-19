@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { jumpTo } from '../lib/jump';
 import { rangeText } from '../lib/outlookText';
+import { GEO_TYPE_TEXT, geoCountdown, geoStartAt, geoWhenText, upcomingGeo, type GeoEvent } from '../shared/geoEvents';
 import { INDICATOR_MAP } from '../shared/indicators';
 import { eventRange, type IndicatorOutlook } from '../shared/outlook';
 import type { Regime } from '../shared/regime';
@@ -14,7 +16,7 @@ import {
   type ScheduledRelease,
 } from '../shared/schedule';
 
-/** 頁首：接下來 14 天的總經公布（美國＋台灣）＋每一場最好／最壞會讓總分變多少 */
+/** 頁首：接下來 14 天的總經公布（美國＋台灣）＋每一場最好／最壞會讓總分變多少；重大事件（APEC、G20、關稅期限…）一併列出、不計分 */
 export function EventsBar({
   regime,
   outlooks,
@@ -35,6 +37,11 @@ export function EventsBar({
   // GDPNow 更新頻繁：只列最近一次，避免洗版
   const firstNow = list.find((r) => r.kind === 'gdpnow');
   const shown = list.filter((r) => RELEASE_KINDS[r.kind].importance === 'high' || r === firstNow);
+  // 重大事件（人工清單）：和公布日程依時間混排；沒有精確時刻，排在當天最前面
+  const rows: Row[] = [
+    ...shown.map((r): Row => ({ at: releaseAt(r), r })),
+    ...upcomingGeo(now, days).map((g): Row => ({ at: geoStartAt(g), g })),
+  ].sort((a, b) => a.at.localeCompare(b.at));
   const stale = (Object.keys(RELEASE_KINDS) as ReleaseKind[])
     .map((k) => ({ k, end: scheduleEndsSoon(k, now) }))
     .filter((x) => x.end);
@@ -55,20 +62,24 @@ export function EventsBar({
           </a>
         </span>
       </div>
-      {shown.length === 0 ? (
+      {rows.length === 0 ? (
         <p className="muted small">這段期間沒有排定的公布</p>
       ) : (
         <ul className="events-list">
-          {shown.map((r) => (
-            <EventRow key={`${r.kind}-${r.date}`} r={r} regime={regime} outlooks={outlooks} now={now} onSelect={onSelect} />
-          ))}
+          {rows.map((row) =>
+            row.r ? (
+              <EventRow key={`${row.r.kind}-${row.r.date}`} r={row.r} regime={regime} outlooks={outlooks} now={now} onSelect={onSelect} />
+            ) : (
+              <GeoRow key={row.g.id} g={row.g} now={now} />
+            ),
+          )}
         </ul>
       )}
       <div className="events-foot small muted">
         <button type="button" className="linkbtn" onClick={() => setAll(!all)}>
           {all ? '只看 14 天' : '看 60 天'}
         </button>
-        <span>台北時間；區間＝這次公布最好／最壞情況下的總分（只算這一項，美債、美元會另外反應）；台灣指標僅供參考</span>
+        <span>台北時間；區間＝這次公布最好／最壞情況下的總分（只算這一項，美債、美元會另外反應）；台灣指標僅供參考；🌐＝重大事件（當地日期，人工清單、不計分）</span>
       </div>
       {stale.length > 0 && (
         <p className="warn small">
@@ -76,6 +87,30 @@ export function EventsBar({
         </p>
       )}
     </section>
+  );
+}
+
+type Row = { at: string; r: ScheduledRelease; g?: undefined } | { at: string; g: GeoEvent; r?: undefined };
+
+/** 重大事件列：沒有數字可算門檻，只提醒日期；點了跳到跨市場對照（事後看加權 K 棒上的 ■ 標記） */
+function GeoRow({ g, now }: { g: GeoEvent; now: Date }) {
+  const cd = geoCountdown(g, now);
+  return (
+    <li>
+      <button type="button" className="event ev-geo" onClick={() => jumpTo('sec-cm')} title={g.note}>
+        <span className={`ev-cd${cd === '今天' || cd === '明天' || cd === '進行中' ? ' soon' : ''}`}>{cd}</span>
+        <span className="ev-main">
+          <span className="ev-name">
+            🌐 {g.name}
+            <span className="muted">｜{GEO_TYPE_TEXT[g.type]}</span>
+          </span>
+          <span className="ev-when num">{geoWhenText(g)}</span>
+        </span>
+        <span className="ev-impact small">
+          <span className="muted">不計分{g.note ? `｜${g.note}` : ''}</span>
+        </span>
+      </button>
+    </li>
   );
 }
 

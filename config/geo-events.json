@@ -1,0 +1,79 @@
+{
+  "note": "重大事件（頁首事件列、行事曆訂閱、跨市場對照加權 K 棒上方的 ■ 標記）。參考、不計分、不進回測（一年不到 10 筆，樣本太少）。start／end＝當地日期；react＝台股第一個能反應結果的交易日（人工填；遇休市自動順延到下一個交易日）；short＝K 棒上的文字（4 個字以內）。人工維護：日期確定後才補，每個日曆年（以 start 計）最多 10 筆，超過要先刪舊的或不重要的。type：summit 多邊峰會／bilateral 雙邊會談／election 選舉／deadline 期限。",
+  "events": [
+    {
+      "id": "trump-xi-beijing-2026",
+      "type": "bilateral",
+      "name": "美中領袖會談（北京）",
+      "short": "美中",
+      "start": "2026-05-14",
+      "end": "2026-05-15",
+      "react": "2026-05-14",
+      "note": "川普訪中，5/14 上午人民大會堂會談；未簽署合作文件",
+      "source": "https://www.twreporter.org/a/hello-world-2026-05-15"
+    },
+    {
+      "id": "xi-washington-2026",
+      "type": "bilateral",
+      "name": "美中領袖會談（華盛頓）",
+      "short": "美中",
+      "start": "2026-09-23",
+      "end": "2026-09-25",
+      "react": "2026-09-25",
+      "note": "習近平國事訪問，美東 9/24 白宮會談；貿易休戰延至 2027-01-10",
+      "source": "https://www.moneydj.com/kmdj/news/newsviewer.aspx?a=64aa20e1-fea7-4cb4-b0f4-79ce268c9c05"
+    },
+    {
+      "id": "us-midterm-2026",
+      "type": "election",
+      "name": "美國期中選舉",
+      "short": "期中選舉",
+      "start": "2026-11-03",
+      "react": "2026-11-04",
+      "note": "台北 11/4 開票；民主黨取得參眾兩院多數",
+      "source": "https://www.thenewslens.com/article/270980"
+    },
+    {
+      "id": "us-cn-truce-2026-11",
+      "type": "deadline",
+      "name": "美中貿易休戰原到期日",
+      "short": "休戰期限",
+      "start": "2026-11-10",
+      "react": "2026-11-10",
+      "note": "到期前已延長：9/24 雙方同意、11/9 中方公告延至 2027-01-10",
+      "source": "https://news.cnyes.com/news/id/6652984"
+    },
+    {
+      "id": "apec-2026",
+      "type": "summit",
+      "name": "APEC 領袖會議（深圳）",
+      "short": "APEC",
+      "start": "2026-11-18",
+      "end": "2026-11-19",
+      "react": "2026-11-20",
+      "note": "11/19 場邊美中領袖會談（今年第三次）與美中俄三方會晤；通過「深圳展望」，無新關稅承諾",
+      "source": "https://www.cna.com.tw/news/acn/202611190372.aspx"
+    },
+    {
+      "id": "g20-2026",
+      "type": "summit",
+      "name": "G20 領袖峰會（邁阿密）",
+      "short": "G20",
+      "start": "2026-12-14",
+      "end": "2026-12-15",
+      "react": "2026-12-16",
+      "note": "美國主辦；留意場邊雙邊會談",
+      "source": "https://www.cityofdoral.com/Elected-officials/Christi-Fraga/Doral-at-the-Center-of-G20"
+    },
+    {
+      "id": "us-cn-truce-2027-01",
+      "type": "deadline",
+      "name": "美中貿易休戰到期",
+      "short": "休戰期限",
+      "start": "2027-01-10",
+      "react": "2027-01-11",
+      "note": "24% 加徵關稅暫停、301 豁免、稀土管制豁免同日到期；留意是否再延長",
+      "source": "https://www.chinatimes.com/realtimenews/20261109001759-260409"
+    }
+  ]
+}
