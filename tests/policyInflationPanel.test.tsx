@@ -155,6 +155,9 @@ describe('政策利率 vs 通膨面板', () => {
     expect(document.querySelector('section > .table-wrap .bt-table thead th.hl')!.textContent).toBe('S&P');
     expect(screen.getByRole('button', { name: /歷次循環起點・S&P 500（1）/ })).toBeTruthy();
     // 降息性質判定：Sahm 0（失業率持平）、Baa−10Y 1.60pp 正常（HY 330bp 只顯示）、核心 CPI 距目標 +1.00pp（不超過 1）→ 預防性
+    // Fed 立場卡：測試資料沒有自然失業率 → 泰勒那格無資料，其餘兩把尺照常
+    expect(document.querySelector('.fs .fs-verdict')!.textContent).toMatch(/實質利率偏緊、市場押降息$/);
+    expect(document.querySelector('.fs')!.textContent).toContain('無資料');
     const cr = document.querySelector('.cr')!;
     expect(cr.querySelector('.cr-verdict')!.textContent).toMatch(/Fed 階段：降息期｜這次降息依目前讀數是 ?預防性$/);
     const crRows = [...cr.querySelectorAll('.cr-table tbody tr')].map((tr) => tr.textContent);

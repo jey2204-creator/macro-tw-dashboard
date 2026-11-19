@@ -14,6 +14,7 @@ import {
   type Time,
 } from 'lightweight-charts';
 import { CutRegimeCard } from './CutRegimeCard';
+import { FedStanceCard } from './FedStanceCard';
 import { PanelNote } from './PanelNote';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSeriesMap } from '../hooks/useData';
@@ -35,6 +36,7 @@ import {
   phaseStats,
 } from '../shared/fedEquity';
 import { assessCuts, readingsAt, verdictStats } from '../shared/cutRegime';
+import { stanceAt, stanceBaseline, stanceSamples, stanceStats } from '../shared/fedStance';
 import { baseDateLabel } from '../lib/breadthPct';
 import { CRASH_PCT, FX_GROUP_TEXT, FX_LOOKBACK_MONTHS, fxPctLine, fxSamples, fxStats, hikeCycles, spliceCloses, spliceUsdTwd, type FxStat } from '../shared/fedFx';
 import { daysBetween } from '../shared/dates';
@@ -97,9 +99,12 @@ type IndexId = (typeof INDICES)[number]['id'];
 type IndexPick = IndexId | 'off';
 const INDEX_PICKS: readonly IndexPick[] = ['spx', 'nasdaq', 'sox', 'taiex', 'off'];
 
-const IDS = ['fed', 'fed_target_legacy', 'core_cpi', 'cpi', 'core_pce', 'us2y', 'unrate', 'baa10y', 'hy_oas', 'dxy', 'usdtwd', 'usdtwd_legacy', ...INDICES.map((i) => i.id)];
+const IDS = ['fed', 'fed_target_legacy', 'core_cpi', 'cpi', 'core_pce', 'us2y', 'unrate', 'nrou', 'baa10y', 'hy_oas', 'dxy', 'usdtwd', 'usdtwd_legacy', ...INDICES.map((i) => i.id)];
 /** FRED 的 USD/TWD（長期、乾淨）抓不到時退回 Yahoo，照常顯示（回測只剩 2004 起且較吵），不報載入失敗 */
-const OPTIONAL_IDS = new Set(['usdtwd_legacy']);
+const OPTIONAL_IDS = new Set(['usdtwd_legacy', 'nrou']);
+/** Fed 立場卡回測起點（Greenspan 上任那年；之前 Fed 以貨幣供給為操作目標） */
+const STANCE_FROM = '1987-01-01';
+const STANCE_INDEX_IDS = ['spx', 'taiex'] as const;
 
 const NO_BARS: Bar[] = [];
 const signed = (v: number | null | undefined, digits = 1) =>
@@ -173,7 +178,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
   const [chartGen, setChartGen] = useState(0);
 
   const files = useSeriesMap(near ? IDS : [], version);
-  const { fed, coreCpi, cpi, corePce, us2y, unrate, credit, hy, dxy, twd, indexBars } = useMemo(() => {
+  const { fed, coreCpi, cpi, corePce, us2y, unrate, nrou, credit, hy, dxy, twd, indexBars } = useMemo(() => {
     const ready = (id: string) => (files[id]?.status === 'ready' ? files[id]!.data.data : null);
     const upper = ready('fed');
     return {
@@ -183,6 +188,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       corePce: ready('core_pce') ? yoyPoints(ready('core_pce')!) : ([] as Point[]),
       us2y: (ready('us2y') ?? []).map((b) => [b[0], b[4]] as Point),
       unrate: (ready('unrate') ?? []).map((b) => [b[0], b[4]] as Point),
+      nrou: (ready('nrou') ?? []).map((b) => [b[0], b[4]] as Point),
       credit: (ready('baa10y') ?? []).map((b) => [b[0], b[4]] as Point),
       hy: (ready('hy_oas') ?? []).map((b) => [b[0], b[4]] as Point),
       dxy: spliceCloses(ready('dxy') ?? []),
@@ -205,6 +211,15 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
     const rows = assessCuts(inp, spxBars, indexBars.taiex);
     return { now: readingsAt(inp, spxBars.at(-1)![0]), rows, stats: verdictStats(rows), hasTaiex: indexBars.taiex.length > 0 };
   }, [fed, unrate, credit, hy, coreCpi, indexBars]);
+  // Fed 立場卡：實質利率、泰勒缺口、2Y − Fed 目前讀數＋每月底樣本分組回測（自然失業率抓不到時泰勒那格顯示無資料）
+  const stance = useMemo(() => {
+    if (!fed.length || !coreCpi.length) return null;
+    const inp = { fed, coreCpi, corePce, unrate, nrou, us2y };
+    const now = stanceAt(inp, fed.at(-1)![0]);
+    if (!now) return null;
+    const samples = stanceSamples(inp, { spx: indexBars.spx, taiex: indexBars.taiex }, STANCE_FROM);
+    return { now, stats: stanceStats(samples, STANCE_INDEX_IDS), baseline: stanceBaseline(samples, STANCE_INDEX_IDS), hasTaiex: indexBars.taiex.length > 0 };
+  }, [fed, coreCpi, corePce, unrate, nrou, us2y, indexBars]);
   // 升息 × 美元／台幣 vs 加權：每個升息循環期間各走多少＋每月底樣本依台幣 3 個月變化分組
   const fxBt = useMemo(() => {
     const taiex = indexBars.taiex;
@@ -596,6 +611,8 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
         四個指數高度連動（費半對加權 ρ60 約 0.66），四欄同向不是四個證據；費半 1994、加權 1997 起，循環次數只有 S&P 的一半，加權對 Fed 的傳導還隔著台幣與外資。
         第四格的 DXY、USD/TWD 可各自開關：兩條都開時換成自區間起點起的累計 %（同一刻度，方便比誰動得多）；只開一條時畫原始價位（DXY 點數／匯價），累計 % 寫在圖例；都關就不顯示。USD/TWD 往上＝台幣貶；第三格切到加權就能三者一起看。
         下方「升息 × 台幣」表：升息期裡台幣 3 個月貶 2% 以上的月份，加權之後 3 個月平均較差、跌逾 10% 的比例約是升息期其他月份的兩倍，但一年後沒有比較差；非升息期台幣貶反而常是恐慌尾聲。壞的月份集中在 1997、2000、2018、2022 四次，2004～2006、2016、2023 台幣貶之後照漲——是風險提示，不是崩盤訊號，不計分。USD/TWD 用 FRED 日資料（1983 起），最近幾天以 Yahoo 補。
+        「Fed 立場」卡把三把尺排在一起：實質利率（Fed − 核心CPI）、泰勒缺口、美債 2Y − Fed。泰勒法則是 1993 年 John Taylor 提的公式，用通膨和就業算「利率該在哪」：法則利率＝2 ＋ 核心PCE ＋ 0.5 ×（核心PCE − 2）＋ 0.5 × 產出缺口，產出缺口用 2 ×（自然失業率 − 失業率）換算，自然失業率是美國國會預算局（CBO）的估計。缺口＝法則利率 − Fed：正的代表 Fed 比公式低（偏鬆、落後通膨），負的代表 Fed 比公式高（偏緊）。公式裡的 2（中性實質利率）和係數是主觀設定，換一組數字結果差 1～2pp，所以門檻放寬到 ±1pp，只看大方向。
+        回測（1987 年起每月底）：泰勒缺口 ≥ +1 時之後 12 個月 Fed 升息的比例約六成（全部月份約四成）；2Y − Fed ≤ −0.25 時之後降息約八成半，是三把尺裡對 Fed 下一步最準的；但三把尺對 S&P、加權之後 12 個月報酬都沒有穩定的分組差異——它們回答的是「Fed 接下來往哪走」，不是「股市往哪走」，不計分。
         這張圖與「Fed 120 天」「核心CPI ±0.2pp」規則重疊，只用來解釋 FOMC 為什麼那樣做，不計分。2008 年前 Fed 為單一目標利率。
       </p>
       </PanelNote>
@@ -714,6 +731,10 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
           )}
           <div ref={hostRef} className={`chart-host pi-host${hasFx ? (showSpx ? ' pi-host-4' : ' pi-host-3') : ''}`} />
         </div>
+      )}
+
+      {stance && (
+        <FedStanceCard now={stance.now} stats={stance.stats} baseline={stance.baseline} fromYear={STANCE_FROM.slice(0, 4)} hasTaiex={stance.hasTaiex} />
       )}
 
       {cutRegime && (
