@@ -517,6 +517,13 @@ export const INDICATORS: IndicatorDef[] = [
     market: false, changeInBp: false, rule: { kind: 'sahm', bullBelow: null },
     weight: 0.5, maxAgeDays: 75, note: 'Sahm 法則：3月均值較前12月低點升 ≥0.5pp 為衰退訊號',
   },
+  // 自然失業率（CBO 估計，季資料、含未來推估——抓取時未來日期會被濾掉）：只給政策利率面板「Fed 立場卡」的泰勒法則用，
+  // 不列入指標表與計分。季初日期標示，最新一季通常就是本季 → maxAgeDays 放寬到 400
+  {
+    id: 'nrou', name: '美國自然失業率（CBO 估計）', short: '自然失業率', category: 'macro', frequency: 'quarterly',
+    unit: '%', decimals: 2, sources: [{ provider: 'fred', symbol: 'NROU' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 400, note: '', hidden: true,
+  },
   {
     id: 'nfp', name: '非農就業新增', short: '非農', category: 'macro', frequency: 'monthly',
     subtitle: '非農就業｜每月新增工作數',
