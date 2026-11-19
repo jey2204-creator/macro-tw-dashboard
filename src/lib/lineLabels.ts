@@ -178,7 +178,9 @@ export class LineLabels implements ISeriesPrimitive<Time> {
           if (!r) continue;
           const y0 = s.priceToCoordinate(r.price);
           if (y0 === null) continue;
-          items.push({ l: { ...l, ...r }, y0, xEnd: follow.x });
+          // 這條線在那一根之前就結束了（月資料最新一筆較早）：細線從線的終點連過來，和沒拖曳時一樣
+          const xLine = typeof l.endTime === 'string' && l.endTime < follow.time ? ts.timeToCoordinate(l.endTime) : null;
+          items.push({ l: { ...l, ...r }, y0, xEnd: xLine === null ? follow.x : Math.min(xLine, follow.x) });
           maxW = Math.max(maxW, ctx.measureText(r.text).width + PAD_X * 2);
         }
         // 舊數值可能比最新值寬（例如 19.10）：整欄往左讓，不切字
