@@ -27,21 +27,11 @@
       "id": "us-midterm-2026",
       "type": "election",
       "name": "美國期中選舉",
-      "short": "期中選舉",
+      "short": "選舉",
       "start": "2026-11-03",
       "react": "2026-11-04",
       "note": "台北 11/4 開票；民主黨取得參眾兩院多數",
       "source": "https://www.thenewslens.com/article/270980"
-    },
-    {
-      "id": "us-cn-truce-2026-11",
-      "type": "deadline",
-      "name": "美中貿易休戰原到期日",
-      "short": "休戰期限",
-      "start": "2026-11-10",
-      "react": "2026-11-10",
-      "note": "到期前已延長：9/24 雙方同意、11/9 中方公告延至 2027-01-10",
-      "source": "https://news.cnyes.com/news/id/6652984"
     },
     {
       "id": "apec-2026",
@@ -69,7 +59,7 @@
       "id": "us-cn-truce-2027-01",
       "type": "deadline",
       "name": "美中貿易休戰到期",
-      "short": "休戰期限",
+      "short": "期限",
       "start": "2027-01-10",
       "react": "2027-01-11",
       "note": "24% 加徵關稅暫停、301 豁免、稀土管制豁免同日到期；留意是否再延長",

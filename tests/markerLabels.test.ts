@@ -23,3 +23,18 @@ describe('事件標籤排版', () => {
     expect(layoutStacked([{ x: 10, w: 20, y: 100 }], 10, 1, 2, () => null)).toEqual([100]);
   });
 });
+
+describe('layoutStacked：固定的佔位', () => {
+  it('fixed 的不移動，其他標籤讓開它（即使它在右邊、照 x 順序會比較晚放）', () => {
+    const cys = layoutStacked(
+      [
+        { x: 100, w: 30, y: 50 },
+        { x: 110, w: 60, y: 50, fixed: true },
+      ],
+      13,
+      -1,
+    );
+    expect(cys[1]).toBe(50);
+    expect(cys[0]).toBe(50 - 15);
+  });
+});

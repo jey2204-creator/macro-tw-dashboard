@@ -56,6 +56,7 @@ import {
   type EventKind,
   type MarkedEvent,
 } from '../shared/eventMarkers';
+import { MarkerLabels, type MarkerLabel } from '../lib/markerLabels';
 import { GEO_EVENTS, GEO_TYPE_TEXT, geoByReactionDay, geoSpanText, type GeoEvent } from '../shared/geoEvents';
 import { FIB_DIRECTION_TEXT, FIB_RATIOS, type Fib, fibRetracement, fibSkipText } from '../shared/fibonacci';
 import { INDICATOR_MAP } from '../shared/indicators';
@@ -219,6 +220,8 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
   const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   /** 重大事件標記（和公布日標記分開的 plugin：K 棒上方 ■，兩種各自開關） */
   const geoMarkersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
+  /** 重大事件的文字：自繪、互相閃避（期中選舉、APEC 常擠在同一個月，圖表庫內建文字會疊在一起） */
+  const geoLabelsRef = useRef<MarkerLabels | null>(null);
   const twSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const fibLinesRef = useRef<IPriceLine[]>([]);
   /** 畫費波的對照窗格（櫃買、費半、KOSPI）各自的 K 線序列、波段標記 plugin 與費波線（key＝序列 id） */
@@ -471,6 +474,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
       chartRef.current = null;
       markersRef.current = null;
       geoMarkersRef.current = null;
+      geoLabelsRef.current = null;
       twSeriesRef.current = null;
       subSeriesRef.current.clear();
       fibMarkersRef.current = null;
@@ -505,28 +509,36 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
     m.setMarkers(markers);
   }, [chartGen, showEvents, range, eventsByDay]);
 
-  // 重大事件標記：加權 K 棒上方一個方塊＋文字（和下方的公布日圓點分開）；只在 1 年以內區間顯示
+  // 重大事件標記：加權 K 棒上方一個方塊（和下方的公布日圓點分開）；文字自繪、互相閃避；只在 1 年以內區間顯示
   useEffect(() => {
     const m = geoMarkersRef.current;
-    if (!m) return;
+    const tw = twSeriesRef.current;
+    if (!m || !tw) return;
+    if (geoLabelsRef.current) {
+      tw.detachPrimitive(geoLabelsRef.current);
+      geoLabelsRef.current = null;
+    }
     if (!showGeo || !EVENT_RANGES.includes(range)) {
       m.setMarkers([]);
       return;
     }
+    const color = cssVar(GEO_COLOR_VAR);
+    const highs = new Map(twBars.map((b) => [b[0], b[2]]));
     const markers: SeriesMarker<Time>[] = [];
+    const labels: MarkerLabel[] = [];
     for (const [day, evs] of geoByDay) {
-      markers.push({
-        time: day as Time,
-        position: 'aboveBar',
-        shape: 'square',
-        size: 0.6,
-        color: cssVar(GEO_COLOR_VAR),
-        text: [...new Set(evs.map((e) => e.short))].join('+'),
-      });
+      markers.push({ time: day as Time, position: 'aboveBar', shape: 'square', size: 0.6, color });
+      const high = highs.get(day);
+      if (high !== undefined) labels.push({ time: day as Time, value: high, text: [...new Set(evs.map((e) => e.short))].join('+'), color, above: true });
     }
+    // 「波段高」的字是圖表庫畫的（費波錨點），不會閃避：放一個不畫的佔位，讓事件文字往上讓開
+    if (showFib && fib && labels.length) labels.push({ time: fib.hiDate as Time, value: fib.hi, text: `波段高 ${fmtNum(fib.hi, 0)}`, color, above: true, ghost: true });
     markers.sort((a, b) => (a.time as string).localeCompare(b.time as string));
     m.setMarkers(markers);
-  }, [chartGen, showGeo, range, geoByDay]);
+    const prim = new MarkerLabels(labels, { background: cssVar('--surface'), fontSize: 11, fontFamily: getComputedStyle(document.body).fontFamily });
+    tw.attachPrimitive(prim);
+    geoLabelsRef.current = prim;
+  }, [chartGen, showGeo, range, geoByDay, twBars, showFib, fib]);
 
   // 費波那契水平線：畫在加權窗格（價格線不參與自動縮放，不會撐開 Y 軸）
   useEffect(() => {
