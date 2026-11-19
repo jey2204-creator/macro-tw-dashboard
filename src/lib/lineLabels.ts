@@ -31,6 +31,11 @@ export interface LineLabel {
    * 有給就以它當細線指回的位置；該點不在畫面內（往左拖曳後）就不畫，免得把最新值標在舊資料旁
    */
   endTime?: Time;
+  /**
+   * stack 排法往左拖曳後（style.follow 有回傳）：這條線在那一天的數值與文字；回傳 null＝那天還沒有資料、不標。
+   * 沒給的標籤（例如固定的目標線）照原樣標
+   */
+  at?: (time: string) => { price: number; text: string; color?: string } | null;
 }
 
 export interface LineLabelStyle {
@@ -63,6 +68,11 @@ export interface LineLabelStyle {
    * 用細線連過去）。沒給就排在自己這組標籤最晚的終點右邊
    */
   stackAt?: () => Time | null;
+  /**
+   * stack 排法：往左拖曳、最新一根離開標籤欄時，回傳標籤欄左緣那一根（時間與 x）；標籤改標那一天的數值（label.at），
+   * 那一根右邊蓋一層半透明底色當標籤欄。回傳 null＝沒拖曳，照常標最新值
+   */
+  follow?: () => { time: string; x: number } | null;
 }
 
 /** 由上到下排好的標籤中心 y：彼此至少隔 gap，整組不超出 [lo, hi]（放不下時從上緣往下排，超出下緣） */
@@ -157,23 +167,48 @@ export class LineLabels implements ISeriesPrimitive<Time> {
       ctx.textBaseline = 'middle';
       ctx.textAlign = 'left';
       const h = fontSize + PAD_Y * 2;
+      const follow = this.style.follow?.() ?? null;
       const items: { l: LineLabel; y0: number; xEnd: number }[] = [];
-      for (const l of this.labels) {
-        const y0 = s.priceToCoordinate(l.price);
-        const xEnd = l.endTime === undefined ? null : ts.timeToCoordinate(l.endTime);
-        if (xEnd === null || xEnd > mediaSize.width + 1) return;
-        if (y0 !== null) items.push({ l, y0, xEnd });
+      let x: number;
+      if (follow) {
+        // 往左拖曳：標籤標「標籤欄左緣那一根」的數值
+        let maxW = 0;
+        for (const l of this.labels) {
+          const r = l.at ? l.at(follow.time) : l;
+          if (!r) continue;
+          const y0 = s.priceToCoordinate(r.price);
+          if (y0 === null) continue;
+          items.push({ l: { ...l, ...r }, y0, xEnd: follow.x });
+          maxW = Math.max(maxW, ctx.measureText(r.text).width + PAD_X * 2);
+        }
+        // 舊數值可能比最新值寬（例如 19.10）：整欄往左讓，不切字
+        x = Math.min(follow.x + GAP + 2, mediaSize.width - 1 - maxW);
+        // 那一根右邊蓋半透明底色當標籤欄（看得出右邊還有資料，但不會把右邊的線讀成標籤的數值）
+        const maskX = Math.min(follow.x + 1, x - 2);
+        ctx.save();
+        ctx.globalAlpha = 0.82;
+        ctx.fillStyle = this.style.background;
+        ctx.fillRect(maskX, 0, mediaSize.width - maskX, mediaSize.height);
+        ctx.restore();
+        if (!items.length) return;
+      } else {
+        for (const l of this.labels) {
+          const y0 = s.priceToCoordinate(l.price);
+          const xEnd = l.endTime === undefined ? null : ts.timeToCoordinate(l.endTime);
+          if (xEnd === null || xEnd > mediaSize.width + 1) return;
+          if (y0 !== null) items.push({ l, y0, xEnd });
+        }
+        if (!items.length) return;
+        const at = this.style.stackAt?.() ?? null;
+        const xAt = at === null ? null : ts.timeToCoordinate(at);
+        if (at !== null && (xAt === null || xAt > mediaSize.width + 1)) return;
+        x = Math.max(xAt ?? 0, ...items.map((i) => i.xEnd)) + GAP + 2;
       }
-      if (!items.length) return;
       items.sort((a, b) => a.y0 - b.y0);
-      const at = this.style.stackAt?.() ?? null;
-      const xAt = at === null ? null : ts.timeToCoordinate(at);
-      if (at !== null && (xAt === null || xAt > mediaSize.width + 1)) return;
-      const x = Math.max(xAt ?? 0, ...items.map((i) => i.xEnd)) + GAP + 2;
       const bottom = mediaSize.height * (this.style.maxYFrac ?? 1);
       const ys = stackYs(items.map((i) => i.y0), h + 2, h / 2 + 1, bottom - h / 2 - 1);
       // 留白不夠寬（視窗很窄）時全部改短版
-      const full = items.every((i) => x + ctx.measureText(i.l.text).width + PAD_X * 2 <= mediaSize.width - 1);
+      const full = follow !== null || items.every((i) => x + ctx.measureText(i.l.text).width + PAD_X * 2 <= mediaSize.width - 1);
       // 連短版都放不下（稍微往左拖、留白被擠掉）就全部不畫，不畫被切一半的標籤
       if (!full && !items.every((i) => x + ctx.measureText(i.l.short ?? i.l.text).width + PAD_X * 2 <= mediaSize.width - 1)) return;
       items.forEach((it, k) => {
