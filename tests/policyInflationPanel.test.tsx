@@ -10,6 +10,9 @@ const chartLog = {
   labels: [] as string[][],
   watermarks: [] as string[],
   priceLines: [] as { price: number; title?: string; axis: boolean }[],
+  prims: [] as { labels?: { text: string; at?: (t: string) => { price: number; text: string } | null }[] }[],
+  // 假時間軸：標籤欄左緣落在第幾根（null＝量不到）、最後一根的索引
+  scale: { logical: null as number | null, lastIdx: 0, time: '2025-09-17' },
 };
 vi.mock('lightweight-charts', () => {
   const makeChart = () => {
@@ -19,13 +22,16 @@ vi.mock('lightweight-charts', () => {
         chartLog.series.push({ pane: paneIndex, title: opts.title, label: opts.lastValueVisible !== false });
         chartLog.styles.push({ color: opts.color, dashed: opts.lineStyle === 2 });
         if (!panes.has(paneIndex)) panes.set(paneIndex, { setStretchFactor: () => {} });
-        return { setData: () => {}, attachPrimitive: (p: { labels?: { text: string }[] }) => chartLog.labels.push((p.labels ?? []).map((l) => l.text)), createPriceLine: (o: { price: number; title?: string; axisLabelVisible?: boolean }) =>
+        return { setData: () => {}, attachPrimitive: (p: { labels?: { text: string }[] }) => {
+          chartLog.prims.push(p);
+          chartLog.labels.push((p.labels ?? []).map((l) => l.text));
+        }, createPriceLine: (o: { price: number; title?: string; axisLabelVisible?: boolean }) =>
             chartLog.priceLines.push({ price: o.price, title: o.title, axis: o.axisLabelVisible !== false }),
         };
       },
       panes: () => [...panes.keys()].sort((a, b) => a - b).map((k) => panes.get(k)!),
       priceScale: () => ({ applyOptions: () => {} }),
-      timeScale: () => ({ fitContent: () => {}, setVisibleRange: () => {}, setVisibleLogicalRange: () => {}, applyOptions: () => {}, subscribeVisibleLogicalRangeChange: () => {}, unsubscribeVisibleLogicalRangeChange: () => {}, getVisibleLogicalRange: () => null, getVisibleRange: () => null, timeToCoordinate: () => null, timeToIndex: () => 0, width: () => 300 }),
+      timeScale: () => ({ fitContent: () => {}, setVisibleRange: () => {}, setVisibleLogicalRange: () => {}, applyOptions: () => {}, subscribeVisibleLogicalRangeChange: () => {}, unsubscribeVisibleLogicalRangeChange: () => {}, getVisibleLogicalRange: () => null, getVisibleRange: () => null, timeToCoordinate: () => null, timeToIndex: () => chartLog.scale.lastIdx, width: () => 300, coordinateToLogical: () => chartLog.scale.logical, logicalToCoordinate: (i: number) => i * 20, coordinateToTime: () => chartLog.scale.time }),
       subscribeCrosshairMove: () => {},
       unsubscribeCrosshairMove: () => {},
       applyOptions: () => {},
@@ -49,7 +55,7 @@ vi.mock('lightweight-charts', () => {
 });
 
 const { PolicyInflationPanel } = await import('../src/components/PolicyInflationPanel');
-const { rightGapBars, endLabelGapPx } = await import('../src/lib/endLabels');
+const { rightGapBars, endLabelGapPx, followAnchor } = await import('../src/lib/endLabels');
 const { stackYs } = await import('../src/lib/lineLabels');
 
 function series(id: string, bars: Bar[]): SeriesFile {
@@ -97,6 +103,8 @@ beforeEach(() => {
   chartLog.labels = [];
   chartLog.watermarks = [];
   chartLog.priceLines = [];
+  chartLog.prims = [];
+  chartLog.scale = { logical: null, lastIdx: 0, time: '2025-09-17' };
   window.localStorage.clear();
   vi.stubGlobal('fetch', (url: string) => {
     const id = /series\/([a-z0-9_]+)\.json/.exec(url)?.[1] ?? '';
@@ -280,6 +288,46 @@ describe('政策利率 vs 通膨面板', () => {
     expect(stackYs([20, 60], 17, 9, 191)).toEqual([20, 60]);
     expect(stackYs([50, 55, 120], 17, 9, 191)).toEqual([50, 67, 120]);
     expect(stackYs([180, 185, 190], 17, 9, 191)).toEqual([157, 174, 191]);
+  });
+
+  it('標籤欄左緣落在哪一根：最新一根還在左緣內＝不跟（null），往左拖曳後回傳那一根', () => {
+    const scale = (logical: number | null, lastIdx: number | null) => ({
+      width: () => 300,
+      coordinateToLogical: (x: number) => (x === 250 ? logical : null),
+      logicalToCoordinate: (i: number) => i * 2,
+      coordinateToTime: (x: number) => `x${x}`,
+      timeToIndex: () => lastIdx,
+    });
+    // 沒拖曳：最新一根（索引 125）剛好在左緣，浮點誤差少一點點也不算拖曳
+    expect(followAnchor(scale(125, 125), 50)).toBeNull();
+    expect(followAnchor(scale(124.99, 125), 50)).toBeNull();
+    expect(followAnchor(scale(130, 125), 50)).toBeNull();
+    // 往左拖了 40 根：左緣是第 85 根（x＝170），查時間時往左退一點（圖表庫會進位到下一根）
+    expect(followAnchor(scale(85.4, 125), 50)).toEqual({ time: 'x169.5', x: 170 });
+    // 量不到（圖表還沒排版）或沒有標籤欄
+    expect(followAnchor(scale(null, 125), 50)).toBeNull();
+    expect(followAnchor(scale(85, 125), 0)).toBeNull();
+  });
+
+  it('往左拖曳：讀數列與線尾標籤改標畫面右緣那一天、日期標 ◀、重設鈕變「回最新」', async () => {
+    // 標籤欄左緣在第 5 根（2025-09-17）、最後一根是第 10 根
+    chartLog.scale = { logical: 5, lastIdx: 10, time: '2025-09-17' };
+    render(<PolicyInflationPanel version="v1" themeKey="auto-false-tw" />);
+    await waitFor(() => expect(document.querySelector('.pi-follow')).toBeTruthy());
+    expect(document.querySelector('.pi-follow')!.textContent).toBe('◀ 2025-09-17');
+    // 2025-09-17 當天：Fed 仍是 4.50（09-18 才降）、核心 CPI 3.0 → 實質 +1.50；S&P 6,600、還沒有美債 2Y 資料
+    const legend = document.querySelector('.cm-legend')!.textContent ?? '';
+    expect(legend).toMatch(/Fed 4\.50%/);
+    expect(legend).toMatch(/實質 \+1\.50pp/);
+    expect(legend).toMatch(/S&P 500 6,600/);
+    expect(legend).not.toMatch(/美債2Y/);
+    expect(screen.getByRole('button', { name: '回到最新資料' }).textContent).toBe('↻ 回最新');
+    expect(screen.queryByRole('button', { name: '重設圖表縮放' })).toBeNull();
+    // 頁首讀數不跟著動（永遠是最新）
+    expect(document.querySelector('.pi-state')!.textContent).toMatch(/\+1\.10pp（Fed 4\.10% − 核心CPI 3\.0%）/);
+    // 圖內標籤：每條線給那一天的數值；2% 目標固定不變；那天還沒有資料的線（2Y）不標
+    const at = (p: (typeof chartLog.prims)[number]) => (p.labels ?? []).map((l) => (l.at ? (l.at('2025-09-17')?.text ?? null) : l.text));
+    expect(chartLog.prims.slice(0, 3).map(at)).toEqual([['4.50', '2%', '3.0', '4.0', null], ['+1.50'], ['6,600']]);
   });
 
   it('切換核心 PCE 會加序列並記住；區間預設 5 年', async () => {

@@ -21,7 +21,7 @@ import { useSeriesMap } from '../hooks/useData';
 import { CHART_INTERACTION, resetPaneStretch, resetPriceScales, attachTimeAxis, TIME_AXIS } from '../lib/chartInteraction';
 import { loadPref, savePref } from '../lib/storage';
 import { LineLabels, type LineLabel } from '../lib/lineLabels';
-import { END_LABEL_FONT, endLabelGapPx, rightGapBars } from '../lib/endLabels';
+import { END_LABEL_FONT, endLabelGapPx, followAnchor, rightGapBars } from '../lib/endLabels';
 import { cssVar, pctCell } from '../lib/stressFormat';
 import {
   PHASE_COLOR,
@@ -158,6 +158,8 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const endTextsRef = useRef<string[]>([]);
+  /** 線尾標籤欄寬（px）；圖內標籤與讀數列用同一個值判斷「畫面右緣那一根」 */
+  const gapPxRef = useRef(0);
   const near = useNearViewport(sectionRef);
   const [range, setRange] = useState<RangeKey>(() => loadPref<RangeKey>('pi-range', ['3M', '6M', '1Y', '5Y', '10Y', 'ALL'], '5Y'));
   const [extras, setExtras] = useState<Record<ExtraId, boolean>>(() => ({
@@ -175,6 +177,8 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
   const [showCycles, setShowCycles] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const [hoverTime, setHoverTime] = useState<string | null>(null);
+  /** 往左拖曳後標籤欄左緣那一根的日期（沒拖曳＝null，讀數與標籤標最新值） */
+  const [followTime, setFollowTime] = useState<string | null>(null);
   const [chartGen, setChartGen] = useState(0);
 
   const files = useSeriesMap(near ? IDS : [], version);
@@ -347,6 +351,14 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       axisLabelVisible: false,
     });
     const surface = cssVar('--surface');
+    // 往左拖曳後標籤改標「標籤欄左緣那一根」當天（或之前最後一筆）的數值；那天還沒有資料就不標
+    const follower =
+      (pts: readonly Point[], fmt: (v: number) => string, colorAt?: (d: string) => string) =>
+      (t: string) => {
+        const v = valueAtOrBefore(pts, t);
+        return v === null ? null : { price: v, text: fmt(v), ...(colorAt ? { color: colorAt(t) } : {}) };
+      };
+    const follow = () => followAnchor(chart.timeScale(), gapPxRef.current);
     // 線尾標籤：只標最新值（不帶名稱，留白才窄），靠外框顏色＝線色認線；排在最後一根右邊的留白裡（留白寬度見下方區間 effect）
     const ends: LineLabel[] = [];
     const addTop = (pts: readonly Point[], colorVar: string, width: 1 | 2, digits: number) => {
@@ -354,11 +366,11 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       const s = chart.addSeries(LineSeries, { color, lineWidth: width, priceFormat: pct, lastValueVisible: false, priceLineVisible: false }, 0);
       s.setData(toData(pts));
       const last = pts.at(-1)!;
-      ends.push({ price: last[1], text: last[1].toFixed(digits), color, endTime: last[0] as Time });
+      ends.push({ price: last[1], text: last[1].toFixed(digits), color, endTime: last[0] as Time, at: follower(pts, (v) => v.toFixed(digits)) });
     };
     {
       const last = fed.at(-1)!;
-      ends.push({ price: last[1], text: last[1].toFixed(2), color: cssVar('--text-1'), endTime: last[0] as Time });
+      ends.push({ price: last[1], text: last[1].toFixed(2), color: cssVar('--text-1'), endTime: last[0] as Time, at: follower(fed, (v) => v.toFixed(2)) });
       // 2% 目標也標在同一欄（虛線一路畫到標籤），不另外蓋住左側的歷史線
       ends.push({ price: FED_TARGET, text: `${FED_TARGET}%`, color: textColor, endTime: last[0] as Time });
     }
@@ -377,7 +389,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       allEnds.push(...labels.map((l) => l.text));
       for (const l of labels) if (typeof l.endTime === 'string' && (scaleEnd === null || l.endTime > scaleEnd)) scaleEnd = l.endTime;
       series.attachPrimitive(
-        new LineLabels(labels, { color: cssVar('--text-1'), background: surface, border: textColor, fontSize: END_LABEL_FONT, fontFamily, align: 'right', stack: true, stackAt: () => scaleEnd as Time | null }),
+        new LineLabels(labels, { color: cssVar('--text-1'), background: surface, border: textColor, fontSize: END_LABEL_FONT, fontFamily, align: 'right', stack: true, stackAt: () => scaleEnd as Time | null, follow }),
       );
     };
     endLabels(fedS, ends);
@@ -403,7 +415,17 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
     realS.setData(real.map((r) => ({ time: r[0] as Time, value: r[3] })));
     {
       const last = real.at(-1);
-      if (last) endLabels(realS, [{ price: last[3], text: `${last[3] > 0 ? '+' : ''}${last[3].toFixed(2)}`, color: cssVar('--text-1'), endTime: last[0] as Time }]);
+      const realFmt = (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(2)}`;
+      const realPts = real.map((r) => [r[0], r[3]] as Point);
+      // 往左拖曳時：位置跟著線（月資料，取當月月底的 Fed），數字與讀數列一致（那一天的 Fed − 當時最新核心 CPI），
+      // 否則 Fed 當月有動作時標籤與讀數列會差一碼
+      const realAt = (t: string) => {
+        const onLine = valueAtOrBefore(realPts, t);
+        const f = valueAtOrBefore(fed, t);
+        const c = valueAtOrBefore(coreCpi, t);
+        return onLine === null || f === null || c === null ? null : { price: onLine, text: realFmt(f - c) };
+      };
+      if (last) endLabels(realS, [{ price: last[3], text: realFmt(last[3]), color: cssVar('--text-1'), endTime: last[0] as Time, at: realAt }]);
     }
     // 參考線只畫虛線，不加圖內文字與軸標籤（標籤會被圖表庫上下推開、蓋住最近的線），說明放在窗格標題
     for (const v of [0, REAL_RATE_TIGHT]) {
@@ -423,7 +445,9 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       );
       s.setData(spx.map((b) => ({ time: b[0] as Time, value: b[4], color: colorOf(b[0]) })));
       const last = spx.at(-1);
-      if (last) endLabels(s, [{ price: last[4], text: last[4].toLocaleString('en-US', { maximumFractionDigits: 0 }), color: colorOf(last[0]), endTime: last[0] as Time }]);
+      const idxFmt = (v: number) => v.toLocaleString('en-US', { maximumFractionDigits: 0 });
+      const idxPts = spx.map((b) => [b[0], b[4]] as Point);
+      if (last) endLabels(s, [{ price: last[4], text: idxFmt(last[4]), color: colorOf(last[0]), endTime: last[0] as Time, at: follower(idxPts, idxFmt, colorOf) }]);
     }
 
     // 第四格（沒開指數時排第三格）：DXY 與 USD/TWD 自區間起點起的累計 %，同一刻度；0% 虛線＝起點
@@ -445,7 +469,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       twdS.createPriceLine({ price: 0, color: textColor, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false });
       const endOf = (pts: readonly Point[], colorVar: string): LineLabel[] => {
         const last = pts.at(-1);
-        return last ? [{ price: last[1], text: fxFormat.formatter(last[1]), color: cssVar(colorVar), endTime: last[0] as Time }] : [];
+        return last ? [{ price: last[1], text: fxFormat.formatter(last[1]), color: cssVar(colorVar), endTime: last[0] as Time, at: follower(pts, fxFormat.formatter) }] : [];
       };
       endLabels(twdS, [...endOf(fxLines.dxy.points, FX_COLOR.dxy), ...endOf(fxLines.twd.points, FX_COLOR.twd)]);
     } else if (fxLines) {
@@ -457,7 +481,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       );
       rawS.setData(toData(fxLines.raw));
       const last = fxLines.raw.at(-1);
-      if (last) endLabels(rawS, [{ price: last[1], text: last[1].toFixed(2), color: cssVar(FX_COLOR[fxLines.id]), endTime: last[0] as Time }]);
+      if (last) endLabels(rawS, [{ price: last[1], text: last[1].toFixed(2), color: cssVar(FX_COLOR[fxLines.id]), endTime: last[0] as Time, at: follower(fxLines.raw, (v) => v.toFixed(2)) }]);
     }
     // priceScale(...).applyOptions 會把選項併進圖表層級預設，之後建立的窗格都繼承 → 所有窗格建好後再逐一設定
     if (showSpx || fxLines) {
@@ -500,10 +524,14 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
     // 右側留白＝最寬的線尾標籤＋邊距（像素），換算成 K 棒數；fixRightEdge 會吃掉留白，所以自己限制右界：
     // 往左拖不會拉出更多空白
     const gapPx = endLabelGapPx(endTextsRef.current, getComputedStyle(document.body).fontFamily);
+    gapPxRef.current = gapPx;
     let maxTo = Infinity;
+    // 讀數列跟著圖內標籤：往左拖曳後改顯示標籤欄左緣那一根的日期
+    const syncFollow = () => setFollowTime(followAnchor(ts, gapPx)?.time ?? null);
     const clamp = () => {
       const r = ts.getVisibleLogicalRange();
       if (r && r.to > maxTo + 0.01) ts.setVisibleLogicalRange({ from: r.from - (r.to - maxTo), to: maxTo });
+      else syncFollow();
     };
     const apply = () => {
       resetPriceScales(chart);
@@ -522,6 +550,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       ts.applyOptions({ rightOffset: gap, minBarSpacing: fitAll > 0 ? Math.min(0.05, fitAll * 0.98) : 0.05 });
       ts.setVisibleLogicalRange({ from: fromIdx, to: lastIdx + gap });
       maxTo = lastIdx + gap;
+      syncFollow();
     };
     apply();
     const raf = requestAnimationFrame(apply);
@@ -532,10 +561,10 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
     };
   }, [chartGen, range, resetKey, fed, showSpx, hasFx]);
 
-  // 圖例：十字線所在日期（沒有時顯示最新）
+  // 圖例：十字線所在日期；沒有十字線時，往左拖曳過＝畫面右緣（標籤欄左緣）那一根，否則最新
   const legend = useMemo(() => {
     if (!loaded) return null;
-    const date = hoverTime ?? fed.at(-1)![0];
+    const date = hoverTime ?? followTime ?? fed.at(-1)![0];
     const at = (pts: readonly Point[]) => (pts.length ? valueAtOrBefore(pts, date) : null);
     const fedV = at(fed);
     const coreV = at(coreCpi);
@@ -563,7 +592,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
           ? { mode: 'pct' as const, base: fxLines.twd.baseDate, dxy: valueAtOrBefore(fxLines.dxy.points, date), twd: valueAtOrBefore(fxLines.twd.points, date), rate: valueAtOrBefore(twd, date) }
           : { mode: 'raw' as const, id: fxLines.id, base: fxLines.line.baseDate, value: valueAtOrBefore(fxLines.raw, date), change: valueAtOrBefore(fxLines.line.points, date) },
     };
-  }, [loaded, hoverTime, fed, coreCpi, cpi, corePce, us2y, spx, equity, showSpx, extras, fxLines, twd]);
+  }, [loaded, hoverTime, followTime, fed, coreCpi, cpi, corePce, us2y, spx, equity, showSpx, extras, fxLines, twd]);
   const currentPhase = equity ? phaseAt(equity.segments, spx.at(-1)![0]) : null;
   // 2Y − Fed：低於 −0.25pp 市場押降息、高於 +0.25pp 押升息（約一碼）
   const spreadText = (v: number | null) =>
@@ -603,7 +632,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
         看 Fed 跟通膨的距離，不看方向：實質政策利率（Fed − 核心CPI）小於 0 是寬鬆，Fed 歷來不會在這裡停止升息；大於 +1pp 才算緊縮，才有降息空間。
         2000、2006、2019、2023 幾次升息頂點都出現在實質利率翻正之後，但翻正不等於馬上降息（2023 翻正後又撐了一年）。
         核心 CPI 是落後指標；整體 CPI 用來解釋油價飆時 Fed 為什麼不動，核心 PCE 是 Fed 正式目標但晚兩週。
-        圖上每一格各線尾端的小標籤是最新值（只標數字，外框顏色＝線色、對照上方晶片的顏色認線，排在圖表右側留白，月資料的線較早結束、用細線連過去；擠在一起時上下錯開），灰框「2%」標的是 Fed 的通膨目標虛線；往左拖曳看舊資料時標籤會先收起來；讀數列「核心距 2%」是十字線那天核心 CPI 離目標多遠。
+        圖上每一格各線尾端的小標籤是最新值（只標數字，外框顏色＝線色、對照上方晶片的顏色認線，排在圖表右側留白，月資料的線較早結束、用細線連過去；擠在一起時上下錯開），灰框「2%」標的是 Fed 的通膨目標虛線；往左拖曳看舊資料時，標籤改標「畫面右緣那一天」的數值（月資料取當月或之前最後一筆），右緣標籤欄會蓋一層淡底色，上方讀數列也換成那一天、日期變橘色加「◀」提醒不是最新值，「↺ 重設」會變成「↻ 回最新」，按下回到最新；讀數列「核心距 2%」是十字線那天核心 CPI 離目標多遠。
         核心 CPI 的線可以關掉專心看整體 CPI，但關掉只是不畫線：實質利率、緊縮／寬鬆判讀一律以核心 CPI 計，不要拿圖上「Fed − 整體 CPI」的距離來讀（油價飆時整體 CPI 會讓 Fed 看起來不夠緊，那不是 Fed 的算法）。
         美債 2Y 是市場對未來一年 Fed 利率的押注，通常跑在 Fed 階梯前面：2Y 低於 Fed 一碼以上＝押降息、高於一碼以上＝押升息；它比 CPI 早反應，但押錯也常見（2024 上半年押六次降息，實際三次）。
         第三格指數（S&P 500／NASDAQ／費半／加權，一次看一個）的線色是 Fed 階段（升息期／高原／降息期／谷底；超過 6 個月沒動作算暫停）。1982 年起四個階段 S&P 年化都是正的，階段本身不是方向訊號；差別在「為什麼降息」：降息後一年內失業率觸發 Sahm 規則的衰退式降息（2001、2007）之後一年 S&P 是負的，保險式降息（1995、1998、2019、2024）則續漲——分類器是失業率和 2Y−Fed，不是 Fed 動作本身。
@@ -657,8 +686,14 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
             {r.label}
           </button>
         ))}
-        <button type="button" onClick={() => setResetKey((k) => k + 1)} aria-label="重設圖表縮放" title="重設縮放">
-          ↺ 重設
+        <button
+          type="button"
+          className={followTime ? 'pi-back' : undefined}
+          onClick={() => setResetKey((k) => k + 1)}
+          aria-label={followTime ? '回到最新資料' : '重設圖表縮放'}
+          title={followTime ? '回到最新資料並重設縮放' : '重設縮放'}
+        >
+          {followTime ? '↻ 回最新' : '↺ 重設'}
         </button>
       </div>
 
@@ -673,7 +708,12 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
           {legend && (
             <div className="legend num cm-legend" aria-live="off">
               <div>
-                <span className="muted">{legend.date}</span> Fed <b>{f2(legend.fed)}%</b>
+                {followTime && !hoverTime ? (
+                  <span className="pi-follow" title="往左拖曳中：讀數與圖內標籤是畫面右緣這一天的數值，不是最新值">◀ {legend.date}</span>
+                ) : (
+                  <span className="muted">{legend.date}</span>
+                )}{' '}
+                Fed <b>{f2(legend.fed)}%</b>
                 {coreOn && <> ｜ 核心CPI <b>{f1(legend.core)}%</b></>}
                 {legend.cpi !== null && <> ｜ CPI {coreOn ? `${f1(legend.cpi)}%` : <b>{f1(legend.cpi)}%</b>}</>}
                 {legend.pce !== null && <> ｜ 核心PCE {f1(legend.pce)}%</>}

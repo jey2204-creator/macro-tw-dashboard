@@ -1479,3 +1479,12 @@ th {
   margin: 4px 0 0;
   line-height: 1.5;
 }
+/* 政策利率面板：往左拖曳後讀數列日期（不是最新值）與「回最新」按鈕 */
+.pi-follow {
+  color: var(--warn);
+  font-weight: 600;
+}
+.seg button.pi-back {
+  color: var(--warn);
+  font-weight: 600;
+}
