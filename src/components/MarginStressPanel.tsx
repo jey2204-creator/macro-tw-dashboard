@@ -24,6 +24,9 @@ import {
   COMPLETION_LOOKBACK,
   COMPLETION_MIN_DD,
   DELEVER_MIN_DROP_PCT,
+  ETF_RATIO_HI,
+  ETF_RATIO_LO,
+  type EtfMarginLatest,
   EVENT_LABEL,
   EVENT_TYPES,
   STATE_LABEL,
@@ -411,6 +414,23 @@ function CompletionLine({ c }: { c: Completion }) {
   );
 }
 
+/** 融資裡的 ETF 讀數列：佔比、不含 ETF 維持率估算範圍、ETF／個股融資張數日增減 */
+function EtfLine({ e, latestDate }: { e: EtfMarginLatest; latestDate: string }) {
+  const lots = (v: number | null) => (v === null ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(1)}`);
+  const cls = (v: number | null) => ((v ?? 0) > 0 ? 'up' : (v ?? 0) < 0 ? 'down' : '');
+  const split = (e.etfLotsChg ?? 0) > 0 && (e.stockLotsChg ?? 0) < 0;
+  return (
+    <div className="small num ms-sbl-line">
+      ETF 佔融資市值 <b>{e.share.toFixed(1)}%</b>｜不含 ETF 維持率約{' '}
+      <b>{e.exLo === null || e.exHi === null ? '—' : `${e.exLo.toFixed(1)}～${e.exHi.toFixed(1)}%`}</b>
+      <span className="muted">（估算）</span>｜融資張數 ETF <span className={cls(e.etfLotsChg)}>{lots(e.etfLotsChg)}</span>、個股{' '}
+      <span className={cls(e.stockLotsChg)}>{lots(e.stockLotsChg)}</span> 萬張
+      {split && <span className="ms-sbl-tag muted">ETF 加碼、個股減碼</span>}
+      {e.date !== latestDate && <span className="muted">（{e.date}）</span>}
+    </div>
+  );
+}
+
 export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile | null; themeKey: string }) {
   const [range, setRange] = useState<RangeKey>('3M');
   const [resetKey, setResetKey] = useState(0);
@@ -434,6 +454,7 @@ export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile |
         </div>
         <span className="small muted num">資料 {latest.date}</span>
       </div>
+      {data.latestEtf && <EtfLine e={data.latestEtf} latestDate={latest.date} />}
       {data.latestSbl && (
         <div className="small num ms-sbl-line">
           借券賣出餘額 <b>{f1(data.latestSbl.balance)}</b> 萬張｜近5日{' '}
@@ -492,6 +513,13 @@ export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile |
         事件「追上」（▲ 藍，K 棒下方）＝指數自高點跌幅 ≥ {CAUGHT_UP_MIN_DD}% 且完成度從 &lt; 1 回到 ≥ 1 的第一天，同一波只標一次（指數回到高點 {COMPLETION_MIN_DD}% 以內才重新計）；進回測表。
         2010 起 8 次：2020-03-13、2026-07-28 都比實際低點早 2 個交易日（完成度先追上、指數再殺一段），2022-04-29 之後還跌 16%——它標的是「融資該賣的賣得差不多了」，不是底部。
       </p>
+      {data.latestEtf && (
+        <p className="small muted ms-rule">
+          不含 ETF 維持率（估算範圍）：證交所只公布全市場的融資金額，沒有分 ETF／股票，所以算不出單一數字。ETF（代號 00 開頭，含槓桿、反向、期貨、主動式）的融資市值算得出來，借了多少錢算不出來，只能假設 ETF 自己的維持率在 {ETF_RATIO_LO}%～{ETF_RATIO_HI}% 之間，推出不含 ETF 的範圍：ETF 維持率假設越高，剩下個股的維持率越低。
+          ETF 佔融資市值 2010 年不到 1%、近年 4%～9%，崩盤時比重會升高；2020-03-19、2025-04-09 這種低點，不含 ETF 大約比含 ETF 低 1～6pp。
+          用法：160／140 門檻、斷頭潮、清洗完成與回測都是用「含 ETF」那條線校準的，這個範圍只當輔助——範圍下緣已經貼近 140 時，代表個股的實際壓力比線上數字大。「ETF 加碼、個股減碼」＝當天 ETF 融資張數增加而個股減少（有人用融資抄底 ETF，會把含 ETF 的維持率墊高）。參考、不進回測。
+        </p>
+      )}
       {data.sbl?.length ? (
         <p className="small muted ms-rule">
           借券賣出餘額（上市）＝證交所逐檔「借券賣出當日餘額」加總，借券放空者幾乎都是外資／法人，可視為法人空單；融資是散戶槓桿（多方）。餘額在跌勢後段暴增＝空方追空、也是反彈時的軋空燃料；餘額連續下降＝空方回補。限空令期間當日賣出會被制度性壓低，判斷看餘額增減、不看當日賣出量。

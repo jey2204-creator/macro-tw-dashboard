@@ -47,6 +47,9 @@ export type SourceSpec =
         | 'MARGIN'
         | 'MARGIN_BALANCE'
         | 'MARGIN_RATIO'
+        | 'MARGIN_ETF_MV'
+        | 'MARGIN_ETF_LOTS'
+        | 'MARGIN_STOCK_LOTS'
         | 'LIMIT_UP'
         | 'LIMIT_DOWN'
         | 'ADVANCE'
@@ -996,6 +999,24 @@ export const INDICATORS: IndicatorDef[] = [
       { max: Infinity, label: '偏熱' },
     ],
     note: '推算值＝Σ(逐檔融資餘額×收盤價)÷融資金額，上市含ETF。跌破140%常伴隨斷頭賣壓、接近階段低點；不代表會立刻反彈',
+  },
+  {
+    id: 'margin_etf_mv', name: 'ETF 融資市值（上市）', short: 'ETF融資市值', category: 'tw_chips', frequency: 'daily',
+    unit: '億', decimals: 1, sources: [{ provider: 'twse_chips', symbol: 'MARGIN_ETF_MV' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true,
+    note: '代號 00 開頭（含槓桿、反向、期貨、主動式 ETF）的融資張數 × 收盤價（億元）；用來估「不含 ETF」的維持率範圍',
+  },
+  {
+    id: 'margin_etf_lots', name: 'ETF 融資張數（上市）', short: 'ETF融資張數', category: 'tw_chips', frequency: 'daily',
+    unit: '萬張', decimals: 2, sources: [{ provider: 'twse_chips', symbol: 'MARGIN_ETF_LOTS' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true,
+    note: 'ETF 融資今日餘額張數合計（萬張）',
+  },
+  {
+    id: 'margin_stock_lots', name: '非 ETF 融資張數（上市）', short: '個股融資張數', category: 'tw_chips', frequency: 'daily',
+    unit: '萬張', decimals: 2, sources: [{ provider: 'twse_chips', symbol: 'MARGIN_STOCK_LOTS' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 5, hidden: true,
+    note: 'ETF 以外（股票等）融資今日餘額張數合計（萬張）',
   },
   {
     id: 'margin_chg', name: '融資餘額增減（上市）', short: '融資增減', category: 'tw_chips', frequency: 'daily',
