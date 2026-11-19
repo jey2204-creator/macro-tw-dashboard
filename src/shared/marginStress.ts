@@ -140,6 +140,65 @@ export interface MarginStressFile {
   /** 借券賣出（上市，萬張）：[日期, 借券賣出餘額, 餘額增減, 當日賣出, 當日還券]；沒有資料時省略 */
   sbl?: SblRow[];
   latestSbl?: SblLatest | null;
+  /** 融資裡的 ETF（最新一日）；沒有資料時省略 */
+  latestEtf?: EtfMarginLatest | null;
+}
+
+/** 「不含 ETF」維持率的估算範圍：假設 ETF 自身維持率落在這兩個值之間 */
+export const ETF_RATIO_LO = 150;
+export const ETF_RATIO_HI = 300;
+
+export interface EtfMarginLatest {
+  date: string;
+  /** 含 ETF 維持率（%） */
+  ratio: number;
+  /** ETF 融資市值（億）與佔全部融資市值比重（%） */
+  etfMv: number;
+  share: number;
+  /** 不含 ETF 維持率估算範圍（%）：exLo 對應 ETF 自身維持率 ETF_RATIO_HI，exHi 對應 ETF_RATIO_LO */
+  exLo: number | null;
+  exHi: number | null;
+  /** 融資張數日增減（萬張）：ETF／非 ETF */
+  etfLotsChg: number | null;
+  stockLotsChg: number | null;
+}
+
+/** 不含 ETF 維持率＝(總市值 − ETF 市值) ÷ (融資總額 − ETF 市值 ÷ ETF 自身維持率)；分母 ≤ 0 回傳 null */
+export function exEtfRatio(ratio: number, balance: number, etfMv: number, etfOwnRatio: number): number | null {
+  const mvAll = (ratio / 100) * balance;
+  const den = balance - etfMv / (etfOwnRatio / 100);
+  if (!(den > 0) || !(mvAll > etfMv)) return null;
+  return Math.round(((mvAll - etfMv) / den) * 1000) / 10;
+}
+
+/** 以最新一個「維持率、融資餘額、ETF 融資市值」同日都有的日期計算 */
+export function summarizeEtfMargin(
+  rows: StressRow[],
+  etf: { mv?: Bar[]; etfLots?: Bar[]; stockLots?: Bar[] },
+): EtfMarginLatest | null {
+  const mv = etf.mv ?? [];
+  const byDate = new Map(rows.map((r) => [r[0], r]));
+  for (let i = mv.length - 1; i >= 0; i--) {
+    const [date, , , , v] = mv[i]!;
+    const row = byDate.get(date);
+    if (!row || !(v > 0) || !(row[2] > 0) || !(row[3] > 0)) continue;
+    const mvAll = (row[2] / 100) * row[3];
+    const chg = (bars?: Bar[]) => {
+      const k = bars?.findIndex((b) => b[0] === date) ?? -1;
+      return k > 0 ? Math.round((bars![k]![4] - bars![k - 1]![4]) * 100) / 100 : null;
+    };
+    return {
+      date,
+      ratio: row[2],
+      etfMv: v,
+      share: Math.round((v / mvAll) * 1000) / 10,
+      exLo: exEtfRatio(row[2], row[3], v, ETF_RATIO_HI),
+      exHi: exEtfRatio(row[2], row[3], v, ETF_RATIO_LO),
+      etfLotsChg: chg(etf.etfLots),
+      stockLotsChg: chg(etf.stockLots),
+    };
+  }
+  return null;
 }
 
 /**

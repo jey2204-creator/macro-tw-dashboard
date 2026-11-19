@@ -197,3 +197,31 @@ describe('去槓桿追上大盤事件', () => {
     expect(ev.map((e) => e.date)).toEqual([day(3), day(8)]);
   });
 });
+
+describe('融資裡的 ETF（不含 ETF 維持率估算範圍）', () => {
+  it('11/19 實測值：佔比 7.8%，範圍 141.8～147.7%', async () => {
+    const { exEtfRatio, summarizeEtfMargin } = await import('../src/shared/marginStress');
+    // 含 ETF 147.90%、融資 4,843.68 億、ETF 融資市值 557 億
+    expect(exEtfRatio(147.9, 4843.68, 557, 300)).toBeCloseTo(141.8, 0);
+    expect(exEtfRatio(147.9, 4843.68, 557, 150)).toBeCloseTo(147.7, 0);
+    expect(exEtfRatio(150, 100, 200, 150)).toBeNull();
+    const bar = (d: string, v: number): [string, number, number, number, number] => [d, v, v, v, v];
+    const r = summarizeEtfMargin(
+      [
+        ['2026-11-18', 39000, 150, 5080.27, -100],
+        ['2026-11-19', 38427, 147.9, 4843.68, -236.58],
+      ],
+      {
+        mv: [bar('2026-11-18', 540), bar('2026-11-19', 557)],
+        etfLots: [bar('2026-11-18', 321.51), bar('2026-11-19', 325.17)],
+        stockLots: [bar('2026-11-18', 587.72), bar('2026-11-19', 569.59)],
+      },
+    )!;
+    expect(r.date).toBe('2026-11-19');
+    expect(r.share).toBeCloseTo(7.8, 1);
+    expect(r.exLo! < r.exHi! && r.exHi! < 147.9).toBe(true);
+    expect(r.etfLotsChg).toBeCloseTo(3.66, 2);
+    expect(r.stockLotsChg).toBeCloseTo(-18.13, 2);
+    expect(summarizeEtfMargin([], {})).toBeNull();
+  });
+});

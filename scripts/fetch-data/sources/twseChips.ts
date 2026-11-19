@@ -33,6 +33,9 @@ export type TwseChipSymbol =
   | 'MARGIN'
   | 'MARGIN_BALANCE'
   | 'MARGIN_RATIO'
+  | 'MARGIN_ETF_MV'
+  | 'MARGIN_ETF_LOTS'
+  | 'MARGIN_STOCK_LOTS'
   | 'LIMIT_UP'
   | 'LIMIT_DOWN'
   | 'ADVANCE'
@@ -53,6 +56,8 @@ const SBL_SYMBOLS = ['SBL_SELL_BAL', 'SBL_SELL', 'SBL_RETURN', 'SBL_LEND_BAL', '
 type SblSymbol = (typeof SBL_SYMBOLS)[number];
 const isSbl = (s: TwseChipSymbol): s is SblSymbol => (SBL_SYMBOLS as readonly string[]).includes(s);
 const isSblLend = (s: TwseChipSymbol) => s === 'SBL_LEND_BAL' || s === 'SBL_LEND' || s === 'SBL_LEND_RET';
+
+const isEtfMargin = (s: TwseChipSymbol) => s === 'MARGIN_ETF_MV' || s === 'MARGIN_ETF_LOTS' || s === 'MARGIN_STOCK_LOTS';
 
 export const TWSE_CHIPS_BACKFILL_DAYS = 365;
 /** 維持率每天多一個大檔請求，回補較短 */
@@ -282,6 +287,27 @@ export function computeMarginRatio(day: MarginDay, prices: Map<string, number>):
   return Math.round((mv / day.loanYuan) * 10000) / 100;
 }
 
+/** ETF（含槓桿／反向／期貨／主動式）：代號 00 開頭 */
+export const isEtfCode = (code: string) => code.startsWith('00');
+
+/** 融資裡的 ETF：融資市值（億）、ETF 與非 ETF 的融資張數（萬張）。證交所沒有分類別的融資金額，只能算市值與張數 */
+export function computeEtfMargin(day: MarginDay, prices: Map<string, number>): { mvYi: number; etfLots: number; stockLots: number } | null {
+  if (day.lots.size === 0) return null;
+  let mv = 0;
+  let etf = 0;
+  let stock = 0;
+  for (const [code, lots] of day.lots) {
+    if (!isEtfCode(code)) {
+      stock += lots;
+      continue;
+    }
+    etf += lots;
+    const px = prices.get(code);
+    if (px) mv += lots * 1000 * px;
+  }
+  return { mvYi: Math.round(mv / 1e6) / 100, etfLots: Math.round(etf / 100) / 100, stockLots: Math.round(stock / 100) / 100 };
+}
+
 interface Twt93u {
   stat?: string;
   fields?: string[];
@@ -502,13 +528,17 @@ function closeDay(date: string, http: HttpOptions, fast: boolean): Promise<{ pri
 
 async function dayValue(symbol: TwseChipSymbol, date: string, http: HttpOptions, fast: boolean): Promise<number | null> {
   const ymd = date.replace(/-/g, '');
-  if (symbol === 'MARGIN' || symbol === 'MARGIN_BALANCE' || symbol === 'MARGIN_RATIO') {
+  if (symbol === 'MARGIN' || symbol === 'MARGIN_BALANCE' || symbol === 'MARGIN_RATIO' || isEtfMargin(symbol)) {
     const m = await marginDay(date, http, fast);
     if (!m) return null;
     if (symbol === 'MARGIN') return m.change;
     if (symbol === 'MARGIN_BALANCE') return m.balance;
     const { prices } = await closeDay(date, http, fast);
-    return prices ? computeMarginRatio(m, prices) : null;
+    if (!prices) return null;
+    if (symbol === 'MARGIN_RATIO') return computeMarginRatio(m, prices);
+    const e = computeEtfMargin(m, prices);
+    if (!e) return null;
+    return symbol === 'MARGIN_ETF_MV' ? e.mvYi : symbol === 'MARGIN_ETF_LOTS' ? e.etfLots : e.stockLots;
   }
   if (isSblLend(symbol)) {
     const d = await sblLendDay(date, http, fast);
@@ -545,7 +575,7 @@ export async function fetchTwseChips(
   http: HttpOptions,
   fast = false,
 ): Promise<SourceFetchResult> {
-  const target = addDays(today, -(symbol === 'MARGIN_RATIO' || isBreadth(symbol) || isSbl(symbol) ? MARGIN_RATIO_BACKFILL_DAYS : TWSE_CHIPS_BACKFILL_DAYS));
+  const target = addDays(today, -(symbol === 'MARGIN_RATIO' || isEtfMargin(symbol) || isBreadth(symbol) || isSbl(symbol) ? MARGIN_RATIO_BACKFILL_DAYS : TWSE_CHIPS_BACKFILL_DAYS));
   // 快取太少（例如早期版本被限流而留下缺洞）時，視同無快取重新抓最近 40 個工作日；結果仍會與舊快取合併
   if (cached && cached.length < 20) cached = null;
   const first = cached?.[0]?.[0] ?? null;

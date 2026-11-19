@@ -1,7 +1,7 @@
 import { readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { analyzeBreadth, combineBreadthRows, type BreadthHistoryRow, type BreadthStressFile, type OtcBreadthHistoryFile } from '../../src/shared/breadthStress';
-import { analyzeMarginStress, combineSblRows, combineStressRows, summarizeSbl, type MarginHistoryFile, type MarginStressFile, type PolicyEvent, type SblHistoryFile } from '../../src/shared/marginStress';
+import { analyzeMarginStress, combineSblRows, combineStressRows, summarizeEtfMargin, summarizeSbl, type MarginHistoryFile, type MarginStressFile, type PolicyEvent, type SblHistoryFile } from '../../src/shared/marginStress';
 import type { Bar, SeriesFile } from '../../src/shared/types';
 
 async function readJson<T>(file: string): Promise<T | null> {
@@ -58,6 +58,13 @@ export async function writeMarginStress(outDir: string, historyFile = path.resol
     out.sbl = sbl;
     out.latestSbl = summarizeSbl(sbl);
   }
+  // 融資裡的 ETF：佔比與「不含 ETF」維持率估算範圍（參考、不進回測）
+  const latestEtf = summarizeEtfMargin(rows, {
+    mv: await series('margin_etf_mv'),
+    etfLots: await series('margin_etf_lots'),
+    stockLots: await series('margin_stock_lots'),
+  });
+  if (latestEtf) out.latestEtf = latestEtf;
   // 漲跌停家數監測（同一份歷史檔）
   const breadthHist: BreadthHistoryRow[] = (hist?.schemaVersion === 2 ? hist.rows : []).flatMap((r) =>
     r[4] != null && r[5] != null && r[6] != null && r[7] != null
