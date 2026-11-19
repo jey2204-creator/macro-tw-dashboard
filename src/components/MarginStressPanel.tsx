@@ -415,19 +415,18 @@ function CompletionLine({ c }: { c: Completion }) {
 }
 
 /** 融資裡的 ETF 讀數列：佔比、不含 ETF 維持率估算範圍、ETF／個股融資張數日增減 */
-function EtfLine({ e }: { e: EtfMarginLatest }) {
+function EtfLine({ e, latestDate }: { e: EtfMarginLatest; latestDate: string }) {
   const lots = (v: number | null) => (v === null ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(1)}`);
   const cls = (v: number | null) => ((v ?? 0) > 0 ? 'up' : (v ?? 0) < 0 ? 'down' : '');
   const split = (e.etfLotsChg ?? 0) > 0 && (e.stockLotsChg ?? 0) < 0;
   return (
     <div className="small num ms-sbl-line">
-      ETF 佔融資市值 <b>{e.share.toFixed(1)}%</b>
-      <span className="muted">（{f1(e.etfMv)} 億）</span>｜不含 ETF 維持率約{' '}
+      ETF 佔融資市值 <b>{e.share.toFixed(1)}%</b>｜不含 ETF 維持率約{' '}
       <b>{e.exLo === null || e.exHi === null ? '—' : `${e.exLo.toFixed(1)}～${e.exHi.toFixed(1)}%`}</b>
-      <span className="muted">（估算，含 ETF {f2(e.ratio)}%）</span>｜融資張數 ETF <span className={cls(e.etfLotsChg)}>{lots(e.etfLotsChg)}</span>
-      、個股 <span className={cls(e.stockLotsChg)}>{lots(e.stockLotsChg)}</span> 萬張
+      <span className="muted">（估算）</span>｜融資張數 ETF <span className={cls(e.etfLotsChg)}>{lots(e.etfLotsChg)}</span>、個股{' '}
+      <span className={cls(e.stockLotsChg)}>{lots(e.stockLotsChg)}</span> 萬張
       {split && <span className="ms-sbl-tag muted">ETF 加碼、個股減碼</span>}
-      <span className="muted">（{e.date}）</span>
+      {e.date !== latestDate && <span className="muted">（{e.date}）</span>}
     </div>
   );
 }
@@ -455,7 +454,7 @@ export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile |
         </div>
         <span className="small muted num">資料 {latest.date}</span>
       </div>
-      {data.latestEtf && <EtfLine e={data.latestEtf} />}
+      {data.latestEtf && <EtfLine e={data.latestEtf} latestDate={latest.date} />}
       {data.latestSbl && (
         <div className="small num ms-sbl-line">
           借券賣出餘額 <b>{f1(data.latestSbl.balance)}</b> 萬張｜近5日{' '}
