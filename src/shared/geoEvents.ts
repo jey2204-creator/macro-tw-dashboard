@@ -2,7 +2,7 @@ import geoFile from '../../config/geo-events.json';
 import { addDays, daysBetween, todayInTaipei } from './dates';
 
 /**
- * 重大事件（config/geo-events.json，人工維護）：APEC、G20、美中領袖會談、關稅期限、美國選舉。
+ * 重大事件（config/geo-events.json，人工維護）：APEC、G20、川習會、關稅期限、美國選舉。
  * 沒有公布數字 → 算不出門檻，一律不計分；一年不到 10 筆 → 不做回測、不列反應日統計。
  * 用途：①頁首事件列與行事曆訂閱（事前提醒）②跨市場對照加權 K 棒上方的 ■ 標記（事後看台股怎麼反應）。
  */
@@ -15,7 +15,7 @@ export interface GeoEvent {
   id: string;
   type: GeoType;
   name: string;
-  /** K 棒標記文字（4 個字以內） */
+  /** K 棒標記文字（8 個字以內，越短越好；場邊會談用「+」相連，例：APEC+川習） */
   short: string;
   /** 當地開始日 YYYY-MM-DD */
   start: string;
@@ -48,7 +48,7 @@ export function geoProblems(events: readonly GeoEvent[] = GEO_EVENTS): string[] 
     if (e.end && e.end < e.start) out.push(`${e.id}：end 早於 start`);
     if (e.react < e.start) out.push(`${e.id}：react 早於 start`);
     if (daysBetween(geoEnd(e), e.react) > 5) out.push(`${e.id}：react 離結束日超過 5 天`);
-    if ([...e.short].length > 4) out.push(`${e.id}：short 超過 4 個字`);
+    if ([...e.short].length > 8) out.push(`${e.id}：short 超過 8 個字`);
     const y = e.start.slice(0, 4);
     perYear.set(y, (perYear.get(y) ?? 0) + 1);
   }

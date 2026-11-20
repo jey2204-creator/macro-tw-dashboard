@@ -14,7 +14,7 @@ import type { SummaryFile } from '../../src/shared/types';
  * 手機行事曆以 webcal:// 訂閱後會自動同步；每次資料更新都重寫描述中的門檻與總分影響。
  * 美國事件公布前 30 分鐘提醒；台灣事件（不計分）不設提醒，只列在行事曆上。
  * Fed「升息滿 120 天」等不需公布就會改變判斷的日子也列入。
- * 重大事件（config/geo-events.json：APEC、G20、美中會談、關稅期限、選舉）以全天事件列入，不計分、不設提醒。
+ * 重大事件（config/geo-events.json：APEC、G20、川習會、關稅期限、選舉）以全天事件列入，不計分、不設提醒。
  */
 
 const SITE = 'https://jey2204-creator.github.io/macro-tw-dashboard/';

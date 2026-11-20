@@ -24,7 +24,8 @@ afterEach(cleanup);
 describe('重大事件清單（config/geo-events.json）', () => {
   it('清單本身沒有問題：日期格式、id 不重複、react 不早於 start、每年不超過上限', () => {
     expect(geoProblems()).toEqual([]);
-    expect(GEO_EVENTS.find((e) => e.id === 'apec-2026')).toMatchObject({ start: '2026-11-18', end: '2026-11-19', react: '2026-11-20' });
+    expect(GEO_EVENTS.find((e) => e.id === 'apec-2026')).toMatchObject({ start: '2026-11-18', end: '2026-11-19', react: '2026-11-20', short: 'APEC+川習' });
+    expect(GEO_EVENTS.filter((e) => e.type === 'bilateral').map((e) => e.name)).toEqual(['川習會（北京）', '川習會（華盛頓）']);
     expect(GEO_EVENTS.find((e) => e.id === 'g20-2026')).toMatchObject({ start: '2026-12-14', end: '2026-12-15' });
     expect(GEO_EVENTS.every((e, i) => i === 0 || e.start >= GEO_EVENTS[i - 1]!.start)).toBe(true);
   });
@@ -33,7 +34,7 @@ describe('重大事件清單（config/geo-events.json）', () => {
     expect(geoProblems([ev({ id: 'a', start: '2026-01-05', end: '2026-01-03', react: '2026-01-05' })])).toEqual(['a：end 早於 start']);
     expect(geoProblems([ev({ id: 'a', start: '2026-01-05', react: '2026-01-02' })])[0]).toBe('a：react 早於 start');
     expect(geoProblems([ev({ id: 'a', start: '2026-01-05', react: '2026-01-20' })])).toEqual(['a：react 離結束日超過 5 天']);
-    expect(geoProblems([ev({ id: 'a', start: '2026-01-05', react: '2026-01-05', short: '五個字太長' })])).toEqual(['a：short 超過 4 個字']);
+    expect(geoProblems([ev({ id: 'a', start: '2026-01-05', react: '2026-01-05', short: '這段文字超過八個字' })])).toEqual(['a：short 超過 8 個字']);
     const many = Array.from({ length: GEO_MAX_PER_YEAR + 1 }, (_, i) => ev({ id: `e${i}`, start: `2026-03-${String(i + 1).padStart(2, '0')}`, react: `2026-03-${String(i + 1).padStart(2, '0')}` }));
     expect(geoProblems(many)).toEqual([`2026 年 ${GEO_MAX_PER_YEAR + 1} 筆，超過上限 ${GEO_MAX_PER_YEAR}`]);
     expect(geoProblems([many[0]!, many[0]!])).toContain('e0：id 重複');
