@@ -31,6 +31,7 @@ vi.mock('lightweight-charts', () => {
       return { setMarkers: () => {} };
     },
     LineSeries: 'Line',
+    CandlestickSeries: 'Candlestick',
     HistogramSeries: 'Histogram',
     BaselineSeries: 'Baseline',
     ColorType: { Solid: 'solid' },
@@ -110,6 +111,34 @@ describe('外資籌碼對照面板', () => {
     expect(legend).toContain('上漲 300');
     expect(legend).toContain('下跌 500');
     expect(screen.getByRole('button', { name: '漲跌家數' }).getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('有開高低資料時可切到 K 線：第 1 格改畫 K 棒、圖例多開高低、選擇記住；5 年以上自動退回折線', () => {
+    window.localStorage.removeItem('fc-style');
+    const ohl = rows.map((r) => [r[1] - 5, r[1] + 20, r[1] - 30] as [number, number, number]);
+    render(<ForeignChipsPanel data={{ ...data, ohl }} themeKey="auto-false-tw" />);
+    // 預設折線
+    expect(screen.getByRole('button', { name: '折線' }).getAttribute('aria-pressed')).toBe('true');
+    expect(chartLog.series[0]).toEqual({ pane: 0, type: 'Line', label: true, scale: undefined });
+    expect(document.querySelector('.fc-ohl')).toBeNull();
+    chartLog.series = [];
+    fireEvent.click(screen.getByRole('button', { name: 'K線' }));
+    expect(chartLog.series[0]).toEqual({ pane: 0, type: 'Candlestick', label: true, scale: undefined });
+    expect(document.querySelector('.fc-ohl')!.textContent).toBe('開 20,194 高 20,219 低 20,169');
+    expect(window.localStorage.getItem('fc-style')).toBe('candle');
+    expect(document.querySelector('.fc-style-note')).toBeNull();
+    // 5 年：K 棒太細，自動用折線並提示
+    chartLog.series = [];
+    fireEvent.click(screen.getByRole('button', { name: '5年' }));
+    expect(chartLog.series[0]!.type).toBe('Line');
+    expect(document.querySelector('.fc-style-note')!.textContent).toBe('5年以上用折線');
+    expect(document.querySelector('.fc-ohl')).toBeNull();
+    window.localStorage.removeItem('fc-style');
+  });
+
+  it('沒有開高低資料時不顯示「折線／K線」切換', () => {
+    render(<ForeignChipsPanel data={data} themeKey="auto-false-tw" />);
+    expect(screen.queryByRole('button', { name: 'K線' })).toBeNull();
   });
 
   it('沒有資料時不渲染', () => {

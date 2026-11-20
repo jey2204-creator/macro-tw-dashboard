@@ -4,6 +4,7 @@ import {
   analyzeForeignChips,
   combineForeignRows,
   mergeChipsHistory,
+  taiexOhl,
   type ChipsHistoryFile,
   type ForeignChipsFile,
 } from '../../src/shared/foreignChips';
@@ -41,6 +42,9 @@ export async function writeForeignChips(
   });
   const rows = combineForeignRows(merged, taiex);
   const out = analyzeForeignChips(rows, now);
+  // 加權開高低：第 1 格「K線」用；來源只有收盤價時不寫，面板不顯示切換鈕
+  const ohl = taiexOhl(rows, taiex);
+  if (ohl) out.ohl = ohl;
   // 台幣：FRED 為主、Yahoo 補最近幾天（Yahoo 2011～2016 有雜訊，見 fedFx.ts）；兩個都沒有就不寫 fx，面板不顯示「台幣」
   const twd = spliceUsdTwd((await series('usdtwd_legacy')) ?? [], (await series('usdtwd')) ?? []);
   if (twd.length) out.fx = analyzeForeignFx(rows, out.pctl.cum20, twd);

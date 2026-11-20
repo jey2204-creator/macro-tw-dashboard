@@ -1360,6 +1360,12 @@ th {
 .fc-fxbt-btn {
   margin-left: 14px;
 }
+.fc-ohl {
+  margin-left: 6px;
+}
+.fc-style-note {
+  align-self: center;
+}
 .fc-day-events {
   margin-left: 6px;
   color: var(--warn);

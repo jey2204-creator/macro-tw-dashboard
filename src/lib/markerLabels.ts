@@ -21,7 +21,7 @@ import {
 
 export interface MarkerLabel {
   time: Time;
-  /** 標籤對應的序列值（K 棒收盤），用來算 y */
+  /** 標籤對應的序列值，用來算 y：折線給收盤；K 線時上方的標籤給最高、下方的給最低 */
   value: number;
   text: string;
   color: string;
@@ -115,20 +115,23 @@ export class MarkerLabels implements ISeriesPrimitive<Time> {
       const h = fontSize + PAD_Y * 2;
       const ts = chart.timeScale();
       type Placed = { l: MarkerLabel; x: number; y: number; w: number };
-      // 折線在 x 範圍內的高低：每 3px 取一根 K 棒的收盤換成 y
+      // 折線（或 K 棒含影線）在 x 範圍內的高低：每 3px 取一根換成 y
       const lineBand = (x0: number, x1: number): { lo: number; hi: number } | null => {
         let lo = Infinity;
         let hi = -Infinity;
         for (let x = x0; x <= x1 + 3; x += 3) {
           const logical = ts.coordinateToLogical(Math.min(x, x1));
           if (logical === null) continue;
-          const d = s.dataByIndex(Math.round(logical), MismatchDirection.NearestLeft) as { value?: number; close?: number } | null;
+          const d = s.dataByIndex(Math.round(logical), MismatchDirection.NearestLeft) as { value?: number; close?: number; high?: number; low?: number } | null;
           const v = d?.value ?? d?.close;
           if (v === undefined) continue;
-          const y = s.priceToCoordinate(v);
-          if (y === null) continue;
-          lo = Math.min(lo, Number(y));
-          hi = Math.max(hi, Number(y));
+          // K 棒要連影線一起避開：取最高、最低兩個價位
+          for (const price of [d?.high ?? v, d?.low ?? v]) {
+            const y = s.priceToCoordinate(price);
+            if (y === null) continue;
+            lo = Math.min(lo, Number(y));
+            hi = Math.max(hi, Number(y));
+          }
         }
         return lo === Infinity ? null : { lo, hi };
       };
