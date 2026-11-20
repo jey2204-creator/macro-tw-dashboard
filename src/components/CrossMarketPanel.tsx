@@ -1123,9 +1123,9 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
                           {r.day === null ? '｜尚未發生' : ` → ${r.day.slice(5).replace('-', '/')}`}
                         </span>
                       </td>
-                      <td className={`num ${signClass(r.dayPct)}`}>{fmtGeoPct(r.dayPct)}</td>
-                      <td className={`num ${signClass(r.after5)}`}>{fmtGeoPct(r.after5)}</td>
-                      <td className={`num ${signClass(r.after20)}`}>{fmtGeoPct(r.after20)}</td>
+                      <td className={`num ${signClass(roundGeo(r.dayPct))}`}>{fmtGeoPct(r.dayPct)}</td>
+                      <td className={`num ${signClass(roundGeo(r.after5))}`}>{fmtGeoPct(r.after5)}</td>
+                      <td className={`num ${signClass(roundGeo(r.after20))}`}>{fmtGeoPct(r.after20)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1143,7 +1143,12 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
   );
 }
 
-const fmtGeoPct = (v: number | null) => (v === null ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(1)}%`);
+/** 一覽表的漲跌：四捨五入後是 0 就寫 0.0%（不寫 -0.0%）、也不上色 */
+const roundGeo = (v: number | null) => (v === null ? null : Math.round(v * 10) / 10 || 0);
+const fmtGeoPct = (v: number | null) => {
+  const r = roundGeo(v);
+  return r === null ? '—' : `${r > 0 ? '+' : ''}${r.toFixed(1)}%`;
+};
 const sideClass = (v: string | null) => (v === 'bull' || v === 'above' ? 'up' : v === 'bear' || v === 'below' ? 'down' : 'muted');
 const fmtDev = (v: number | null) => (v === null ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(1)}%`);
 
