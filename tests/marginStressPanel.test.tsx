@@ -64,19 +64,18 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('融資斷頭監測：K線開關', () => {
-  it('有開高低時區間列多一顆「K線」：上格改畫 K 棒、讀數列多開高低、上方事件文字從最高價起算；5 年變灰', () => {
+  it('有開高低時預設 K 線：上格畫 K 棒、讀數列多開高低、上方事件文字從最高價起算；可關成折線；5 年變灰', () => {
     expect(data.events.length).toBeGreaterThan(0);
     render(<MarginStressPanel data={{ ...data, ohl }} themeKey="light" />);
-    expect(chartLog.series.find((s) => s.pane === 0)!.type).toBe('Line');
-    chartLog.series = [];
-    chartLog.labelValues = [];
-    fireEvent.click(screen.getByRole('button', { name: 'K線' }));
     expect(chartLog.series.find((s) => s.pane === 0)!.type).toBe('Candlestick');
     const e = data.events.find((x) => x.type === 'below150')!;
     const k = rows.findIndex((r) => r[0] === e.date);
     expect(chartLog.labelValues).toContain(ohl[k]![1]); // 跌破 150 在上方 → 用最高價
     expect(document.querySelector('.legend')!.textContent).toContain('開 17,060 高 17,130 低 16,990');
-    expect(window.localStorage.getItem('ms-style')).toBe('candle');
+    chartLog.series = [];
+    fireEvent.click(screen.getByRole('button', { name: 'K線' }));
+    expect(chartLog.series.find((s) => s.pane === 0)!.type).toBe('Line');
+    expect(window.localStorage.getItem('ms-style')).toBe('line');
     fireEvent.click(screen.getByRole('button', { name: '5年' }));
     expect((screen.getByRole('button', { name: 'K線' }) as HTMLButtonElement).disabled).toBe(true);
   });

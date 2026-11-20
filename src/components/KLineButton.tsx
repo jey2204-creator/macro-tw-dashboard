@@ -1,7 +1,7 @@
 import { CANDLE_RANGES, type IndexStyle } from '../lib/candleStyle';
 import type { RangeKey } from '../shared/timeseries';
 
-/** 區間列最右的「K線」開關：亮起＝K 線、再按一次回折線；5 年以上變灰（自動用折線） */
+/** 區間列最右的「K線」開關：亮起＝K 線（預設）、再按一次改折線；5 年以上變灰（自動用折線） */
 export function KLineButton({ style, setStyle, range, what = '指數' }: { style: IndexStyle; setStyle: (v: IndexStyle) => void; range: RangeKey; what?: string }) {
   const allowed = CANDLE_RANGES.includes(range);
   return (

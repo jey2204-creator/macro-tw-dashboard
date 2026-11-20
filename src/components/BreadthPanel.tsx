@@ -34,6 +34,7 @@ import { ChartSync } from '../lib/chartSync';
 import { BREADTH_MARKET, type BreadthMarket } from '../lib/breadthMarket';
 import { baseDateLabel, makePctRangeAt, rangeBase, timeToDate, type DateWindow, type PctRange } from '../lib/breadthPct';
 import { BaseLabel } from '../lib/baseLabel';
+import { MarkerLabels, type MarkerLabel } from '../lib/markerLabels';
 
 const RANGES: { k: RangeKey; label: string }[] = [
   { k: '3M', label: '3個月' },
@@ -174,13 +175,25 @@ function BreadthChart({
       divergence: cssVar('--accent'),
       stabilized: cssVar('--accent'),
     };
+    const isBelow = (t: BreadthEventType) => t === 'stabilized' || t === 'divergence';
+    // marker 只畫符號；文字由 MarkerLabels 自繪（互相閃避、避開折線／K 棒影線，比照外資與融資面板）
     const markers: SeriesMarker<Time>[] = data.events.map((e) => ({
       time: e.date as Time,
-      position: e.type === 'stabilized' || e.type === 'divergence' ? 'belowBar' : 'aboveBar',
+      position: isBelow(e.type) ? 'belowBar' : 'aboveBar',
       shape: e.type === 'stabilized' ? 'arrowUp' : e.type === 'divergence' ? 'circle' : e.type === 'capitulate' ? 'square' : 'arrowDown',
       color: color[e.type],
-      text: MARKER_TEXT[e.type],
     }));
+    const eventLabels: MarkerLabel[] = data.events.flatMap((e) => {
+      const k = indexByDate.get(e.date);
+      if (k === undefined) return [];
+      const above = !isBelow(e.type);
+      // K 線時從最高（上方）／最低（下方）起算，折線用收盤
+      const v = ohl ? (ohl[k]?.[above ? 1 : 2] ?? data.rows[k]![1]) : data.rows[k]![1];
+      return [{ time: e.date as Time, value: pct(v), text: MARKER_TEXT[e.type], color: color[e.type], above }];
+    });
+    // 事件文字先 attach（同一幀先畫），基準點文字再讓開它們
+    const eventText = new MarkerLabels(eventLabels, { background: cssVar('--surface'), fontSize: 11, fontFamily: getComputedStyle(document.body).fontFamily });
+    price.attachPrimitive(eventText);
     // 基準點（0% 從哪一根起算）：空心感的小圓點＋自繪文字（在圓點四周找不壓到折線的最近位置，見 lib/baseLabel.ts）；往左拖曳後才知道 0% 是哪一天
     const baseRow = data.rows[baseIdx];
     if (baseRow) {
@@ -191,6 +204,7 @@ function BreadthChart({
         new BaseLabel(
           { time: baseRow[0] as Time, value: 0, text: `基準 ${baseDateLabel(baseRow[0], data.rows.at(-1)![0])} ${fmtIndex(baseRow[1])}`, color: baseColor },
           { background: cssVar('--surface'), fontSize: 11, fontFamily: getComputedStyle(document.body).fontFamily },
+          { taken: () => eventText.placed, spread: 160 },
         ),
       );
     }
@@ -408,7 +422,7 @@ export function BreadthPanel({ twse, otc, themeKey }: { twse: BreadthStressFile 
 
       <PanelNote>
         <p className="small muted ms-rule">
-          圖怎麼看（上市、上櫃兩張圖相同）：上格指數線{hasOhl ? '（區間列最右「K線」可切成 K 線，兩張圖一起切；3 個月～1 年才畫、5 年以上自動用折線）' : ''}（右軸＝區間起點起算的漲跌幅 %，兩張圖同一刻度：同一高度＝同一 %，可直接比誰跌得深；往左拖曳時刻度跟著畫面內高低點伸縮；灰色圓點「基準」＝0% 起算的那一根，日期與點位標在旁邊，圖例「自 M/D 起」同一天；點位看圖例）——▼ 恐慌、■ 投降、● 背離、▲ 止跌；中格
+          圖怎麼看（上市、上櫃兩張圖相同）：上格指數線{hasOhl ? '（區間列最右「K線」預設亮起（K 線），按一下改折線，兩張圖一起切；3 個月～1 年才畫、5 年以上自動用折線）' : ''}（右軸＝區間起點起算的漲跌幅 %，兩張圖同一刻度：同一高度＝同一 %，可直接比誰跌得深；往左拖曳時刻度跟著畫面內高低點伸縮；灰色圓點「基準」＝0% 起算的那一根，日期與點位標在旁邊，圖例「自 M/D 起」同一天；點位看圖例）——▼ 恐慌、■ 投降、● 背離、▲ 止跌（文字會自動閃開彼此與 K 棒）；中格
           {mid === 'ad' ? '上漲家數（0 以上）／下跌家數（0 以下，恐慌日加深）' : '漲停（0 以上）／跌停（0 以下，恐慌日加深）'}；下格 10 日上漲÷下跌家數（虛線＝1.0 漲跌持平）。
         </p>
         <p className="small muted ms-rule">

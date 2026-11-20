@@ -113,13 +113,17 @@ describe('外資籌碼對照面板', () => {
     expect(screen.getByRole('button', { name: '漲跌家數' }).getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('有開高低資料時可切到 K 線：第 1 格改畫 K 棒、圖例多開高低、選擇記住；5 年以上自動退回折線、開關變灰', () => {
+  it('有開高低資料時預設 K 線：第 1 格畫 K 棒、圖例多開高低；可關成折線並記住；5 年以上自動退回折線、開關變灰', () => {
     window.localStorage.removeItem('fc-style');
     const ohl = rows.map((r) => [r[1] - 5, r[1] + 20, r[1] - 30] as [number, number, number]);
     render(<ForeignChipsPanel data={{ ...data, ohl }} themeKey="auto-false-tw" />);
-    // 預設折線：「K線」開關沒亮
-    expect(screen.getByRole('button', { name: 'K線' }).getAttribute('aria-pressed')).toBe('false');
-    expect(chartLog.series[0]).toEqual({ pane: 0, type: 'Line', label: true, scale: undefined });
+    // 預設 K 線（世杰 11/21 要求）
+    expect(chartLog.series[0]).toEqual({ pane: 0, type: 'Candlestick', label: true, scale: undefined });
+    // 關掉 → 折線，記住
+    chartLog.series = [];
+    fireEvent.click(screen.getByRole('button', { name: 'K線' }));
+    expect(chartLog.series[0]!.type).toBe('Line');
+    expect(window.localStorage.getItem('fc-style')).toBe('line');
     expect(document.querySelector('.fc-ohl')).toBeNull();
     chartLog.series = [];
     fireEvent.click(screen.getByRole('button', { name: 'K線' }));

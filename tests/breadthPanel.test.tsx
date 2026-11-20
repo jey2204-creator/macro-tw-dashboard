@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { analyzeBreadth, type BreadthRow } from '../src/shared/breadthStress';
 
 // lightweight-charts 需要 canvas，jsdom 沒有：以假物件記錄中格序列的資料
-const chartLog = { series: [] as { pane: number; type: string; label: boolean; values: number[]; candles?: { open: number; high: number; low: number; close: number }[] }[], baseLabels: [] as string[] };
+const chartLog = { series: [] as { pane: number; type: string; label: boolean; values: number[]; candles?: { open: number; high: number; low: number; close: number }[] }[], baseLabels: [] as string[], eventLabels: [] as string[] };
 vi.mock('lightweight-charts', () => {
   const makeChart = () => ({
     addSeries: (type: string, opts: { lastValueVisible?: boolean }, paneIndex = 0) => {
@@ -16,8 +16,9 @@ vi.mock('lightweight-charts', () => {
           if (type === 'Candlestick') s.candles = d as never;
         },
         createPriceLine: () => {},
-        attachPrimitive: (p: { label?: { text: string } }) => {
+        attachPrimitive: (p: { label?: { text: string }; labels?: { text: string }[] }) => {
           if (p.label) chartLog.baseLabels.push(p.label.text);
+          if (Array.isArray(p.labels)) chartLog.eventLabels.push(...p.labels.map((l) => l.text));
         },
         priceScale: () => ({ applyOptions: () => {} }),
       };
@@ -63,6 +64,7 @@ const data = analyzeBreadth(rows, new Date('2026-02-20T00:00:00Z'));
 beforeEach(() => {
   chartLog.series = [];
   chartLog.baseLabels = [];
+  chartLog.eventLabels = [];
 });
 afterEach(cleanup);
 
@@ -111,18 +113,21 @@ describe('BreadthPanel（上市＋上櫃同一模組）', () => {
     const withOhl = { ...data, ohl };
     render(<BreadthPanel twse={withOhl} otc={withOhl} themeKey="light" />);
     const k = screen.getByRole('button', { name: 'K線' }) as HTMLButtonElement;
-    expect(k.getAttribute('aria-pressed')).toBe('false');
-    expect(chartLog.series.filter((x) => x.pane === 0).every((x) => x.type === 'Line')).toBe(true);
-    chartLog.series = [];
-    fireEvent.click(k);
+    // 預設 K 線（世杰 11/21 要求）
+    expect(k.getAttribute('aria-pressed')).toBe('true');
     const top = chartLog.series.filter((x) => x.pane === 0);
     expect(top.map((x) => x.type)).toEqual(['Candlestick', 'Candlestick']);
     // 3 個月區間起點＝第 0 根（20000）：最後一根 收 19710、高 19730 → +(19730/20000−1)×100
     const last = top[0]!.candles!.at(-1)!;
     expect(last.close).toBeCloseTo((19710 / 20000 - 1) * 100, 6);
     expect(last.high).toBeCloseTo((19730 / 20000 - 1) * 100, 6);
-    expect(window.localStorage.getItem('br-style')).toBe('candle');
     expect(screen.getAllByText(/開 19,715 高 19,730 低 19,670/).length).toBe(2);
+    // 事件文字由 MarkerLabels 自繪，K 線時從最高／最低起算
+    expect(chartLog.eventLabels.length).toBeGreaterThan(0);
+    chartLog.series = [];
+    fireEvent.click(k);
+    expect(chartLog.series.filter((x) => x.pane === 0).map((x) => x.type)).toEqual(['Line', 'Line']);
+    expect(window.localStorage.getItem('br-style')).toBe('line');
     fireEvent.click(screen.getByRole('button', { name: '5年' }));
     expect((screen.getByRole('button', { name: 'K線' }) as HTMLButtonElement).disabled).toBe(true);
     cleanup();
