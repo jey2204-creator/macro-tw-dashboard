@@ -56,6 +56,8 @@ import {
   type EventKind,
   type MarkedEvent,
 } from '../shared/eventMarkers';
+import { MarkerLabels, type MarkerLabel } from '../lib/markerLabels';
+import { GEO_EVENTS, GEO_TYPE_TEXT, geoByReactionDay, geoSpanText, type GeoEvent } from '../shared/geoEvents';
 import { FIB_DIRECTION_TEXT, FIB_RATIOS, type Fib, fibRetracement, fibSkipText } from '../shared/fibonacci';
 import { INDICATOR_MAP } from '../shared/indicators';
 import { maTrend, TREND_TEXT, type MaTrend } from '../shared/maTrend';
@@ -84,6 +86,8 @@ const EVENT_COLOR_VAR: Record<EventKind, string> = { cpi: '--accent', jobs: '--w
 const EVENT_RANGES: RangeKey[] = ['3M', '6M', '1Y'];
 /** 文字標籤只在半年以內顯示（1 年約 36 個標記，加文字會互相蓋住） */
 const EVENT_TEXT_RANGES: RangeKey[] = ['3M', '6M'];
+/** 重大事件標記（APEC、G20、美中會談、關稅期限、選舉）：一年不到 10 筆，1 年以內都附文字 */
+const GEO_COLOR_VAR = '--geo';
 /** 費波那契線：0.618 加粗；其餘細虛線 */
 const FIB_KEY_RATIO = 0.618;
 /** 費波那契波段長度：和圖表區間脫鉤（看 3 個月 K 線也能疊 1 年大波段），預設 1 年 */
@@ -205,13 +209,19 @@ interface Props {
   calendar?: CalendarFile | null;
   summary?: SummaryFile | null;
   now?: Date;
+  /** 重大事件清單（預設 config/geo-events.json；測試用） */
+  geoEvents?: readonly GeoEvent[];
 }
 
-export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = null, summary = null, now }: Props) {
+export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = null, summary = null, now, geoEvents = GEO_EVENTS }: Props) {
   const sectionRef = useRef<HTMLElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
+  /** 重大事件標記（和公布日標記分開的 plugin：K 棒上方 ■，兩種各自開關） */
+  const geoMarkersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
+  /** 重大事件的文字：自繪、互相閃避（期中選舉、APEC 常擠在同一個月，圖表庫內建文字會疊在一起） */
+  const geoLabelsRef = useRef<MarkerLabels | null>(null);
   const twSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const fibLinesRef = useRef<IPriceLine[]>([]);
   /** 畫費波的對照窗格（櫃買、費半、KOSPI）各自的 K 線序列、波段標記 plugin 與費波線（key＝序列 id） */
@@ -227,6 +237,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
   const [fibSide, setFibSide] = useState<FibSideLabel[]>([]);
   const [priceAxisW, setPriceAxisW] = useState(0);
   const [showEvents, setShowEvents] = useState(() => loadPref('cm-events', ['1', '0'] as const, '1') === '1');
+  const [showGeo, setShowGeo] = useState(() => loadPref('cm-geo', ['1', '0'] as const, '1') === '1');
   /** 頂部圖例的細節（各窗格費波、各指數數值與 ρ）預設收起，加權 K 線才不會被推到很下面；開關狀態記住 */
   const [legendOpen, setLegendOpen] = useState(() => loadPref('cm-legend-open', ['1', '0'] as const, '0') === '1');
   const near = useNearViewport(sectionRef);
@@ -269,6 +280,12 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
   // 公布日標記：歷史清單＋日程表已發生者 → 反應日（公布後第一個台股交易日）
   const eventsByDay = useMemo(() => (twDates.length ? eventsByReactionDay(pastEvents(today), twDates) : new Map<string, MarkedEvent[]>()), [twDates, today]);
   const stats = useMemo(() => (twBars.length ? eventStats(twBars, eventsByDay, STATS_SINCE) : null), [twBars, eventsByDay]);
+  // 重大事件：人工清單的 react（台股首個反應交易日，休市順延）；還沒到的不標
+  const geoByDay = useMemo(() => geoByReactionDay(twDates, geoEvents), [twDates, geoEvents]);
+  const toggleGeo = () => {
+    setShowGeo(!showGeo);
+    savePref('cm-geo', showGeo ? '0' : '1');
+  };
   const toggleEvents = () => {
     setShowEvents(!showEvents);
     savePref('cm-events', showEvents ? '0' : '1');
@@ -411,6 +428,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
     tw.setData(twBars.map((b) => ({ time: b[0] as Time, open: b[1], high: b[2], low: b[3], close: b[4] })));
     markersRef.current = createSeriesMarkers(tw, []);
     fibMarkersRef.current = createSeriesMarkers(tw, []);
+    geoMarkersRef.current = createSeriesMarkers(tw, []);
     twSeriesRef.current = tw;
     addMas(0, twBars, twMa);
     watermark(0, `加權指數${maText}`);
@@ -455,6 +473,8 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
       chart.remove();
       chartRef.current = null;
       markersRef.current = null;
+      geoMarkersRef.current = null;
+      geoLabelsRef.current = null;
       twSeriesRef.current = null;
       subSeriesRef.current.clear();
       fibMarkersRef.current = null;
@@ -488,6 +508,37 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
     markers.sort((a, b) => (a.time as string).localeCompare(b.time as string));
     m.setMarkers(markers);
   }, [chartGen, showEvents, range, eventsByDay]);
+
+  // 重大事件標記：加權 K 棒上方一個方塊（和下方的公布日圓點分開）；文字自繪、互相閃避；只在 1 年以內區間顯示
+  useEffect(() => {
+    const m = geoMarkersRef.current;
+    const tw = twSeriesRef.current;
+    if (!m || !tw) return;
+    if (geoLabelsRef.current) {
+      tw.detachPrimitive(geoLabelsRef.current);
+      geoLabelsRef.current = null;
+    }
+    if (!showGeo || !EVENT_RANGES.includes(range)) {
+      m.setMarkers([]);
+      return;
+    }
+    const color = cssVar(GEO_COLOR_VAR);
+    const highs = new Map(twBars.map((b) => [b[0], b[2]]));
+    const markers: SeriesMarker<Time>[] = [];
+    const labels: MarkerLabel[] = [];
+    for (const [day, evs] of geoByDay) {
+      markers.push({ time: day as Time, position: 'aboveBar', shape: 'square', size: 0.6, color });
+      const high = highs.get(day);
+      if (high !== undefined) labels.push({ time: day as Time, value: high, text: [...new Set(evs.map((e) => e.short))].join('+'), color, above: true });
+    }
+    // 「波段高」的字是圖表庫畫的（費波錨點），不會閃避：放一個不畫的佔位，讓事件文字往上讓開
+    if (showFib && fib && labels.length) labels.push({ time: fib.hiDate as Time, value: fib.hi, text: `波段高 ${fmtNum(fib.hi, 0)}`, color, above: true, ghost: true });
+    markers.sort((a, b) => (a.time as string).localeCompare(b.time as string));
+    m.setMarkers(markers);
+    const prim = new MarkerLabels(labels, { background: cssVar('--surface'), fontSize: 11, fontFamily: getComputedStyle(document.body).fontFamily });
+    tw.attachPrimitive(prim);
+    geoLabelsRef.current = prim;
+  }, [chartGen, showGeo, range, geoByDay, twBars, showFib, fib]);
 
   // 費波那契水平線：畫在加權窗格（價格線不參與自動縮放，不會撐開 Y 軸）
   useEffect(() => {
@@ -694,9 +745,15 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         .join('、');
       return { label: eventLabel(e), kind: e.kind, text };
     });
+    const geo = (showGeo ? geoByDay.get(day) ?? [] : []).map((g: GeoEvent) => ({
+      id: g.id,
+      label: `${g.name}（${geoSpanText(g)}，${GEO_TYPE_TEXT[g.type]}）`,
+      text: g.note ?? '',
+    }));
     return {
       date: day,
       events,
+      geo,
       twBar,
       twPct: twBar && twPrev ? ((twBar[4] - twPrev[4]) / Math.abs(twPrev[4])) * 100 : null,
       ma: Object.fromEntries(mas.map((p) => [p, twBar ? twMa[p]?.[twIdx] : null])) as Partial<Record<MaPeriod, number | null | undefined>>,
@@ -706,7 +763,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
       rows,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [twBars, twDates, twMa, trendMa, panes, hoverTime, mas, showEvents, eventsByDay, calendar, summary]);
+  }, [twBars, twDates, twMa, trendMa, panes, hoverTime, mas, showEvents, eventsByDay, showGeo, geoByDay, calendar, summary]);
 
   const latestRho = panes.filter((p) => !p.flow).map((p) => ({ label: p.label, rho60: p.corr[60].at(-1) ?? null }));
   // 圖例摘要（收起時的一行）：費波哪些窗格有畫、哪些不畫；費波關閉時只說有幾個對照序列
@@ -749,6 +806,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         加權下方的狀態列（參考、不計分）：短線＝收盤與 MA10 都在 MA20 之上為「短多」、都在之下為「短空」；中期＝收盤與 MA60 對 MA120 同理（MA60＝季線）；不一致為「整理」。乖離＝收盤離該均線多少 %。均線落後價格，狀態列描述現況、不是預測。
         加權 K 棒下方的圓點是 CPI（藍）、就業報告（橘）、FOMC（黑）公布後台股第一個交易日：美東 08:30／14:00 公布時台股已收盤，反應落在隔天。
         動市場的是「實績 vs 預期」不是年增率本身，所以用標記不畫月線；2026-10 起有市場預期，點到該日圖例會列出驚喜值。標記只在 1 年以內的區間顯示（半年以內才附文字）。
+        K 棒上方的紫色方塊是重大事件（🌐：APEC、G20、美中領袖會談、關稅期限、美國選舉）結果出來後台股第一個交易日，點到該日圖例會列出事件與結果摘要；這是人工維護的清單（一年最多 10 筆），沒有數字可比預期、樣本也太少，所以不計分、不做回測、不列統計，只用來回頭看「那天台股怎麼走」，別從一兩次的漲跌推論下一次。
         費波那契回撤（參考、不計分）：取「波段」按鈕所選期間內加權的最高與最低價當波段（預設 1 年，不跟圖表區間走），高點在後＝多頭回撤、由高點往下畫 0.236／0.382／0.5／0.618（粗線）／0.786 當支撐；低點在後則由低點往上畫當壓力。3 個月看短波段、1 年看大波段；「📐波段」按鈕放在「區間」按鈕旁邊：區間＝圖看多長的 K 線、波段＝費波用哪段高低點，是兩個不同的設定，圖例開頭會標現在用的波段；線上不標數字，比例與價位列在圖例；波段高點那根 K 棒上方標「▼ 波段高」、低點下方標「▲ 波段低」，才知道費波是從哪兩根算的；波段點貼近左右緣時文字改放 K 棒旁邊（波段點在畫面外時看圖例日期）。
         它靠「大家都在看」才有效，單獨用勝率不高；守住 0.618 算趨勢延續、跌破要當趨勢可能反轉。高低點相隔不到 20 根 K 棒不畫；若最低（高）點就是最新一根，表示還在創波段新低（高）、下方（上方）沒有費波位，圖例會直接說明。
         櫃買、費半、NASDAQ、S&P 500、KOSPI、日經窗格用同一顆開關、同一個波段期間，但各自抓自己的高低點（美股對齊後以台股交易日計；KOSPI、日經與台股同時段，日期直接對得上）；櫃買窗格較矮只畫 0.382／0.5／0.618 三條，其餘比照加權畫全套五條，價位都列在圖例。
@@ -776,6 +834,9 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         </button>
         <button type="button" className="ma-chip" aria-pressed={showEvents} onClick={toggleEvents} title="CPI／就業報告／FOMC 公布後台股第一個交易日">
           📌 公布日標記
+        </button>
+        <button type="button" className="ma-chip" aria-pressed={showGeo} onClick={toggleGeo} title="APEC、G20、美中領袖會談、關稅期限、美國選舉：結果出來後台股第一個交易日（人工清單，不計分、不進回測）">
+          🌐 重大事件
         </button>
         <button type="button" className="ma-chip" aria-pressed={showFib} onClick={toggleFib} title="以所選波段內的高低點畫 0.236／0.382／0.5／0.618／0.786（加權、費半、NASDAQ、S&P 500、KOSPI、日經）；櫃買窗格只畫 0.382／0.5／0.618">
           📐 費波那契回撤
@@ -856,6 +917,13 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
                   <i className="swatch" style={{ background: `var(${EVENT_COLOR_VAR[e.kind]})` }} />
                   {e.label}
                   {e.text && <span className="muted">：{e.text}</span>}
+                </div>
+              ))}
+              {legend.geo.map((g) => (
+                <div key={g.id} className="cm-event">
+                  <i className="swatch cm-geo-swatch" style={{ background: `var(${GEO_COLOR_VAR})` }} />
+                  {g.label}
+                  {g.text && <span className="muted">：{g.text}</span>}
                 </div>
               ))}
               {mas.length > 0 && (

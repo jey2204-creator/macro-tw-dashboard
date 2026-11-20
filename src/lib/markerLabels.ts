@@ -27,6 +27,8 @@ export interface MarkerLabel {
   color: string;
   /** true＝K 棒上方（符號也在上方），false＝下方 */
   above: boolean;
+  /** true＝只佔位不畫：別處（圖表庫）已經畫了字，其他標籤要讓開它；位置固定不會被推走 */
+  ghost?: boolean;
 }
 
 export interface MarkerLabelStyle {
@@ -41,14 +43,15 @@ export interface MarkerLabelStyle {
  * 和單純「行號」不同：相鄰兩根 K 棒高度不同時，同一行的字也可能疊，所以用實際矩形判斷。
  */
 export function layoutStacked(
-  items: { x: number; w: number; y: number }[],
+  items: { x: number; w: number; y: number; fixed?: boolean }[],
   h: number,
   dir: 1 | -1,
   gap = 2,
   /** 障礙物（折線）：回傳 x 範圍內線的 y 區間，標籤矩形碰到就再往外推 */
   lineBand?: (x0: number, x1: number) => { lo: number; hi: number } | null,
 ): number[] {
-  const order = items.map((it, i) => ({ ...it, i })).sort((a, b) => a.x - b.x);
+  // 固定的（佔位用）先放、不移動；其餘由左到右排
+  const order = items.map((it, i) => ({ ...it, i })).sort((a, b) => Number(!!b.fixed) - Number(!!a.fixed) || a.x - b.x);
   const placed: { x: number; w: number; cy: number }[] = [];
   const out = new Array<number>(items.length).fill(0);
   const hits = (x: number, w: number, cy: number) => {
@@ -59,7 +62,7 @@ export function layoutStacked(
   for (const it of order) {
     let cy = it.y;
     let guard = 0;
-    while (hits(it.x, it.w, cy) && guard++ < 50) cy += dir * (h + gap);
+    while (!it.fixed && hits(it.x, it.w, cy) && guard++ < 50) cy += dir * (h + gap);
     placed.push({ x: it.x, w: it.w, cy });
     out[it.i] = cy;
   }
@@ -143,11 +146,12 @@ export class MarkerLabels implements ISeriesPrimitive<Time> {
         return vis;
       };
       const draw = (vis: Placed[], above: boolean): Placed[] => {
-        const base = vis.map((p) => ({ x: p.x, w: p.w, y: above ? p.y - SHAPE_OFFSET - h / 2 : p.y + SHAPE_OFFSET + h / 2 }));
+        const base = vis.map((p) => ({ x: p.x, w: p.w, y: above ? p.y - SHAPE_OFFSET - h / 2 : p.y + SHAPE_OFFSET + h / 2, fixed: p.l.ghost }));
         const cys = layoutStacked(base, h, above ? -1 : 1, 2, lineBand);
         const overflow: Placed[] = [];
         vis.forEach((p, i) => {
           const cy = cys[i]!;
+          if (p.l.ghost) return;
           if (cy - h / 2 < 0 || cy + h / 2 > mediaSize.height) {
             overflow.push(p);
             return;

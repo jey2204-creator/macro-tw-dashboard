@@ -3,6 +3,7 @@ import path from 'node:path';
 import { outlookPlain, rangeText } from '../../src/lib/outlookText';
 import type { CalendarFile } from '../../src/shared/calendar';
 import { addDays, todayInTaipei } from '../../src/shared/dates';
+import { GEO_EVENTS, GEO_TYPE_TEXT, geoEnd, type GeoEvent } from '../../src/shared/geoEvents';
 import { eventRange, outlooksFor } from '../../src/shared/outlook';
 import { computeRegime, SIGNAL_LABEL } from '../../src/shared/regime';
 import { RELEASE_KINDS, releaseAt, SCHEDULE, type ScheduledRelease } from '../../src/shared/schedule';
@@ -13,6 +14,7 @@ import type { SummaryFile } from '../../src/shared/types';
  * 手機行事曆以 webcal:// 訂閱後會自動同步；每次資料更新都重寫描述中的門檻與總分影響。
  * 美國事件公布前 30 分鐘提醒；台灣事件（不計分）不設提醒，只列在行事曆上。
  * Fed「升息滿 120 天」等不需公布就會改變判斷的日子也列入。
+ * 重大事件（config/geo-events.json：APEC、G20、美中會談、關稅期限、選舉）以全天事件列入，不計分、不設提醒。
  */
 
 const SITE = 'https://jey2204-creator.github.io/macro-tw-dashboard/';
@@ -46,6 +48,7 @@ export function buildIcs(opts: {
   calendar: CalendarFile | null;
   now: Date;
   schedule?: readonly ScheduledRelease[];
+  geo?: readonly GeoEvent[];
 }): string {
   const { now } = opts;
   const today = todayInTaipei(now);
@@ -58,7 +61,7 @@ export function buildIcs(opts: {
     'PRODID:-//macro-tw-dashboard//US and Taiwan macro releases//ZH-TW',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    'X-WR-CALNAME:總經公布（美國・台灣）',
+    'X-WR-CALNAME:總經公布（美國・台灣）＋重大事件',
     'X-WR-TIMEZONE:Asia/Taipei',
     'X-PUBLISHED-TTL:PT6H',
     'REFRESH-INTERVAL;VALUE=DURATION:PT6H',
@@ -99,6 +102,25 @@ export function buildIcs(opts: {
       ...(isTw
         ? []
         : ['BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${esc(`${kind.name} 30 分鐘後公布`)}`, 'TRIGGER:-PT30M', 'END:VALARM']),
+      'END:VEVENT',
+    );
+  }
+
+  // 重大事件：全天事件（當地日期），不計分、不設提醒；已結束超過 14 天的不列
+  for (const g of opts.geo ?? GEO_EVENTS) {
+    if (geoEnd(g) < from) continue;
+    const desc = [`重大事件（${GEO_TYPE_TEXT[g.type]}）：僅供參考，不計入網站總分。日期為當地日期。`];
+    if (g.note) desc.push(g.note);
+    desc.push(`台股首個反應交易日（預估）：${g.react}`, `人工清單｜${SITE}`);
+    lines.push(
+      'BEGIN:VEVENT',
+      `UID:geo-${g.id}@macro-tw-dashboard`,
+      `DTSTAMP:${dtstamp}`,
+      `DTSTART;VALUE=DATE:${g.start.replace(/-/g, '')}`,
+      `DTEND;VALUE=DATE:${addDays(geoEnd(g), 1).replace(/-/g, '')}`,
+      `SUMMARY:${esc(`🌐 ${g.name}`)}`,
+      `DESCRIPTION:${esc(desc.join('\n'))}`,
+      `URL:${g.source ?? SITE}`,
       'END:VEVENT',
     );
   }

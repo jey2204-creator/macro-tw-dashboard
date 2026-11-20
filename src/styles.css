@@ -14,6 +14,8 @@
   --red: #d42f35;
   --green: #0e8a3a;
   --neutral: #6b7380;
+  /* 重大事件標記（跨市場對照 K 棒上方 ■） */
+  --geo: #8b2fb8;
   /* 均線（dataviz 驗證：淺色對比不足 3:1 者以圖例數值文字補足） */
   --ma5: #eda100;
   --ma10: #e87ba4;
@@ -48,6 +50,7 @@
     --red: #f0565a;
     --green: #25b866;
     --neutral: #8a929e;
+    --geo: #c58af0;
     --ma5: #c98500;
     --ma10: #d55181;
     --ma20: #3987e5;
@@ -78,6 +81,7 @@
   --red: #f0565a;
   --green: #25b866;
   --neutral: #8a929e;
+  --geo: #c58af0;
   --ma5: #c98500;
   --ma10: #d55181;
   --ma20: #3987e5;
@@ -1143,6 +1147,12 @@ th {
   grid-column: 2;
   color: var(--text-3);
   font-size: 11px;
+}
+.ev-geo .ev-name .muted {
+  font-weight: 400;
+}
+.cm-event .swatch.cm-geo-swatch {
+  border-radius: 1px;
 }
 .flip {
   color: var(--warn);
