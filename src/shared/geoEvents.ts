@@ -117,3 +117,33 @@ export function geoByReactionDay(twDates: readonly string[], events: readonly Ge
   }
   return out;
 }
+
+export interface GeoReaction {
+  event: GeoEvent;
+  /** 反應日（實際標在哪一根）；還沒到＝null */
+  day: string | null;
+  /** 反應日收盤對前一個交易日收盤，% */
+  dayPct: number | null;
+  /** 反應日收盤起算，之後第 5／20 個交易日收盤的漲跌，%；資料還不夠＝null */
+  after5: number | null;
+  after20: number | null;
+}
+
+/**
+ * 事件一覽表用：每個事件的台股反應（加權日 K：[日期, 開, 高, 低, 收]）。
+ * 只是把數字列出來對照，不是回測：樣本十來筆、每次背景不同，不做平均與勝率。
+ */
+export function geoReactions(twBars: readonly (readonly [string, number, number, number, number])[], events: readonly GeoEvent[] = GEO_EVENTS): GeoReaction[] {
+  const dates = twBars.map((b) => b[0]);
+  const idx = new Map(dates.map((d, i) => [d, i]));
+  const dayOf = new Map<string, string>();
+  for (const [day, evs] of geoByReactionDay(dates, events)) for (const e of evs) dayOf.set(e.id, day);
+  const pct = (a: number | undefined, b: number | undefined) => (a === undefined || b === undefined || b === 0 ? null : (a / b - 1) * 100);
+  return events.map((event) => {
+    const day = dayOf.get(event.id) ?? null;
+    const i = day === null ? undefined : idx.get(day);
+    if (day === null || i === undefined) return { event, day: null, dayPct: null, after5: null, after20: null };
+    const c = twBars[i]![4];
+    return { event, day, dayPct: pct(c, twBars[i - 1]?.[4]), after5: pct(twBars[i + 5]?.[4], c), after20: pct(twBars[i + 20]?.[4], c) };
+  });
+}
