@@ -285,7 +285,7 @@ describe('跨市場對照面板', () => {
   it('重大事件標記：react 當天（休市順延）加權 K 棒上方方塊，文字自繪防撞；5 年以上只畫方塊；一覽表點一筆聚焦；關閉後清空並記住', async () => {
     const geoEvents = [
       { id: 'a', type: 'summit' as const, name: '測試峰會', short: '峰會', start: '2026-10-02', end: '2026-10-03', react: '2026-10-03', note: '結果摘要' },
-      { id: 'b', type: 'deadline' as const, name: '測試期限', short: '期限', start: '2026-10-05', react: '2026-10-05' },
+      { id: 'b', type: 'war' as const, name: '測試期限', short: '期限', start: '2026-10-05', react: '2026-10-05' },
       { id: 'c', type: 'summit' as const, name: '還沒到', short: '未來', start: '2026-10-20', react: '2026-10-21' },
     ];
     render(<CrossMarketPanel version="v1" themeKey="auto-false-tw" mas={[]} onMas={() => {}} now={new Date('2026-10-16T08:00:00Z')} geoEvents={geoEvents} />);
@@ -312,6 +312,10 @@ describe('跨市場對照面板', () => {
     fireEvent.click(screen.getByRole('button', { name: '測試峰會' }));
     await waitFor(() => expect(chartLog.geoLabels[0]?.text).toBe('峰會+期限'));
     expect(screen.getByText(/正在看/).textContent).toContain('2026-10-05');
+    // 那天有戰爭事件 → 可一鍵切到「避險」組合，切過去按鈕就消失
+    fireEvent.click(screen.getByRole('button', { name: /對照避險組合/ }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: /對照避險組合/ })).toBeNull());
+    expect(window.localStorage.getItem('cm-ids')).toBe('["gold","wti","brent","vix","btc"]');
     expect(screen.getByRole('button', { name: '5年' }).getAttribute('aria-pressed')).toBe('false');
     fireEvent.click(screen.getByRole('button', { name: '1年' }));
     await waitFor(() => expect(screen.queryByText(/正在看/)).toBeNull());

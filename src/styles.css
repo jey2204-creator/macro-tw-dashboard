@@ -1182,6 +1182,17 @@ th {
   text-align: left;
   cursor: pointer;
 }
+.cm-geo-go {
+  display: inline;
+}
+.cm-geo-tag {
+  margin-left: 4px;
+  padding: 0 4px;
+  border: 1px solid var(--border, currentColor);
+  border-radius: 3px;
+  font-size: 10px;
+  color: var(--text-3);
+}
 .cm-geo-when {
   display: block;
   font-size: 10.5px;

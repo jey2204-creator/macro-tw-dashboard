@@ -295,6 +295,9 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
   // 一覽表：新的在上；還沒發生的排最上面
   const geoRows = useMemo(() => geoReactions(twBars, geoEvents).reverse(), [twBars, geoEvents]);
   const focusEvents = focusDay ? geoByDay.get(focusDay) ?? [] : [];
+  // 戰爭事件：市場怎麼定價要看黃金、油價、VIX → 聚焦時給一顆按鈕切到「避險」組合（已經是就不顯示）
+  const hedgeIds = COMPARE_PRESETS.find((g) => g.key === 'hedge')?.ids ?? [];
+  const offerHedge = focusEvents.some((e) => e.type === 'war') && hedgeIds.length > 0 && hedgeIds.join() !== selected.join();
   const focusGeo = (day: string) => {
     setFocusDay(day);
     hostRef.current?.scrollIntoView?.({ block: 'center' });
@@ -842,7 +845,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         加權下方的狀態列（參考、不計分）：短線＝收盤與 MA10 都在 MA20 之上為「短多」、都在之下為「短空」；中期＝收盤與 MA60 對 MA120 同理（MA60＝季線）；不一致為「整理」。乖離＝收盤離該均線多少 %。均線落後價格，狀態列描述現況、不是預測。
         加權 K 棒下方的圓點是 CPI（藍）、就業報告（橘）、FOMC（黑）公布後台股第一個交易日：美東 08:30／14:00 公布時台股已收盤，反應落在隔天。
         動市場的是「實績 vs 預期」不是年增率本身，所以用標記不畫月線；2026-10 起有市場預期，點到該日圖例會列出驚喜值。標記只在 1 年以內的區間顯示（半年以內才附文字）。
-        K 棒上方的紫色方塊是重大事件（所有區間都畫，1 年以內才附文字；圖表下方「🌐 重大事件一覽」列出每一筆的台股反應，點一筆圖表會跳到當時）。方塊代表重大事件（🌐：APEC、G20、川習會、關稅期限、美國選舉）結果出來後台股第一個交易日，點到該日圖例會列出事件與結果摘要；這是人工維護的清單（一年最多 10 筆），沒有數字可比預期、樣本也太少，所以不計分、不做回測、不列統計，只用來回頭看「那天台股怎麼走」，別從一兩次的漲跌推論下一次。
+        K 棒上方的紫色方塊是重大事件（所有區間都畫，1 年以內才附文字；圖表下方「🌐 重大事件一覽」列出每一筆的台股反應，點一筆圖表會跳到當時）。方塊代表重大事件（🌐：APEC、G20、川習會、關稅期限、美國選舉、俄烏戰爭轉折日）結果出來後台股第一個交易日，點到該日圖例會列出事件與結果摘要；這是人工維護的清單（一年最多 10 筆），沒有數字可比預期、樣本也太少，所以不計分、不做回測、不列統計，只用來回頭看「那天台股怎麼走」，別從一兩次的漲跌推論下一次。
         費波那契回撤（參考、不計分）：取「波段」按鈕所選期間內加權的最高與最低價當波段（預設 1 年，不跟圖表區間走），高點在後＝多頭回撤、由高點往下畫 0.236／0.382／0.5／0.618（粗線）／0.786 當支撐；低點在後則由低點往上畫當壓力。3 個月看短波段、1 年看大波段；「📐波段」按鈕放在「區間」按鈕旁邊：區間＝圖看多長的 K 線、波段＝費波用哪段高低點，是兩個不同的設定，圖例開頭會標現在用的波段；線上不標數字，比例與價位列在圖例；波段高點那根 K 棒上方標「▼ 波段高」、低點下方標「▲ 波段低」，才知道費波是從哪兩根算的；波段點貼近左右緣時文字改放 K 棒旁邊（波段點在畫面外時看圖例日期）。
         它靠「大家都在看」才有效，單獨用勝率不高；守住 0.618 算趨勢延續、跌破要當趨勢可能反轉。高低點相隔不到 20 根 K 棒不畫；若最低（高）點就是最新一根，表示還在創波段新低（高）、下方（上方）沒有費波位，圖例會直接說明。
         櫃買、費半、NASDAQ、S&P 500、KOSPI、日經窗格用同一顆開關、同一個波段期間，但各自抓自己的高低點（美股對齊後以台股交易日計；KOSPI、日經與台股同時段，日期直接對得上）；櫃買窗格較矮只畫 0.382／0.5／0.618 三條，其餘比照加權畫全套五條，價位都列在圖例。
@@ -871,7 +874,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         <button type="button" className="ma-chip" aria-pressed={showEvents} onClick={toggleEvents} title="CPI／就業報告／FOMC 公布後台股第一個交易日">
           📌 公布日標記
         </button>
-        <button type="button" className="ma-chip" aria-pressed={showGeo} onClick={toggleGeo} title="APEC、G20、川習會、關稅期限、美國選舉：結果出來後台股第一個交易日（人工清單，不計分、不進回測）">
+        <button type="button" className="ma-chip" aria-pressed={showGeo} onClick={toggleGeo} title="APEC、G20、川習會、關稅期限、美國選舉、俄烏戰爭轉折日：結果出來後台股第一個交易日（人工清單，不計分、不進回測）">
           🌐 重大事件
         </button>
         <button type="button" className="ma-chip" aria-pressed={showFib} onClick={toggleFib} title="以所選波段內的高低點畫 0.236／0.382／0.5／0.618／0.786（加權、費半、NASDAQ、S&P 500、KOSPI、日經）；櫃買窗格只畫 0.382／0.5／0.618">
@@ -934,6 +937,11 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
             <span>
               📍 正在看 <b className="num">{focusDay}</b> {focusEvents.map((e) => e.name).join('、')} 前後各 {GEO_FOCUS_BARS} 根
             </span>
+            {offerHedge && (
+              <button type="button" className="cm-focus-back" onClick={() => select(hedgeIds)}>
+                🛡 對照避險組合
+              </button>
+            )}
             <button type="button" className="cm-focus-back" onClick={leaveFocus}>
               ↻ 回最新
             </button>
@@ -1118,6 +1126,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
                             {r.event.name}
                           </button>
                         )}
+                        {r.event.type === 'war' && <span className="cm-geo-tag">戰爭</span>}
                         <span className="muted num cm-geo-when">
                           {r.event.start.slice(0, 4)}/{geoSpanText(r.event)}
                           {r.day === null ? '｜尚未發生' : ` → ${r.day.slice(5).replace('-', '/')}`}
@@ -1133,7 +1142,8 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
             </div>
             <p className="small muted">
               反應日＝結果出來後台股第一個交易日。當日＝反應日收盤對前一日；5日後／20日後＝從反應日收盤起算的加權漲跌。只列數字對照，不是訊號：樣本只有十來筆、每次的關稅與景氣背景都不同（2018–2019 是貿易戰升溫期），所以不算平均、不算勝率。川習會回補到
-              2017 年；APEC、G20、選舉只從 2026 年起。
+              2017 年；APEC、G20、選舉只從 2026 年起。標「戰爭」的是俄烏戰爭的轉折日（開戰、停火、和談），不追每天戰況；戰爭對台股多半是間接影響（油價 → 通膨 → Fed），2022
+              年台股下跌主因是升息。點進戰爭事件後按「🛡 對照避險組合」，可同時看黃金、油價、VIX 當時怎麼走。
             </p>
           </div>
         </details>
