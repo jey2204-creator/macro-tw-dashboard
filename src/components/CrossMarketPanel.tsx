@@ -753,13 +753,15 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
   // 圖例：十字線所在日期（沒有時各序列顯示自己最新一筆）
   const legend = useMemo(() => {
     if (twBars.length === 0) return null;
-    const twIdx = hoverTime ? indexAtOrBefore(twDates, hoverTime) : twBars.length - 1;
-    const twBar = hoverTime ? (twDates[twIdx] === hoverTime ? twBars[twIdx] : undefined) : twBars[twIdx];
+    // 圖例顯示哪一天：十字線 > 聚焦中的重大事件反應日 > 最新一根
+    const at = hoverTime ?? focusDay;
+    const twIdx = at ? indexAtOrBefore(twDates, at) : twBars.length - 1;
+    const twBar = at ? (twDates[twIdx] === at ? twBars[twIdx] : undefined) : twBars[twIdx];
     const twPrev = twBar && twIdx > 0 ? twBars[twIdx - 1]! : null;
     const rows = panes.map((p) => {
       const dates = p.bars.map((b) => b[0]);
-      const i = hoverTime ? indexAtOrBefore(dates, hoverTime) : p.bars.length - 1;
-      const bar = hoverTime ? (dates[i] === hoverTime ? p.bars[i] : undefined) : p.bars[i];
+      const i = at ? indexAtOrBefore(dates, at) : p.bars.length - 1;
+      const bar = at ? (dates[i] === at ? p.bars[i] : undefined) : p.bars[i];
       const prev = bar && i > 0 ? p.bars[i - 1]! : null;
       const ci = Math.max(0, twIdx);
       return {
@@ -772,7 +774,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
         rho: Object.fromEntries(CORR_WINDOWS.map((n) => [n, p.corr[n][ci] ?? null])) as Record<(typeof CORR_WINDOWS)[number], number | null>,
       };
     });
-    const day = hoverTime ?? twBar?.[0] ?? '';
+    const day = at ?? twBar?.[0] ?? '';
     const events = (showEvents ? eventsByDay.get(day) ?? [] : []).map((e) => {
       const sv = surprisesFor(e, calendar, summary, nowDate).filter((v) => v.actual !== null);
       const text = sv
@@ -802,7 +804,7 @@ export function CrossMarketPanel({ version, themeKey, mas, onMas, calendar = nul
       rows,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [twBars, twDates, twMa, trendMa, panes, hoverTime, mas, showEvents, eventsByDay, showGeo, geoByDay, calendar, summary]);
+  }, [twBars, twDates, twMa, trendMa, panes, hoverTime, focusDay, mas, showEvents, eventsByDay, showGeo, geoByDay, calendar, summary]);
 
   const latestRho = panes.filter((p) => !p.flow).map((p) => ({ label: p.label, rho60: p.corr[60].at(-1) ?? null }));
   // 圖例摘要（收起時的一行）：費波哪些窗格有畫、哪些不畫；費波關閉時只說有幾個對照序列

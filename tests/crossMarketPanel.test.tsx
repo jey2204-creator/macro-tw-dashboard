@@ -312,6 +312,8 @@ describe('跨市場對照面板', () => {
     fireEvent.click(screen.getByRole('button', { name: '測試峰會' }));
     await waitFor(() => expect(chartLog.geoLabels[0]?.text).toBe('峰會+期限'));
     expect(screen.getByText(/正在看/).textContent).toContain('2026-10-05');
+    // 圖例跟著跳到那一天，列出當天的事件
+    expect(document.querySelector('.cm-legend')?.textContent).toContain('測試峰會（10/2–3，峰會）：結果摘要');
     // 那天有戰爭事件 → 可一鍵切到「避險」組合，切過去按鈕就消失
     fireEvent.click(screen.getByRole('button', { name: /對照避險組合/ }));
     await waitFor(() => expect(screen.queryByRole('button', { name: /對照避險組合/ })).toBeNull());
