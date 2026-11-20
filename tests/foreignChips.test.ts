@@ -142,3 +142,23 @@ describe('外資籌碼對照：百分位與事件', () => {
     expect(out.deeper).toEqual([]);
   });
 });
+
+describe('taiexOhl', () => {
+  it('對齊每一列的開高低；缺值用收盤補、高低包住開收；只有收盤價的來源回傳 null', async () => {
+    const { taiexOhl } = await import('../src/shared/foreignChips');
+    const mk = (d: string, c: number) => [d, c, 0, 0, 0, 0, 0, 0, 0] as unknown as import('../src/shared/foreignChips').ForeignRow;
+    const rows = [mk('2026-01-02', 100), mk('2026-01-05', 110), mk('2026-01-06', 105)];
+    const bars: import('../src/shared/types').Bar[] = [
+      ['2026-01-02', 98, 103, 97, 100],
+      ['2026-01-05', 101, 108, 0, 110], // 高低不合理：高 < 收、低為 0
+      // 01-06 缺
+    ];
+    expect(taiexOhl(rows, bars)).toEqual([
+      [98, 103, 97],
+      [101, 110, 101],
+      [105, 105, 105],
+    ]);
+    expect(taiexOhl(rows, rows.map((r) => [r[0], r[1], r[1], r[1], r[1]]))).toBeNull();
+    expect(taiexOhl([], bars)).toBeNull();
+  });
+});

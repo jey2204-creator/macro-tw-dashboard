@@ -1,6 +1,7 @@
 import {
   type AutoscaleInfo,
   BaselineSeries,
+  CandlestickSeries,
   ColorType,
   CrosshairMode,
   HistogramSeries,
@@ -55,6 +56,14 @@ const PANE4_MODES: { k: Pane4Mode; label: string; title: string }[] = [
 ];
 const PANE4_KEY = 'fc-pane4';
 
+/** 第 1 格加權的畫法：折線（預設）或 K 線 */
+export type TaiexStyle = 'line' | 'candle';
+const STYLE_KEYS = ['line', 'candle'] as const;
+const STYLE_KEY = 'fc-style';
+/** K 線只在 1 年以內的區間畫：手機上 5 年約 1,200 根、每根不到 0.3px，K 棒比折線更難讀 → 自動退回折線 */
+const CANDLE_RANGES: readonly RangeKey[] = ['3M', '6M', '1Y'];
+const candleActive = (style: TaiexStyle, range: RangeKey, hasOhl: boolean): boolean => style === 'candle' && hasOhl && CANDLE_RANGES.includes(range);
+
 /** 右側留白（像素）：讓最新一天的事件文字（如「散戶多」約 40px）不被價格軸切掉，與縮放無關 */
 const FC_RIGHT_GAP_PX = 18;
 
@@ -101,7 +110,10 @@ function ChipsChart({
   margin,
   breadth,
   pane4,
+  candle,
 }: {
+  /** true＝第 1 格加權畫 K 線（需要 data.ohl） */
+  candle: boolean;
   data: ForeignChipsFile;
   range: RangeKey;
   themeKey: string;
@@ -181,8 +193,24 @@ function ChipsChart({
     };
 
     // 上：加權指數＋事件標記
-    const taiex = add(chart.addSeries(LineSeries, { color: text1, lineWidth: 2, priceFormat: lotsFmt }, 0));
-    taiex.setData(data.rows.map((r) => ({ time: r[0] as Time, value: r[1] })));
+    const ohl = candle ? data.ohl : undefined;
+    let taiex: ISeriesApi<SeriesType>;
+    if (ohl) {
+      // K 線：紅漲綠跌跟著全站配色；影線可看出事件當天有沒有被拉回／被買上來
+      const k = add(
+        chart.addSeries(
+          CandlestickSeries,
+          { upColor: up, downColor: down, borderUpColor: up, borderDownColor: down, wickUpColor: up, wickDownColor: down, priceFormat: lotsFmt },
+          0,
+        ),
+      );
+      k.setData(data.rows.map((r, n) => ({ time: r[0] as Time, open: ohl[n]?.[0] ?? r[1], high: ohl[n]?.[1] ?? r[1], low: ohl[n]?.[2] ?? r[1], close: r[1] })));
+      taiex = k;
+    } else {
+      const l = add(chart.addSeries(LineSeries, { color: text1, lineWidth: 2, priceFormat: lotsFmt }, 0));
+      l.setData(data.rows.map((r) => ({ time: r[0] as Time, value: r[1] })));
+      taiex = l;
+    }
     // 圖表庫預設上 20%／下 10% 留白，加上事件標記再多留一層，加權窗格上面會空一大塊；收到 6%（與融資面板一致）
     taiex.priceScale().applyOptions({ scaleMargins: { top: 0.06, bottom: 0.06 } });
     const markerColor: Record<ForeignEventType, string> = {
@@ -207,7 +235,8 @@ function ChipsChart({
       const withText = idx !== undefined && idx - lastTextIdx > MARKER_GAP[range];
       if (withText) lastTextIdx = idx;
       if (idx !== undefined && withText) {
-        labels.push({ time: date as Time, value: data.rows[idx]![1], text: types.map((t) => FOREIGN_MARKER_TEXT[t]).join('／'), color: markerColor[types[0]!], above });
+        // K 線時圓點貼在最高／最低價外側，文字跟著從那裡起算
+        labels.push({ time: date as Time, value: ohl?.[idx]?.[above ? 1 : 2] ?? data.rows[idx]![1], text: types.map((t) => FOREIGN_MARKER_TEXT[t]).join('／'), color: markerColor[types[0]!], above });
       }
     }
     // 同一波內再創極端：小一號、不帶文字（圖例會顯示）
@@ -389,7 +418,7 @@ function ChipsChart({
     return () => {
       for (const s of all.reverse()) chart.removeSeries(s);
     };
-  }, [data, themeKey, indexByDate, range, showMargin, marginRows, showSbl, sblRows, showFx, fxRows, breadthMode, breadthRows, tall]);
+  }, [data, themeKey, indexByDate, range, candle, showMargin, marginRows, showSbl, sblRows, showFx, fxRows, breadthMode, breadthRows, tall]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -442,6 +471,8 @@ function ChipsChart({
   const b = row && breadthMode ? breadthByDate.get(row[0]) : undefined;
   const sb = row && showSbl ? sblByDate.get(row[0]) : undefined;
   const sbState = sb ? sblStateAt(sb) : null;
+  const k = candle ? data.ohl?.[i] : undefined;
+  const num0 = (v: number) => v.toLocaleString('en-US', { maximumFractionDigits: 0 });
   const fx = fxRows?.[i] ?? null;
   const fxPrev = i > 0 ? (fxRows?.[i - 1]?.[0] ?? null) : null;
   const fxDay = fx?.[0] != null && fxPrev !== null ? (fx[0] / fxPrev - 1) * 100 : null;
@@ -455,7 +486,12 @@ function ChipsChart({
     <div className="pricechart ms-chart">
       {row && (
         <div className="legend num fc-legend" aria-live="off">
-          <span className="muted">{row[0]}</span> 加權 <b>{row[1].toLocaleString('en-US', { maximumFractionDigits: 0 })}</b>
+          <span className="muted">{row[0]}</span> 加權 <b>{num0(row[1])}</b>
+          {k && (
+            <span className="muted fc-ohl">
+              開 {num0(k[0])} 高 {num0(k[1])} 低 {num0(k[2])}
+            </span>
+          )}
           {dayEvents.length > 0 && <span className="fc-day-events">● {dayEvents.join('、')}</span>}
           <br />
           外資買賣超 <b className={sgn(row[2])}>{f2(row[2], true)}</b> 億｜5日 <b className={sgn(row[3])}>{f2(row[3], true)}</b>｜20日{' '}
@@ -618,6 +654,13 @@ export function ForeignChipsPanel({
     setPane4State(v);
     savePref(PANE4_KEY, v);
   };
+  const [style, setStyleState] = useState<TaiexStyle>(() => loadPref(STYLE_KEY, STYLE_KEYS, 'line'));
+  const setStyle = (v: TaiexStyle) => {
+    setStyleState(v);
+    savePref(STYLE_KEY, v);
+  };
+  const hasOhl = !!data?.ohl?.length;
+  const candle = candleActive(style, range, hasOhl);
   const hasMargin = !!margin?.rows.length;
   const hasSbl = !!margin?.sbl?.length;
   const hasBreadth = !!breadth?.rows.length;
@@ -660,7 +703,7 @@ export function ForeignChipsPanel({
 
       <PanelNote>
         <p className="small muted ms-rule">
-          圖怎麼看：上格加權（● 事件、小● 再創極端，點一下看名稱）；二格外資買賣超（億，柱）＋5 日細／20 日粗累計線；三格外資期淨 OI（口，0 軸填色）＋日增減柱；四格{' '}
+          圖怎麼看：上格加權（● 事件、小● 再創極端，點一下看名稱；{hasOhl ? '「折線／K線」可切換，區間列最右「K線」開關切換，K 線只在 3 個月～1 年畫、5 年以上自動用折線（開關變灰），圓點貼在影線外側，主要用來看事件當天有沒有長下影線' : '收盤折線'}）；二格外資買賣超（億，柱）＋5 日細／20 日粗累計線；三格外資期淨 OI（口，0 軸填色）＋日增減柱；四格{' '}
           {pane4Eff === 'margin'
             ? '融資維持率（%，虛線＝警戒 160／斷頭區 140／追繳 130）＋融資增減（億，紅增綠減）'
             : pane4Eff === 'sbl'
@@ -689,8 +732,20 @@ export function ForeignChipsPanel({
             </button>
           ))}
           <button type="button" onClick={() => setResetKey((k) => k + 1)} aria-label="重設圖表縮放" title="重設縮放">
-            ↺ 重設
+            ↺<span className={hasOhl ? 'fc-reset-txt' : undefined}> 重設</span>
           </button>
+          {hasOhl && (
+            <button
+              type="button"
+              className="fc-kbtn"
+              aria-pressed={candle}
+              disabled={!CANDLE_RANGES.includes(range)}
+              onClick={() => setStyle(style === 'candle' ? 'line' : 'candle')}
+              title={CANDLE_RANGES.includes(range) ? '第 1 格加權切換 K 線／折線' : 'K 線只在 3個月／半年／1年畫，5 年以上用折線'}
+            >
+              K線
+            </button>
+          )}
         </div>
         {modes.length > 1 && (
           <div className="seg" role="group" aria-label="第四格顯示">
@@ -702,7 +757,7 @@ export function ForeignChipsPanel({
           </div>
         )}
       </div>
-      <ChipsChart data={data} range={range} themeKey={themeKey} resetKey={resetKey} margin={margin} breadth={breadth} pane4={pane4Eff} />
+      <ChipsChart data={data} range={range} themeKey={themeKey} resetKey={resetKey} margin={margin} breadth={breadth} pane4={pane4Eff} candle={candle} />
 
       <div className="table-wrap">
         <table className="bt-table num">
