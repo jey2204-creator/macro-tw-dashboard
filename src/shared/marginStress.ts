@@ -16,6 +16,7 @@
  * 僅供參考：事件少（台股 2010 年起約十幾波），不計入總經分數。
  */
 import { addDays } from './dates';
+import type { IndexOhl } from './ohl';
 import type { Bar } from './types';
 
 /**
@@ -142,6 +143,8 @@ export interface MarginStressFile {
   latestSbl?: SblLatest | null;
   /** 融資裡的 ETF（最新一日）；沒有資料時省略 */
   latestEtf?: EtfMarginLatest | null;
+  /** 加權 [開, 高, 低]，與 rows 同長度同順序（第 1 格「K線」用）；來源只有收盤價時省略 */
+  ohl?: IndexOhl[];
 }
 
 /** 「不含 ETF」維持率的估算範圍：假設 ETF 自身維持率落在這兩個值之間 */

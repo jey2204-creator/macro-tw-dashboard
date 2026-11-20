@@ -116,12 +116,15 @@ export class BaseLabelGroup implements ISeriesPrimitive<Time> {
           const logical = ts.coordinateToLogical(Math.min(cx, x1));
           if (logical === null) continue;
           for (const line of lines) {
-            const d = line.dataByIndex(Math.round(logical), MismatchDirection.NearestLeft) as { value?: number } | null;
-            if (d?.value === undefined) continue;
-            const cy = line.priceToCoordinate(d.value);
-            if (cy === null) continue;
-            lo = Math.min(lo, Number(cy));
-            hi = Math.max(hi, Number(cy));
+            const d = line.dataByIndex(Math.round(logical), MismatchDirection.NearestLeft) as { value?: number; high?: number; low?: number } | null;
+            // 折線取 value；K 棒取最高、最低（連影線一起避開）
+            const prices = d?.value !== undefined ? [d.value] : d?.high !== undefined && d.low !== undefined ? [d.high, d.low] : [];
+            for (const p of prices) {
+              const cy = line.priceToCoordinate(p);
+              if (cy === null) continue;
+              lo = Math.min(lo, Number(cy));
+              hi = Math.max(hi, Number(cy));
+            }
           }
         }
         return lo === Infinity ? null : { lo, hi };

@@ -19,7 +19,7 @@ export type DateWindow = { from: string; to: string };
  * 沒給 win：取區間起點到最新一根；給 win：只取畫面內 [from, to] 的 K 棒——
  * 往左拖曳看更早的資料時 Y 軸跟著畫面內高低點伸縮，折線不會掉出窗格（基準不變、兩市仍同一刻度）。
  */
-export function sharedPctRange(list: BreadthStressFile[], range: RangeKey, win?: DateWindow | null): PctRange | null {
+export function sharedPctRange(list: BreadthStressFile[], range: RangeKey, win?: DateWindow | null, withOhl = false): PctRange | null {
   if (list.length < 2) return null;
   let min = Infinity;
   let max = -Infinity;
@@ -29,9 +29,12 @@ export function sharedPctRange(list: BreadthStressFile[], range: RangeKey, win?:
     for (let i = start; i < d.rows.length; i++) {
       const r = d.rows[i]!;
       if (win && r[0] > win.to) break;
-      const v = (r[1] / base - 1) * 100;
-      if (v < min) min = v;
-      if (v > max) max = v;
+      // K 線時連影線一起算，K 棒才不會被窗格切掉
+      const k = withOhl ? d.ohl?.[i] : undefined;
+      const lo = ((k ? Math.min(k[2], r[1]) : r[1]) / base - 1) * 100;
+      const hi = ((k ? Math.max(k[1], r[1]) : r[1]) / base - 1) * 100;
+      if (lo < min) min = lo;
+      if (hi > max) max = hi;
     }
   }
   if (min > max) return null;
@@ -67,14 +70,14 @@ export function timeToDate(t: unknown): string | null {
 }
 
 /** 同一個畫面範圍只算一次（兩張圖同步後範圍相同，每次重繪各問一次） */
-export function makePctRangeAt(list: BreadthStressFile[], range: RangeKey): (win: DateWindow | null) => PctRange | null {
+export function makePctRangeAt(list: BreadthStressFile[], range: RangeKey, withOhl = false): (win: DateWindow | null) => PctRange | null {
   let key: string | null = null;
   let cached: PctRange | null = null;
   return (win) => {
     const k = win ? `${win.from}|${win.to}` : '';
     if (k !== key) {
       key = k;
-      cached = sharedPctRange(list, range, win);
+      cached = sharedPctRange(list, range, win, withOhl);
     }
     return cached;
   };

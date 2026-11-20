@@ -13,6 +13,7 @@
  *
  * 僅供參考：不計入總經分數。
  */
+import type { IndexOhl } from './ohl';
 import { forward, mdd, percentile, stats, type EventStats } from './marginStress';
 import type { Bar } from './types';
 
@@ -50,6 +51,8 @@ export interface BreadthStressFile {
   start: string | null;
   end: string | null;
   rows: BreadthRow[];
+  /** 指數（上市＝加權、上櫃＝櫃買）[開, 高, 低]，與 rows 同長度同順序（上格「K線」用）；來源只有收盤價時省略 */
+  ohl?: IndexOhl[];
   /** 每日跌停占比（%） */
   downPct: number[];
   /** 每日是否為恐慌日 */

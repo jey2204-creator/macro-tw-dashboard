@@ -1,6 +1,7 @@
 import {
   ColorType,
   CrosshairMode,
+  CandlestickSeries,
   HistogramSeries,
   LineSeries,
   LineStyle,
@@ -10,10 +11,13 @@ import {
   type IChartApi,
   type ISeriesApi,
   type MouseEventParams,
+  type SeriesType,
   type SeriesMarker,
   type Time,
 } from 'lightweight-charts';
 import { PanelNote } from './PanelNote';
+import { KLineButton, ResetLabel } from './KLineButton';
+import { candleOn, useIndexStyle } from '../lib/candleStyle';
 import { CHART_INTERACTION, resetPaneStretch, resetPriceScales, attachTimeAxis, TIME_AXIS } from '../lib/chartInteraction';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { cssVar, f2, pctCell } from '../lib/stressFormat';
@@ -60,7 +64,10 @@ function BreadthChart({
   pctRangeAt,
   sync,
   syncKey,
+  candle,
 }: {
+  /** true＝上格指數畫 K 線（需要 data.ohl） */
+  candle: boolean;
   data: BreadthStressFile;
   range: RangeKey;
   mid: MidMode;
@@ -75,7 +82,7 @@ function BreadthChart({
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
-  const priceRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const priceRef = useRef<ISeriesApi<SeriesType> | null>(null);
   const pctAtRef = useRef<(t: string) => number | null>(() => null);
   const syncedRef = useRef<(t: string | null) => void>(() => {});
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
@@ -121,26 +128,40 @@ function BreadthChart({
     // 主圖改為「區間起點＝0%」的累計漲跌幅；指數點位看圖例
     const { from: baseIdx, base } = rangeBase(data, range);
     const pct = (v: number) => (v / base - 1) * 100;
-    const price = chart.addSeries(
-      LineSeries,
-      {
-        color: cssVar('--text-1'),
-        lineWidth: 2,
-        priceFormat: { type: 'custom', minMove: 0.1, formatter: (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%` },
-        // 每次畫面範圍變動（拖曳／縮放／換區間）都會重問一次：用畫面內兩市的高低點聯集
-        autoscaleInfoProvider: (orig: () => AutoscaleInfo | null) => {
-          const vr = chart.timeScale().getVisibleRange();
-          const from = vr ? timeToDate(vr.from) : null;
-          const to = vr ? timeToDate(vr.to) : null;
-          const r = pctRangeAt(from && to ? { from, to } : null);
-          return r ? { priceRange: { minValue: r.min, maxValue: r.max } } : orig();
-        },
-      },
-      0,
-    );
+    const pctFmt = { type: 'custom' as const, minMove: 0.1, formatter: (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%` };
+    // 每次畫面範圍變動（拖曳／縮放／換區間）都會重問一次：用畫面內兩市的高低點聯集
+    const autoscale = (orig: () => AutoscaleInfo | null) => {
+      const vr = chart.timeScale().getVisibleRange();
+      const from = vr ? timeToDate(vr.from) : null;
+      const to = vr ? timeToDate(vr.to) : null;
+      const r = pctRangeAt(from && to ? { from, to } : null);
+      return r ? { priceRange: { minValue: r.min, maxValue: r.max } } : orig();
+    };
+    const ohl = candle ? data.ohl : undefined;
+    let price: ISeriesApi<SeriesType>;
+    if (ohl) {
+      // K 線也換算成「區間起點＝0%」的漲跌幅，兩市仍同一刻度
+      const upC = cssVar('--up');
+      const downC = cssVar('--down');
+      const k = chart.addSeries(
+        CandlestickSeries,
+        { upColor: upC, downColor: downC, borderUpColor: upC, borderDownColor: downC, wickUpColor: upC, wickDownColor: downC, priceFormat: pctFmt, autoscaleInfoProvider: autoscale },
+        0,
+      );
+      k.setData(
+        data.rows.map((r, n) => {
+          const o = ohl[n] ?? [r[1], r[1], r[1]];
+          return { time: r[0] as Time, open: pct(o[0]), high: pct(o[1]), low: pct(o[2]), close: pct(r[1]) };
+        }),
+      );
+      price = k;
+    } else {
+      const l = chart.addSeries(LineSeries, { color: cssVar('--text-1'), lineWidth: 2, priceFormat: pctFmt, autoscaleInfoProvider: autoscale }, 0);
+      l.setData(data.rows.map((r) => ({ time: r[0] as Time, value: pct(r[1]) })));
+      price = l;
+    }
     // Y 軸收緊：只依畫面內高低點縮放，上下各留約 6%（預設上方留 20%，手機上浪費一大截）
     price.priceScale().applyOptions({ scaleMargins: { top: 0.06, bottom: 0.06 } });
-    price.setData(data.rows.map((r) => ({ time: r[0] as Time, value: pct(r[1]) })));
     priceRef.current = price;
     pctAtRef.current = (t) => {
       const k = indexByDate.get(t);
@@ -201,7 +222,7 @@ function BreadthChart({
       priceRef.current = null;
       for (const s of [price, ul, dl, adr]) chart.removeSeries(s);
     };
-  }, [data, mid, themeKey, range, pctRangeAt, indexByDate]);
+  }, [data, mid, themeKey, range, pctRangeAt, indexByDate, candle]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -246,6 +267,11 @@ function BreadthChart({
         <div className="legend num" aria-live="off">
           <span className="muted">{row[0]}</span> {indexLabel} <b>{fmtIndex(row[1])}</b>
           <span className="muted">（{baseRow ? `自 ${baseDateLabel(baseRow[0], row[0])} 起` : '區間'} {pctOf(row[1])}）</span>{' '}
+          {candle && data.ohl?.[i] && (
+            <span className="muted">
+              開 {fmtIndex(data.ohl[i]![0])} 高 {fmtIndex(data.ohl[i]![1])} 低 {fmtIndex(data.ohl[i]![2])}{' '}
+            </span>
+          )}
           <span className="up">漲停 {row[2]}</span> <span className="down">跌停 {row[3]}</span>（占比 {f2(data.downPct[i])}%）{' '}
           <span className="up">漲 {row[4]}</span> <span className="down">跌 {row[5]}</span>{' '}
           10日漲跌比 {f2(data.adRatio10[i])} {data.panic[i] && <span className="ms-state ms-zone">恐慌日</span>}
@@ -357,7 +383,11 @@ export function BreadthPanel({ twse, otc, themeKey }: { twse: BreadthStressFile 
   const [mid, setMid] = useState<MidMode>('limit');
   const [resetKey, setResetKey] = useState(0);
   const [showEvents, setShowEvents] = useState<Record<BreadthMarket, boolean>>({ twse: false, tpex: false });
-  const pctRangeAt = useMemo(() => makePctRangeAt([twse, otc].filter((d): d is BreadthStressFile => !!d?.latest), range), [twse, otc, range]);
+  const [style, setStyle] = useIndexStyle('br-style');
+  // 兩市都有開高低才給切換（一張 K 線、一張折線看起來會像兩種資料）
+  const hasOhl = [twse, otc].filter((d) => !!d?.latest).every((d) => !!d!.ohl?.length) && !!twse?.latest;
+  const candle = candleOn(style, range, hasOhl);
+  const pctRangeAt = useMemo(() => makePctRangeAt([twse, otc].filter((d): d is BreadthStressFile => !!d?.latest), range, candle), [twse, otc, range, candle]);
   const markets: { market: BreadthMarket; data: BreadthStressFile }[] = [];
   if (twse?.latest) markets.push({ market: 'twse', data: twse });
   if (otc?.latest) markets.push({ market: 'tpex', data: otc });
@@ -378,7 +408,7 @@ export function BreadthPanel({ twse, otc, themeKey }: { twse: BreadthStressFile 
 
       <PanelNote>
         <p className="small muted ms-rule">
-          圖怎麼看（上市、上櫃兩張圖相同）：上格指數線（右軸＝區間起點起算的漲跌幅 %，兩張圖同一刻度：同一高度＝同一 %，可直接比誰跌得深；往左拖曳時刻度跟著畫面內高低點伸縮；灰色圓點「基準」＝0% 起算的那一根，日期與點位標在旁邊，圖例「自 M/D 起」同一天；點位看圖例）——▼ 恐慌、■ 投降、● 背離、▲ 止跌；中格
+          圖怎麼看（上市、上櫃兩張圖相同）：上格指數線{hasOhl ? '（區間列最右「K線」可切成 K 線，兩張圖一起切；3 個月～1 年才畫、5 年以上自動用折線）' : ''}（右軸＝區間起點起算的漲跌幅 %，兩張圖同一刻度：同一高度＝同一 %，可直接比誰跌得深；往左拖曳時刻度跟著畫面內高低點伸縮；灰色圓點「基準」＝0% 起算的那一根，日期與點位標在旁邊，圖例「自 M/D 起」同一天；點位看圖例）——▼ 恐慌、■ 投降、● 背離、▲ 止跌；中格
           {mid === 'ad' ? '上漲家數（0 以上）／下跌家數（0 以下，恐慌日加深）' : '漲停（0 以上）／跌停（0 以下，恐慌日加深）'}；下格 10 日上漲÷下跌家數（虛線＝1.0 漲跌持平）。
         </p>
         <p className="small muted ms-rule">
@@ -394,8 +424,9 @@ export function BreadthPanel({ twse, otc, themeKey }: { twse: BreadthStressFile 
             </button>
           ))}
           <button type="button" onClick={() => setResetKey((k) => k + 1)} aria-label="重設圖表縮放" title="重設縮放">
-            ↺ 重設
+            <ResetLabel compact={hasOhl} />
           </button>
+          {hasOhl && <KLineButton style={style} setStyle={setStyle} range={range} what="上格指數" />}
         </div>
         <div className="seg" role="group" aria-label="中格顯示">
           {MID_MODES.map((o) => (
@@ -406,7 +437,7 @@ export function BreadthPanel({ twse, otc, themeKey }: { twse: BreadthStressFile 
         </div>
       </div>
       {markets.map((m) => (
-        <BreadthChart key={m.market} data={m.data} range={range} mid={mid} themeKey={themeKey} resetKey={resetKey} indexLabel={BREADTH_MARKET[m.market].index} pctRangeAt={pctRangeAt} sync={sync} syncKey={m.market} />
+        <BreadthChart key={m.market} data={m.data} range={range} mid={mid} themeKey={themeKey} resetKey={resetKey} indexLabel={BREADTH_MARKET[m.market].index} pctRangeAt={pctRangeAt} sync={sync} syncKey={m.market} candle={candle} />
       ))}
 
       {markets.map((m) => (

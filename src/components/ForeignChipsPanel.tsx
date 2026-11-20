@@ -42,6 +42,8 @@ import type { BreadthStressFile } from '../shared/breadthStress';
 import { LineLabels } from '../lib/lineLabels';
 import { MarkerLabels, type MarkerLabel } from '../lib/markerLabels';
 import { loadPref, savePref } from '../lib/storage';
+import { candleOn, useIndexStyle } from '../lib/candleStyle';
+import { KLineButton, ResetLabel } from './KLineButton';
 
 /** 第 4 格顯示：散戶小台淨 OI／融資維持率＋融資增減（散戶籌碼）、借券（法人空單）、台幣（USD/TWD，外資匯出入），或上市漲跌停家數／漲跌家數（市場廣度），切換對照 */
 export type Pane4Mode = 'retail' | 'margin' | 'sbl' | 'fx' | 'limit' | 'ad';
@@ -55,14 +57,6 @@ const PANE4_MODES: { k: Pane4Mode; label: string; title: string }[] = [
   { k: 'ad', label: '漲跌家數', title: '上市上漲（0 以上）／下跌（0 以下）家數' },
 ];
 const PANE4_KEY = 'fc-pane4';
-
-/** 第 1 格加權的畫法：折線（預設）或 K 線 */
-export type TaiexStyle = 'line' | 'candle';
-const STYLE_KEYS = ['line', 'candle'] as const;
-const STYLE_KEY = 'fc-style';
-/** K 線只在 1 年以內的區間畫：手機上 5 年約 1,200 根、每根不到 0.3px，K 棒比折線更難讀 → 自動退回折線 */
-const CANDLE_RANGES: readonly RangeKey[] = ['3M', '6M', '1Y'];
-const candleActive = (style: TaiexStyle, range: RangeKey, hasOhl: boolean): boolean => style === 'candle' && hasOhl && CANDLE_RANGES.includes(range);
 
 /** 右側留白（像素）：讓最新一天的事件文字（如「散戶多」約 40px）不被價格軸切掉，與縮放無關 */
 const FC_RIGHT_GAP_PX = 18;
@@ -654,13 +648,9 @@ export function ForeignChipsPanel({
     setPane4State(v);
     savePref(PANE4_KEY, v);
   };
-  const [style, setStyleState] = useState<TaiexStyle>(() => loadPref(STYLE_KEY, STYLE_KEYS, 'line'));
-  const setStyle = (v: TaiexStyle) => {
-    setStyleState(v);
-    savePref(STYLE_KEY, v);
-  };
+  const [style, setStyle] = useIndexStyle('fc-style');
   const hasOhl = !!data?.ohl?.length;
-  const candle = candleActive(style, range, hasOhl);
+  const candle = candleOn(style, range, hasOhl);
   const hasMargin = !!margin?.rows.length;
   const hasSbl = !!margin?.sbl?.length;
   const hasBreadth = !!breadth?.rows.length;
@@ -732,20 +722,9 @@ export function ForeignChipsPanel({
             </button>
           ))}
           <button type="button" onClick={() => setResetKey((k) => k + 1)} aria-label="重設圖表縮放" title="重設縮放">
-            ↺<span className={hasOhl ? 'fc-reset-txt' : undefined}> 重設</span>
+            <ResetLabel compact={hasOhl} />
           </button>
-          {hasOhl && (
-            <button
-              type="button"
-              className="fc-kbtn"
-              aria-pressed={candle}
-              disabled={!CANDLE_RANGES.includes(range)}
-              onClick={() => setStyle(style === 'candle' ? 'line' : 'candle')}
-              title={CANDLE_RANGES.includes(range) ? '第 1 格加權切換 K 線／折線' : 'K 線只在 3個月／半年／1年畫，5 年以上用折線'}
-            >
-              K線
-            </button>
-          )}
+          {hasOhl && <KLineButton style={style} setStyle={setStyle} range={range} what="第 1 格加權" />}
         </div>
         {modes.length > 1 && (
           <div className="seg" role="group" aria-label="第四格顯示">

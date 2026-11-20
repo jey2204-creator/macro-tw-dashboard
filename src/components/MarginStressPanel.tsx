@@ -2,6 +2,7 @@ import {
   type AutoscaleInfo,
   ColorType,
   CrosshairMode,
+  CandlestickSeries,
   HistogramSeries,
   LineSeries,
   LineStyle,
@@ -9,10 +10,14 @@ import {
   createSeriesMarkers,
   type IChartApi,
   type MouseEventParams,
+  type ISeriesApi,
   type SeriesMarker,
+  type SeriesType,
   type Time,
 } from 'lightweight-charts';
 import { PanelNote } from './PanelNote';
+import { KLineButton, ResetLabel } from './KLineButton';
+import { candleOn, useIndexStyle } from '../lib/candleStyle';
 import { CHART_INTERACTION, resetPaneStretch, resetPriceScales, attachTimeAxis, TIME_AXIS } from '../lib/chartInteraction';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -78,7 +83,7 @@ const MARKER_TEXT: Record<StressEventType, string> = {
   sblCover: '回補',
 };
 
-function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFile; range: RangeKey; themeKey: string; resetKey: number }) {
+function StressChart({ data, range, themeKey, resetKey, candle }: { data: MarginStressFile; range: RangeKey; themeKey: string; resetKey: number; candle: boolean }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
@@ -120,8 +125,25 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
       rightPriceScale: { borderColor: grid },
       timeScale: { borderColor: grid },
     });
-    const series = chart.addSeries(LineSeries, { color: cssVar('--text-1'), lineWidth: 2, priceFormat: { type: 'price', precision: 0, minMove: 1 } }, 0);
-    series.setData(data.rows.map((r) => ({ time: r[0] as Time, value: r[1] })));
+    const ohl = candle ? data.ohl : undefined;
+    const idxFmt = { type: 'price', precision: 0, minMove: 1 } as const;
+    let series: ISeriesApi<SeriesType>;
+    if (ohl) {
+      // K 線：紅漲綠跌；事件符號貼在影線外側
+      const up = cssVar('--up');
+      const down = cssVar('--down');
+      const k = chart.addSeries(
+        CandlestickSeries,
+        { upColor: up, downColor: down, borderUpColor: up, borderDownColor: down, wickUpColor: up, wickDownColor: down, priceFormat: idxFmt },
+        0,
+      );
+      k.setData(data.rows.map((r, n) => ({ time: r[0] as Time, open: ohl[n]?.[0] ?? r[1], high: ohl[n]?.[1] ?? r[1], low: ohl[n]?.[2] ?? r[1], close: r[1] })));
+      series = k;
+    } else {
+      const l = chart.addSeries(LineSeries, { color: cssVar('--text-1'), lineWidth: 2, priceFormat: idxFmt }, 0);
+      l.setData(data.rows.map((r) => ({ time: r[0] as Time, value: r[1] })));
+      series = l;
+    }
     // 圖表庫預設上 20%／下 10% 留白，加上標記再多留一層；收到 6%，加權窗格才不會上面空一大塊
     series.priceScale().applyOptions({ scaleMargins: { top: 0.06, bottom: 0.06 } });
     const color: Record<StressEventType, string> = {
@@ -156,7 +178,13 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
     createSeriesMarkers(series, markers);
     series.attachPrimitive(
       new MarkerLabels(
-        data.events.map((e) => ({ time: e.date as Time, value: e.taiex, text: MARKER_TEXT[e.type], color: color[e.type], above: !below.has(e.type) })),
+        data.events.map((e) => {
+          const above = !below.has(e.type);
+          // K 線時文字從最高（上方）／最低（下方）起算
+          const k = ohl ? indexByDate.get(e.date) : undefined;
+          const value = k !== undefined ? (ohl![k]?.[above ? 1 : 2] ?? e.taiex) : e.taiex;
+          return { time: e.date as Time, value, text: MARKER_TEXT[e.type], color: color[e.type], above };
+        }),
         { background: cssVar('--surface'), fontSize: 10, fontFamily: getComputedStyle(document.body).fontFamily },
       ),
     );
@@ -296,7 +324,7 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
       if (sblChg) chart.removeSeries(sblChg);
       if (sblLend) chart.removeSeries(sblLend);
     };
-  }, [data, completion, themeKey]);
+  }, [data, completion, themeKey, candle, indexByDate]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -348,12 +376,18 @@ function StressChart({ data, range, themeKey, resetKey }: { data: MarginStressFi
   const comp = completion[i];
   // 滑到哪一天就用那一天的基準（高點是滾動的）
   const compAt = row ? completionAt(data.rows, i) : null;
+  const num0 = (v: number) => v.toLocaleString('en-US', { maximumFractionDigits: 0 });
   const since = (d: string | null | undefined) => (d && row ? ` 自 ${baseDateLabel(d, row[0])}` : '');
   return (
     <div className="pricechart ms-chart">
       {row && (
         <div className="legend num" aria-live="off">
           <span className="muted">{row[0]}</span> 加權 <b>{row[1].toLocaleString('en-US', { maximumFractionDigits: 0 })}</b>{' '}
+          {candle && data.ohl?.[i] && (
+            <span className="muted">
+              開 {num0(data.ohl[i]![0])} 高 {num0(data.ohl[i]![1])} 低 {num0(data.ohl[i]![2])}{' '}
+            </span>
+          )}
           維持率 <b>{f2(row[2])}%</b> 融資增減{' '}
           <span className={row[4] > 0 ? 'up' : row[4] < 0 ? 'down' : ''}>{f2(row[4], true)} 億</span>{' '}
           {state && <span className={`ms-state ms-${state}`}>{STATE_LABEL[state]}</span>}
@@ -436,6 +470,8 @@ export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile |
   const [resetKey, setResetKey] = useState(0);
   const [showEvents, setShowEvents] = useState(false);
   const indexByDate = useMemo(() => new Map((data?.rows ?? []).map((r, i) => [r[0], i])), [data]);
+  const [style, setStyle] = useIndexStyle('ms-style');
+  const hasOhl = !!data?.ohl?.length;
   if (!data || !data.latest) return null;
   const { latest } = data;
   const comp = completionAt(data.rows, data.rows.length - 1);
@@ -495,7 +531,7 @@ export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile |
 
       <PanelNote>
         <p className="small muted ms-rule">
-          圖怎麼看：上格加權指數——K 棒上方 ▼ 跌破 150／140、■ 斷頭潮；下方 ■ 去槓桿、▲ 清洗完成、▲ 追上（藍，完成度 ≥ 1）、● 限空令／國安基金。中格維持率（線，警戒時 Y 軸含 140 線；門檻線在畫面外時不標）＋融資增減（下方柱，億，紅增綠減）。
+          圖怎麼看：上格加權指數{data.ohl?.length ? '（區間列最右「K線」可切換 K 線，3 個月～1 年才畫、5 年以上自動用折線）' : ''}——K 棒上方 ▼ 跌破 150／140、■ 斷頭潮；下方 ■ 去槓桿、▲ 清洗完成、▲ 追上（藍，完成度 ≥ 1）、● 限空令／國安基金。中格維持率（線，警戒時 Y 軸含 140 線；門檻線在畫面外時不標）＋融資增減（下方柱，億，紅增綠減）。
           第三格去槓桿完成度：指數自高點跌幅（黑）與融資餘額自高點減幅（藍）兩條 % 線，藍線追上黑線＝完成度 ≥ 1；虛線 0、點線 −{COMPLETION_MIN_DD}%。0% 線上的圓點＝最新一天的基準點：黑「指數高」＝近 {COMPLETION_LOOKBACK} 日加權高點、藍「融資高」＝融資餘額高點（兩者通常不同天；高點是滾動的，圖上只標最新一天用的，滑到別天時上方數字列的「自 M/D」會跟著換；1 年以上的長視角只留圓點不標字）。
           {data.sbl?.length ? '下格借券賣出餘額（粗線，萬張；追空極端段紅、回補極端段綠）＋已借未賣（藍虛線，獨立刻度，現值標在線尾）＋日增減（柱，增加＝空方加碼）；K 棒上方 ● 追空（紅）、下方 ● 回補（綠）。' : ''}
         </p>
@@ -537,10 +573,11 @@ export function MarginStressPanel({ data, themeKey }: { data: MarginStressFile |
           </button>
         ))}
         <button type="button" onClick={() => setResetKey((k) => k + 1)} aria-label="重設圖表縮放" title="重設縮放">
-          ↺ 重設
+          <ResetLabel compact={hasOhl} />
         </button>
+        {hasOhl && <KLineButton style={style} setStyle={setStyle} range={range} what="上格加權" />}
       </div>
-      <StressChart data={data} range={range} themeKey={themeKey} resetKey={resetKey} />
+      <StressChart data={data} range={range} themeKey={themeKey} resetKey={resetKey} candle={candleOn(style, range, hasOhl)} />
 
       <div className="table-wrap">
         <table className="bt-table num">
