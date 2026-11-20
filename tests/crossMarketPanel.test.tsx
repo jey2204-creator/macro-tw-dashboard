@@ -282,7 +282,7 @@ describe('跨市場對照面板', () => {
     expect(window.localStorage.getItem('cm-events')).toBe('0');
   });
 
-  it('重大事件標記：react 當天（休市順延）加權 K 棒上方方塊，文字自繪防撞；5 年以上不顯示；關閉後清空並記住', async () => {
+  it('重大事件標記：react 當天（休市順延）加權 K 棒上方方塊，文字自繪防撞；5 年以上只畫方塊；一覽表點一筆聚焦；關閉後清空並記住', async () => {
     const geoEvents = [
       { id: 'a', type: 'summit' as const, name: '測試峰會', short: '峰會', start: '2026-10-02', end: '2026-10-03', react: '2026-10-03', note: '結果摘要' },
       { id: 'b', type: 'deadline' as const, name: '測試期限', short: '期限', start: '2026-10-05', react: '2026-10-05' },
@@ -297,10 +297,24 @@ describe('跨市場對照面板', () => {
     // 文字交給 MarkerLabels（貼在那根 K 棒的最高價上方）
     expect(chartLog.geoLabels).toEqual([{ time: '2026-10-05', value: 46200, text: '峰會+期限', color: expect.any(String), above: true }]);
     expect(screen.getByRole('button', { name: /重大事件/ }).getAttribute('aria-pressed')).toBe('true');
+    // 5 年：■ 還在、文字不畫
     fireEvent.click(screen.getByRole('button', { name: '5年' }));
-    await waitFor(() => expect(chartLog.geoMarkers).toEqual([]));
-    expect(chartLog.geoLabels).toEqual([]);
+    await waitFor(() => expect(chartLog.geoLabels).toEqual([]));
+    expect(chartLog.geoMarkers.length).toBe(1);
+    // 一覽表：新的在上、還沒發生的不能點；點一筆 → 進入聚焦（文字回來、顯示「回最新」），選區間就離開
+    const rows = [...document.querySelectorAll('.cm-geo-table tbody tr')].map((tr) => tr.textContent ?? '');
+    expect(rows.length).toBe(3);
+    expect(rows[0]).toContain('還沒到');
+    expect(rows[0]).toContain('尚未發生');
+    expect(rows[1]).toContain('測試期限');
+    expect(rows[1]).toContain('→ 10/05');
+    expect(screen.queryByRole('button', { name: '還沒到' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '測試峰會' }));
+    await waitFor(() => expect(chartLog.geoLabels[0]?.text).toBe('峰會+期限'));
+    expect(screen.getByText(/正在看/).textContent).toContain('2026-10-05');
+    expect(screen.getByRole('button', { name: '5年' }).getAttribute('aria-pressed')).toBe('false');
     fireEvent.click(screen.getByRole('button', { name: '1年' }));
+    await waitFor(() => expect(screen.queryByText(/正在看/)).toBeNull());
     await waitFor(() => expect(chartLog.geoLabels[0]?.text).toBe('峰會+期限')); // 筆數少，1 年也附文字
     fireEvent.click(screen.getByRole('button', { name: /重大事件/ }));
     await waitFor(() => expect(chartLog.geoMarkers).toEqual([]));

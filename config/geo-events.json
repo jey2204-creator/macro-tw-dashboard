@@ -1,6 +1,68 @@
 {
-  "note": "重大事件（頁首事件列、行事曆訂閱、跨市場對照加權 K 棒上方的 ■ 標記）。參考、不計分、不進回測（一年不到 10 筆，樣本太少）。start／end＝當地日期；react＝台股第一個能反應結果的交易日（人工填；遇休市自動順延到下一個交易日）；short＝K 棒上的文字（8 個字以內，越短越好）。人工維護：日期確定後才補，每個日曆年（以 start 計）最多 10 筆，超過要先刪舊的或不重要的。type：summit 多邊峰會／bilateral 雙邊會談／election 選舉／deadline 期限。",
+  "note": "重大事件（頁首事件列、行事曆訂閱、跨市場對照加權 K 棒上方的 ■ 標記）。參考、不計分、不進回測（一年不到 10 筆，樣本太少）。start／end＝當地日期；react＝台股第一個能反應結果的交易日（人工填；遇休市自動順延到下一個交易日）；short＝K 棒上的文字（8 個字以內，越短越好）。歷史：2017 年起歷次川習會已回補（APEC、G20、選舉只從 2026 年起）。人工維護：日期確定後才補，每個日曆年（以 start 計）最多 10 筆，超過要先刪舊的或不重要的。type：summit 多邊峰會／bilateral 雙邊會談／election 選舉／deadline 期限。",
   "events": [
+    {
+      "id": "trump-xi-maralago-2017",
+      "type": "bilateral",
+      "name": "川習會（海湖莊園）",
+      "short": "川習",
+      "start": "2017-04-06",
+      "end": "2017-04-07",
+      "react": "2017-04-10",
+      "note": "首次會面；同意啟動貿易「百日計畫」",
+      "source": "https://history.state.gov/departmenthistory/visits/2017"
+    },
+    {
+      "id": "trump-xi-hamburg-2017",
+      "type": "bilateral",
+      "name": "川習會（漢堡）",
+      "short": "川習",
+      "start": "2017-07-08",
+      "react": "2017-07-10",
+      "note": "G20 場邊；談北韓與貿易",
+      "source": "https://presidency.ucsb.edu/node/329476"
+    },
+    {
+      "id": "trump-xi-beijing-2017",
+      "type": "bilateral",
+      "name": "川習會（北京）",
+      "short": "川習",
+      "start": "2017-11-08",
+      "end": "2017-11-10",
+      "react": "2017-11-09",
+      "note": "川普訪中，11/9 人民大會堂會談；簽署約 2,500 億美元商業協議",
+      "source": "https://history.state.gov/departmenthistory/travels/president/china"
+    },
+    {
+      "id": "trump-xi-buenos-aires-2018",
+      "type": "bilateral",
+      "name": "川習會（布宜諾斯艾利斯）",
+      "short": "川習",
+      "start": "2018-12-01",
+      "react": "2018-12-03",
+      "note": "G20 場邊晚宴；貿易戰休兵 90 天，美方暫緩把關稅調升到 25%",
+      "source": "https://news.cgtn.com/news/3d3d774e3341444d31457a6333566d54/index.html"
+    },
+    {
+      "id": "trump-xi-osaka-2019",
+      "type": "bilateral",
+      "name": "川習會（大阪）",
+      "short": "川習",
+      "start": "2019-06-29",
+      "react": "2019-07-01",
+      "note": "G20 場邊；重啟貿易談判、美方暫緩加徵新關稅",
+      "source": "https://history.state.gov/departmenthistory/travels/president/trump-donald-j"
+    },
+    {
+      "id": "trump-xi-busan-2025",
+      "type": "bilateral",
+      "name": "川習會（釜山）",
+      "short": "川習",
+      "start": "2025-10-30",
+      "react": "2025-10-30",
+      "note": "APEC 場邊，台北 10:00～11:55；芬太尼關稅 20%→10%、中方暫緩稀土管制一年、恢復採購黃豆",
+      "source": "https://www.ctee.com.tw/news/20251030700993-430801"
+    },
     {
       "id": "trump-xi-beijing-2026",
       "type": "bilateral",
