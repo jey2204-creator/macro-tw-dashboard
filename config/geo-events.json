@@ -1,5 +1,5 @@
 {
-  "note": "重大事件（頁首事件列、行事曆訂閱、跨市場對照加權 K 棒上方的 ■ 標記）。參考、不計分、不進回測（一年不到 10 筆，樣本太少）。start／end＝當地日期；react＝台股第一個能反應結果的交易日（人工填；遇休市自動順延到下一個交易日）；short＝K 棒上的文字（8 個字以內，越短越好）。歷史：2017 年起歷次川習會已回補（APEC、G20、選舉只從 2026 年起）。人工維護：日期確定後才補，每個日曆年（以 start 計）最多 10 筆，超過要先刪舊的或不重要的。type：summit 多邊峰會／bilateral 雙邊會談／election 選舉／deadline 期限。",
+  "note": "重大事件（頁首事件列、行事曆訂閱、跨市場對照加權 K 棒上方的 ■ 標記）。參考、不計分、不進回測（一年不到 10 筆，樣本太少）。start／end＝當地日期；react＝台股第一個能反應結果的交易日（人工填；遇休市自動順延到下一個交易日）；short＝K 棒上的文字（8 個字以內，越短越好）。歷史：2017 年起歷次川習會已回補（APEC、G20、選舉只從 2026 年起）。人工維護：日期確定後才補，每個日曆年（以 start 計）最多 10 筆，超過要先刪舊的或不重要的。type：summit 多邊峰會／bilateral 雙邊會談／election 選舉／deadline 期限／war 戰爭（開戰、停火、和談等轉折日；只放轉折，不追每天戰況）。",
   "events": [
     {
       "id": "trump-xi-maralago-2017",
@@ -54,6 +54,26 @@
       "source": "https://history.state.gov/departmenthistory/travels/president/trump-donald-j"
     },
     {
+      "id": "ru-ua-invasion-2022",
+      "type": "war",
+      "name": "俄烏戰爭開打",
+      "short": "俄烏開戰",
+      "start": "2022-02-24",
+      "react": "2022-02-24",
+      "note": "俄軍全面入侵烏克蘭，台北時間上午盤中傳出；油價、金價急漲",
+      "source": "https://news.pts.org.tw/article/835156"
+    },
+    {
+      "id": "trump-putin-alaska-2025",
+      "type": "war",
+      "name": "川普普丁會談（阿拉斯加）",
+      "short": "雙普會",
+      "start": "2025-08-15",
+      "react": "2025-08-18",
+      "note": "台北 8/16 凌晨，會談約 3 小時；未達成停火協議",
+      "source": "https://www.twreporter.org/a/hello-world-2025-08-16"
+    },
+    {
       "id": "trump-xi-busan-2025",
       "type": "bilateral",
       "name": "川習會（釜山）",
@@ -86,6 +106,17 @@
       "source": "https://www.moneydj.com/kmdj/news/newsviewer.aspx?a=64aa20e1-fea7-4cb4-b0f4-79ce268c9c05"
     },
     {
+      "id": "ru-ua-local-truce-2026",
+      "type": "war",
+      "name": "俄烏局部停火（赫松東部）",
+      "short": "停火",
+      "start": "2026-10-27",
+      "end": "2026-11-01",
+      "react": "2026-10-27",
+      "note": "美國斡旋，只限赫松東部、讓人道救援進入；範圍最小但持續最久，11/1 期滿結束",
+      "source": "https://www.cna.com.tw/news/aopl/202611020030.aspx"
+    },
+    {
       "id": "us-midterm-2026",
       "type": "election",
       "name": "美國期中選舉",
@@ -94,6 +125,17 @@
       "react": "2026-11-04",
       "note": "台北 11/4 開票；民主黨取得參眾兩院多數",
       "source": "https://www.thenewslens.com/article/270980"
+    },
+    {
+      "id": "ru-ua-abudhabi-2026",
+      "type": "war",
+      "name": "美俄烏三方會談（阿布達比）",
+      "short": "俄烏和談",
+      "start": "2026-11-10",
+      "end": "2026-11-11",
+      "react": "2026-11-12",
+      "note": "2 月以來首次恢復面對面談判；同意大規模換俘，領土與安全保障仍有重大分歧",
+      "source": "https://www.news.cn/world/20261112/e9ed7534696e442a84cc3634c7161414/c.html"
     },
     {
       "id": "apec-2026",

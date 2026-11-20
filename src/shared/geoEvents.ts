@@ -2,14 +2,14 @@ import geoFile from '../../config/geo-events.json';
 import { addDays, daysBetween, todayInTaipei } from './dates';
 
 /**
- * 重大事件（config/geo-events.json，人工維護）：APEC、G20、川習會、關稅期限、美國選舉。
+ * 重大事件（config/geo-events.json，人工維護）：APEC、G20、川習會、關稅期限、美國選舉、戰爭轉折日（俄烏開戰、停火、和談）。
  * 沒有公布數字 → 算不出門檻，一律不計分；一年不到 10 筆 → 不做回測、不列反應日統計。
  * 用途：①頁首事件列與行事曆訂閱（事前提醒）②跨市場對照加權 K 棒上方的 ■ 標記（事後看台股怎麼反應）。
  */
 
-export type GeoType = 'summit' | 'bilateral' | 'election' | 'deadline';
+export type GeoType = 'summit' | 'bilateral' | 'election' | 'deadline' | 'war';
 
-export const GEO_TYPE_TEXT: Record<GeoType, string> = { summit: '峰會', bilateral: '雙邊會談', election: '選舉', deadline: '期限' };
+export const GEO_TYPE_TEXT: Record<GeoType, string> = { summit: '峰會', bilateral: '雙邊會談', election: '選舉', deadline: '期限', war: '戰爭' };
 
 export interface GeoEvent {
   id: string;
