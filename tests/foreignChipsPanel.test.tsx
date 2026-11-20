@@ -113,12 +113,12 @@ describe('外資籌碼對照面板', () => {
     expect(screen.getByRole('button', { name: '漲跌家數' }).getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('有開高低資料時可切到 K 線：第 1 格改畫 K 棒、圖例多開高低、選擇記住；5 年以上自動退回折線', () => {
+  it('有開高低資料時可切到 K 線：第 1 格改畫 K 棒、圖例多開高低、選擇記住；5 年以上自動退回折線、開關變灰', () => {
     window.localStorage.removeItem('fc-style');
     const ohl = rows.map((r) => [r[1] - 5, r[1] + 20, r[1] - 30] as [number, number, number]);
     render(<ForeignChipsPanel data={{ ...data, ohl }} themeKey="auto-false-tw" />);
-    // 預設折線
-    expect(screen.getByRole('button', { name: '折線' }).getAttribute('aria-pressed')).toBe('true');
+    // 預設折線：「K線」開關沒亮
+    expect(screen.getByRole('button', { name: 'K線' }).getAttribute('aria-pressed')).toBe('false');
     expect(chartLog.series[0]).toEqual({ pane: 0, type: 'Line', label: true, scale: undefined });
     expect(document.querySelector('.fc-ohl')).toBeNull();
     chartLog.series = [];
@@ -126,13 +126,26 @@ describe('外資籌碼對照面板', () => {
     expect(chartLog.series[0]).toEqual({ pane: 0, type: 'Candlestick', label: true, scale: undefined });
     expect(document.querySelector('.fc-ohl')!.textContent).toBe('開 20,194 高 20,219 低 20,169');
     expect(window.localStorage.getItem('fc-style')).toBe('candle');
-    expect(document.querySelector('.fc-style-note')).toBeNull();
+    expect(screen.getByRole('button', { name: 'K線' }).getAttribute('aria-pressed')).toBe('true');
+    // 開關和區間按鈕在同一排
+    expect(screen.getByRole('button', { name: 'K線' }).closest('[aria-label="時間區間"]')).not.toBeNull();
     // 5 年：K 棒太細，自動用折線並提示
     chartLog.series = [];
     fireEvent.click(screen.getByRole('button', { name: '5年' }));
     expect(chartLog.series[0]!.type).toBe('Line');
-    expect(document.querySelector('.fc-style-note')!.textContent).toBe('5年以上用折線');
+    const k = screen.getByRole('button', { name: 'K線' }) as HTMLButtonElement;
+    expect(k.disabled).toBe(true);
+    expect(k.getAttribute('aria-pressed')).toBe('false');
     expect(document.querySelector('.fc-ohl')).toBeNull();
+    // 回到 1 年：記住的 K 線選擇恢復
+    chartLog.series = [];
+    fireEvent.click(screen.getByRole('button', { name: '1年' }));
+    expect(chartLog.series[0]!.type).toBe('Candlestick');
+    // 再按一次關掉
+    chartLog.series = [];
+    fireEvent.click(screen.getByRole('button', { name: 'K線' }));
+    expect(chartLog.series[0]!.type).toBe('Line');
+    expect(window.localStorage.getItem('fc-style')).toBe('line');
     window.localStorage.removeItem('fc-style');
   });
 

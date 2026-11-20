@@ -703,7 +703,7 @@ export function ForeignChipsPanel({
 
       <PanelNote>
         <p className="small muted ms-rule">
-          圖怎麼看：上格加權（● 事件、小● 再創極端，點一下看名稱；{hasOhl ? '「折線／K線」可切換，K 線只在 3 個月～1 年畫、5 年以上自動用折線，圓點貼在影線外側，主要用來看事件當天有沒有長下影線' : '收盤折線'}）；二格外資買賣超（億，柱）＋5 日細／20 日粗累計線；三格外資期淨 OI（口，0 軸填色）＋日增減柱；四格{' '}
+          圖怎麼看：上格加權（● 事件、小● 再創極端，點一下看名稱；{hasOhl ? '「折線／K線」可切換，區間列最右「K線」開關切換，K 線只在 3 個月～1 年畫、5 年以上自動用折線（開關變灰），圓點貼在影線外側，主要用來看事件當天有沒有長下影線' : '收盤折線'}）；二格外資買賣超（億，柱）＋5 日細／20 日粗累計線；三格外資期淨 OI（口，0 軸填色）＋日增減柱；四格{' '}
           {pane4Eff === 'margin'
             ? '融資維持率（%，虛線＝警戒 160／斷頭區 140／追繳 130）＋融資增減（億，紅增綠減）'
             : pane4Eff === 'sbl'
@@ -732,20 +732,21 @@ export function ForeignChipsPanel({
             </button>
           ))}
           <button type="button" onClick={() => setResetKey((k) => k + 1)} aria-label="重設圖表縮放" title="重設縮放">
-            ↺ 重設
+            ↺<span className={hasOhl ? 'fc-reset-txt' : undefined}> 重設</span>
           </button>
-        </div>
-        {hasOhl && (
-          <div className="seg" role="group" aria-label="加權畫法">
-            <button type="button" aria-pressed={style === 'line'} onClick={() => setStyle('line')} title="第 1 格加權畫收盤折線">
-              折線
-            </button>
-            <button type="button" aria-pressed={style === 'candle'} onClick={() => setStyle('candle')} title="第 1 格加權畫 K 線（3個月／半年／1年；5年以上自動用折線）">
+          {hasOhl && (
+            <button
+              type="button"
+              className="fc-kbtn"
+              aria-pressed={candle}
+              disabled={!CANDLE_RANGES.includes(range)}
+              onClick={() => setStyle(style === 'candle' ? 'line' : 'candle')}
+              title={CANDLE_RANGES.includes(range) ? '第 1 格加權切換 K 線／折線' : 'K 線只在 3個月／半年／1年畫，5 年以上用折線'}
+            >
               K線
             </button>
-          </div>
-        )}
-        {hasOhl && style === 'candle' && !candle && <span className="small muted fc-style-note">5年以上用折線</span>}
+          )}
+        </div>
         {modes.length > 1 && (
           <div className="seg" role="group" aria-label="第四格顯示">
             {modes.map((o) => (
