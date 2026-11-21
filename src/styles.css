@@ -1363,12 +1363,12 @@ th {
 .fc-ohl {
   margin-left: 6px;
 }
-/* 區間列多了「K線」開關：窄手機（< 380px）「↺ 重設」只留 ↺，按鈕才不會被擠成一字一行 */
+/* 區間列多了「K線」開關（外資、融資、漲跌停面板）：窄手機（< 380px）「↺ 重設」只留 ↺，按鈕才不會被擠成一字一行 */
 @media (max-width: 379px) {
   .fc-reset-txt {
     display: none;
   }
-  .fc .cp-controls .seg button {
+  .seg:has(.fc-kbtn) button {
     padding: 4px 7px;
     white-space: nowrap;
   }

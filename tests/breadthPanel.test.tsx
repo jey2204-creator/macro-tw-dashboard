@@ -4,19 +4,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { analyzeBreadth, type BreadthRow } from '../src/shared/breadthStress';
 
 // lightweight-charts 需要 canvas，jsdom 沒有：以假物件記錄中格序列的資料
-const chartLog = { series: [] as { pane: number; label: boolean; values: number[] }[], baseLabels: [] as string[] };
+const chartLog = { series: [] as { pane: number; type: string; label: boolean; values: number[]; candles?: { open: number; high: number; low: number; close: number }[] }[], baseLabels: [] as string[], eventLabels: [] as string[] };
 vi.mock('lightweight-charts', () => {
   const makeChart = () => ({
-    addSeries: (_type: string, opts: { lastValueVisible?: boolean }, paneIndex = 0) => {
-      const s = { pane: paneIndex, label: opts.lastValueVisible !== false, values: [] as number[] };
+    addSeries: (type: string, opts: { lastValueVisible?: boolean }, paneIndex = 0) => {
+      const s: (typeof chartLog.series)[number] = { pane: paneIndex, type, label: opts.lastValueVisible !== false, values: [] as number[] };
       chartLog.series.push(s);
       return {
-        setData: (d: { value: number }[]) => {
-          s.values = d.map((x) => x.value);
+        setData: (d: { value?: number; open?: number; high?: number; low?: number; close?: number }[]) => {
+          s.values = d.map((x) => x.value ?? x.close!);
+          if (type === 'Candlestick') s.candles = d as never;
         },
         createPriceLine: () => {},
-        attachPrimitive: (p: { label?: { text: string } }) => {
+        attachPrimitive: (p: { label?: { text: string }; labels?: { text: string }[] }) => {
           if (p.label) chartLog.baseLabels.push(p.label.text);
+          if (Array.isArray(p.labels)) chartLog.eventLabels.push(...p.labels.map((l) => l.text));
         },
         priceScale: () => ({ applyOptions: () => {} }),
       };
@@ -38,6 +40,7 @@ vi.mock('lightweight-charts', () => {
     LineStyle: { Dashed: 2 },
     HistogramSeries: 'Histogram',
     LineSeries: 'Line',
+    CandlestickSeries: 'Candlestick',
   };
 });
 vi.mock('../src/lib/chartInteraction', () => ({
@@ -61,6 +64,7 @@ const data = analyzeBreadth(rows, new Date('2026-02-20T00:00:00Z'));
 beforeEach(() => {
   chartLog.series = [];
   chartLog.baseLabels = [];
+  chartLog.eventLabels = [];
 });
 afterEach(cleanup);
 
@@ -101,6 +105,45 @@ describe('BreadthPanel（上市＋上櫃同一模組）', () => {
     fireEvent.click(screen.getByRole('button', { name: /展開上櫃歷次事件/ }));
     expect(screen.getByRole('button', { name: /收起上櫃歷次事件/ })).toBeTruthy();
     expect(screen.getByRole('button', { name: /展開上市歷次事件/ })).toBeTruthy();
+  });
+
+  it('K線：兩市都有開高低時區間列多一顆開關，兩張圖一起切成 K 棒（以區間起點換算 %）；5 年變灰；只有一市有開高低時不給切', () => {
+    window.localStorage.removeItem('br-style');
+    const ohl = rows.map((r) => [r[1] + 5, r[1] + 20, r[1] - 40] as [number, number, number]);
+    const withOhl = { ...data, ohl };
+    render(<BreadthPanel twse={withOhl} otc={withOhl} themeKey="light" />);
+    const k = screen.getByRole('button', { name: 'K線' }) as HTMLButtonElement;
+    // 預設 K 線（世杰 11/21 要求）
+    expect(k.getAttribute('aria-pressed')).toBe('true');
+    const top = chartLog.series.filter((x) => x.pane === 0);
+    expect(top.map((x) => x.type)).toEqual(['Candlestick', 'Candlestick']);
+    // 3 個月區間起點＝第 0 根（20000）：最後一根 收 19710、高 19730 → +(19730/20000−1)×100
+    const last = top[0]!.candles!.at(-1)!;
+    expect(last.close).toBeCloseTo((19710 / 20000 - 1) * 100, 6);
+    expect(last.high).toBeCloseTo((19730 / 20000 - 1) * 100, 6);
+    expect(screen.getAllByText(/開 19,715 高 19,730 低 19,670/).length).toBe(2);
+    // 事件文字由 MarkerLabels 自繪，K 線時從最高／最低起算
+    expect(chartLog.eventLabels.length).toBeGreaterThan(0);
+    chartLog.series = [];
+    fireEvent.click(k);
+    expect(chartLog.series.filter((x) => x.pane === 0).map((x) => x.type)).toEqual(['Line', 'Line']);
+    expect(window.localStorage.getItem('br-style')).toBe('line');
+    fireEvent.click(screen.getByRole('button', { name: '5年' }));
+    expect((screen.getByRole('button', { name: 'K線' }) as HTMLButtonElement).disabled).toBe(true);
+    cleanup();
+    render(<BreadthPanel twse={withOhl} otc={data} themeKey="light" />);
+    expect(screen.queryByRole('button', { name: 'K線' })).toBeNull();
+    window.localStorage.removeItem('br-style');
+  });
+
+  it('K線時百分比 Y 軸連影線一起算', () => {
+    const ohl = rows.map((r) => [r[1], r[1] + 200, r[1] - 200] as [number, number, number]);
+    const d = { ...data, ohl };
+    const plain = sharedPctRange([d, d], '3M')!;
+    const withWick = sharedPctRange([d, d], '3M', null, true)!;
+    expect(withWick.max).toBeGreaterThan(plain.max);
+    expect(withWick.min).toBeLessThan(plain.min);
+    expect(withWick.max).toBeCloseTo(1, 6); // 第 0 根高 20200 → +1%
   });
 
   it('沒有資料時不渲染', () => {

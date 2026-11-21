@@ -78,7 +78,14 @@ export class BaseLabelGroup implements ISeriesPrimitive<Time> {
   constructor(
     readonly labels: readonly BaseLabelItem[],
     private readonly style: Style,
-    private readonly opts: { avoid?: readonly ISeriesApi<SeriesType>[]; dot?: boolean; spread?: number; minBarSpacing?: number } = {},
+    private readonly opts: {
+      avoid?: readonly ISeriesApi<SeriesType>[];
+      dot?: boolean;
+      spread?: number;
+      minBarSpacing?: number;
+      /** 同一窗格裡先畫好的其他標籤（如事件文字），要讓開它們；同一幀內由先 attach 的 primitive 提供 */
+      taken?: () => readonly Box[];
+    } = {},
   ) {
     const renderer: IPrimitivePaneRenderer = { draw: (target) => this.draw(target) };
     this.views = [{ zOrder: () => 'top', renderer: () => renderer }];
@@ -116,17 +123,20 @@ export class BaseLabelGroup implements ISeriesPrimitive<Time> {
           const logical = ts.coordinateToLogical(Math.min(cx, x1));
           if (logical === null) continue;
           for (const line of lines) {
-            const d = line.dataByIndex(Math.round(logical), MismatchDirection.NearestLeft) as { value?: number } | null;
-            if (d?.value === undefined) continue;
-            const cy = line.priceToCoordinate(d.value);
-            if (cy === null) continue;
-            lo = Math.min(lo, Number(cy));
-            hi = Math.max(hi, Number(cy));
+            const d = line.dataByIndex(Math.round(logical), MismatchDirection.NearestLeft) as { value?: number; high?: number; low?: number } | null;
+            // 折線取 value；K 棒取最高、最低（連影線一起避開）
+            const prices = d?.value !== undefined ? [d.value] : d?.high !== undefined && d.low !== undefined ? [d.high, d.low] : [];
+            for (const p of prices) {
+              const cy = line.priceToCoordinate(p);
+              if (cy === null) continue;
+              lo = Math.min(lo, Number(cy));
+              hi = Math.max(hi, Number(cy));
+            }
           }
         }
         return lo === Infinity ? null : { lo, hi };
       };
-      const taken: Box[] = [];
+      const taken: Box[] = [...(this.opts.taken?.() ?? [])];
       for (const label of this.labels) {
         const px = ts.timeToCoordinate(label.time);
         const py = s.priceToCoordinate(label.value);
@@ -179,7 +189,8 @@ export class BaseLabel extends BaseLabelGroup {
   constructor(
     readonly label: BaseLabelItem,
     style: Style,
+    opts: { taken?: () => readonly Box[]; spread?: number } = {},
   ) {
-    super([label], style);
+    super([label], style, opts);
   }
 }

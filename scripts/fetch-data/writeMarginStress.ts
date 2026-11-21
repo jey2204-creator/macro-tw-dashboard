@@ -1,5 +1,6 @@
 import { readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { indexOhl } from '../../src/shared/ohl';
 import { analyzeBreadth, combineBreadthRows, type BreadthHistoryRow, type BreadthStressFile, type OtcBreadthHistoryFile } from '../../src/shared/breadthStress';
 import { analyzeMarginStress, combineSblRows, combineStressRows, summarizeEtfMargin, summarizeSbl, type MarginHistoryFile, type MarginStressFile, type PolicyEvent, type SblHistoryFile } from '../../src/shared/marginStress';
 import type { Bar, SeriesFile } from '../../src/shared/types';
@@ -65,6 +66,9 @@ export async function writeMarginStress(outDir: string, historyFile = path.resol
     stockLots: await series('margin_stock_lots'),
   });
   if (latestEtf) out.latestEtf = latestEtf;
+  // 加權開高低：融資面板第 1 格「K線」用；來源只有收盤價時不寫
+  const msOhl = indexOhl(rows, taiex);
+  if (msOhl) out.ohl = msOhl;
   // 漲跌停家數監測（同一份歷史檔）
   const breadthHist: BreadthHistoryRow[] = (hist?.schemaVersion === 2 ? hist.rows : []).flatMap((r) =>
     r[4] != null && r[5] != null && r[6] != null && r[7] != null
@@ -85,6 +89,8 @@ export async function writeMarginStress(outDir: string, historyFile = path.resol
     ),
     now,
   );
+  const brOhl = indexOhl(breadth.rows, taiex);
+  if (brOhl) breadth.ohl = brOhl;
   await writeAtomic(path.join(outDir, 'breadth-stress.json'), breadth);
   lastBreadth = breadth;
   // 上櫃漲跌停家數監測：櫃買指數 × 上櫃家數（櫃買中心每日收盤行情推算）；沒有上櫃融資維持率，投降只看連續恐慌
@@ -104,6 +110,8 @@ export async function writeMarginStress(outDir: string, historyFile = path.resol
     );
     if (otcRows.length) {
       const otc = analyzeBreadth(otcRows, now);
+      const otcOhl = indexOhl(otc.rows, tpex);
+      if (otcOhl) otc.ohl = otcOhl;
       await writeAtomic(path.join(outDir, 'breadth-stress-otc.json'), otc);
       lastBreadthOtc = otc;
     }

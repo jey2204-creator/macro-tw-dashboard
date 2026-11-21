@@ -77,6 +77,8 @@ const PAD_Y = 1;
 const SHAPE_OFFSET = 16;
 
 export class MarkerLabels implements ISeriesPrimitive<Time> {
+  /** 上一次畫出的標籤框（中心＋寬高，媒體座標）；同窗格後畫的標籤（如基準點）用來閃避 */
+  placed: { cx: number; cy: number; w: number; h: number }[] = [];
   private series: ISeriesApi<SeriesType> | null = null;
   private chart: IChartApiBase<Time> | null = null;
   private readonly views: readonly IPrimitivePaneView[];
@@ -148,6 +150,7 @@ export class MarkerLabels implements ISeriesPrimitive<Time> {
         }
         return vis;
       };
+      this.placed = [];
       const draw = (vis: Placed[], above: boolean): Placed[] => {
         const base = vis.map((p) => ({ x: p.x, w: p.w, y: above ? p.y - SHAPE_OFFSET - h / 2 : p.y + SHAPE_OFFSET + h / 2, fixed: p.l.ghost }));
         const cys = layoutStacked(base, h, above ? -1 : 1, 2, lineBand);
@@ -159,6 +162,22 @@ export class MarkerLabels implements ISeriesPrimitive<Time> {
             overflow.push(p);
             return;
           }
+          // 被推離符號很遠（閃 K 棒／其他標籤）時畫一條細線連回符號，才知道是哪一根的
+          const anchor = above ? p.y - SHAPE_OFFSET + 4 : p.y + SHAPE_OFFSET - 4;
+          const edge = above ? cy + h / 2 : cy - h / 2;
+          if (Math.abs(edge - anchor) > 10) {
+            ctx.beginPath();
+            ctx.moveTo(p.x, anchor);
+            ctx.lineTo(p.x, edge);
+            ctx.strokeStyle = p.l.color;
+            ctx.lineWidth = 1;
+            ctx.globalAlpha = 0.5;
+            ctx.setLineDash([2, 2]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.globalAlpha = 1;
+          }
+          this.placed.push({ cx: p.x, cy, w: p.w, h });
           const left = Math.round(p.x - p.w / 2) + 0.5;
           ctx.beginPath();
           ctx.roundRect(left, Math.round(cy - h / 2) + 0.5, p.w, h, 2);
