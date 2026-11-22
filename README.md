@@ -214,3 +214,7 @@ npm run check               # lint + typecheck + test + build
 ## 免責聲明
 
 本專案僅供研究參考，不構成投資建議。
+
+## 📊 Traffic
+
+![Traffic](traffic/chart.png)
