@@ -56,6 +56,7 @@ import {
 import { rangeStart, type Point, type RangeKey } from '../shared/timeseries';
 import type { Bar } from '../shared/types';
 import type { ForeignChipsFile } from '../shared/foreignChips';
+import { curveText, gdpNowcast, gdpYoy, nextQuarter, quarterLabel } from '../shared/gdpGrowth';
 
 const RANGES: { k: RangeKey; label: string }[] = [
   { k: '3M', label: '3個月' },
@@ -86,8 +87,9 @@ const EXTRA_LINES = [
   { id: 'cpi', label: '整體 CPI', key: 'pi-cpi', def: '1' },
   { id: 'core_pce', label: '核心 PCE', key: 'pi-pce', def: '0' },
   { id: 'us2y', label: '美債 2Y', key: 'pi-2y', def: '1' },
+  { id: 'us10y', label: '美債 10Y', key: 'pi-10y', def: '0' },
 ] as const;
-const EXTRA_COLOR: Record<ExtraId, string> = { cpi: 'var(--ma60)', core_pce: 'var(--ma240)', us2y: 'var(--ma120)' };
+const EXTRA_COLOR: Record<ExtraId, string> = { cpi: 'var(--ma60)', core_pce: 'var(--ma240)', us2y: 'var(--ma120)', us10y: 'var(--ma10)' };
 type ExtraId = (typeof EXTRA_LINES)[number]['id'];
 
 /** 第三格可選指數（一次一個；表格四個並排）。費半 1994、加權 1997 起，樣本比 S&P 少 */
@@ -101,9 +103,9 @@ type IndexId = (typeof INDICES)[number]['id'];
 type IndexPick = IndexId | 'off';
 const INDEX_PICKS: readonly IndexPick[] = ['spx', 'nasdaq', 'sox', 'taiex', 'off'];
 
-const IDS = ['fed', 'fed_target_legacy', 'core_cpi', 'cpi', 'core_pce', 'us2y', 'unrate', 'nrou', 'baa10y', 'hy_oas', 'dxy', 'usdtwd', 'usdtwd_legacy', ...INDICES.map((i) => i.id)];
+const IDS = ['fed', 'fed_target_legacy', 'core_cpi', 'cpi', 'core_pce', 'us2y', 'us10y', 'gdp', 'gdpnow', 'unrate', 'nrou', 'baa10y', 'hy_oas', 'dxy', 'usdtwd', 'usdtwd_legacy', ...INDICES.map((i) => i.id)];
 /** FRED 的 USD/TWD（長期、乾淨）抓不到時退回 Yahoo，照常顯示（回測只剩 2004 起且較吵），不報載入失敗 */
-const OPTIONAL_IDS = new Set(['usdtwd_legacy', 'nrou']);
+const OPTIONAL_IDS = new Set(['usdtwd_legacy', 'nrou', 'us10y', 'gdp', 'gdpnow']);
 /** Fed 立場卡回測起點（Greenspan 上任那年；之前 Fed 以貨幣供給為操作目標） */
 const STANCE_FROM = '1987-01-01';
 const STANCE_INDEX_IDS = ['spx', 'taiex'] as const;
@@ -157,7 +159,10 @@ interface Props {
   foreign?: ForeignChipsFile | null;
 }
 
-/** 第五格外資買賣超在整張圖裡占的比例；開啟時圖表同步加高，其他格維持原本高度 */
+/** 第五格三選一：美國 GDP 成長率／外資買賣超／關 */
+type P5 = 'fc' | 'gdp' | 'off';
+const P5_PICKS: readonly P5[] = ['gdp', 'fc', 'off'];
+/** 第五格在整張圖裡占的比例；開啟時圖表同步加高，其他格維持原本高度 */
 const FC_SHARE = 0.2;
 const withFc = (base: readonly number[], on: boolean) => (on ? [...base.map((x) => x * (1 - FC_SHARE)), FC_SHARE] : base);
 const fcPctl = (p: number | null | undefined) => (p === null || p === undefined ? '—' : `第 ${Math.round(p * 100)} 百分位`);
@@ -190,17 +195,18 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
     cpi: loadPref('pi-cpi', ['1', '0'] as const, '1') === '1',
     core_pce: loadPref('pi-pce', ['1', '0'] as const, '0') === '1',
     us2y: loadPref('pi-2y', ['1', '0'] as const, '1') === '1',
+    us10y: loadPref('pi-10y', ['1', '0'] as const, '0') === '1',
   }));
   const [coreOn, setCoreOn] = useState(() => loadPref('pi-core', ['1', '0'] as const, '1') === '1');
   const [indexPick, setIndexPick] = useState<IndexPick>(() => loadPref<IndexPick>('pi-idx', INDEX_PICKS, 'spx'));
-  // 第五格：外資買賣超（預設關、記住開關）
-  const [fcPref, setFcPref] = useState(() => loadPref('pi-fc', ['1', '0'] as const, '0') === '1');
-  const toggleFc = () => {
-    setFcPref(!fcPref);
-    savePref('pi-fc', fcPref ? '0' : '1');
+  // 第五格：外資買賣超／GDP 成長率／關（預設關、記住選擇；舊的外資開關 pi-fc 開著就沿用成「外資」）
+  const [p5, setP5] = useState<P5>(() => loadPref<P5>('pi-p5', P5_PICKS, loadPref('pi-fc', ['1', '0'] as const, '0') === '1' ? 'fc' : 'off'));
+  const pickP5 = (v: P5) => {
+    setP5(v);
+    savePref('pi-p5', v);
   };
   const fcRows = useMemo(() => (foreign?.rows ?? []).filter((r) => r[2] !== null), [foreign]);
-  const fcOn = fcPref && fcRows.length > 0;
+  const fcOn = p5 === 'fc' && fcRows.length > 0;
   const [fxOn, setFxOn] = useState<Record<FxId, boolean>>(() => ({
     dxy: loadPref('pi-fx-dxy', ['1', '0'] as const, '0') === '1',
     twd: loadPref('pi-fx-twd', ['1', '0'] as const, '0') === '1',
@@ -214,7 +220,7 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
   const [chartGen, setChartGen] = useState(0);
 
   const files = useSeriesMap(near ? IDS : [], version);
-  const { fed, coreCpi, cpi, corePce, us2y, unrate, nrou, credit, hy, dxy, twd, indexBars } = useMemo(() => {
+  const { fed, coreCpi, cpi, corePce, us2y, us10y, gdpSaar, gdpNowPts, unrate, nrou, credit, hy, dxy, twd, indexBars } = useMemo(() => {
     const ready = (id: string) => (files[id]?.status === 'ready' ? files[id]!.data.data : null);
     const upper = ready('fed');
     return {
@@ -223,6 +229,9 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
       cpi: ready('cpi') ? yoyPoints(ready('cpi')!) : ([] as Point[]),
       corePce: ready('core_pce') ? yoyPoints(ready('core_pce')!) : ([] as Point[]),
       us2y: (ready('us2y') ?? []).map((b) => [b[0], b[4]] as Point),
+      us10y: (ready('us10y') ?? []).map((b) => [b[0], b[4]] as Point),
+      gdpSaar: (ready('gdp') ?? []).map((b) => [b[0], b[4]] as Point),
+      gdpNowPts: (ready('gdpnow') ?? []).map((b) => [b[0], b[4]] as Point),
       unrate: (ready('unrate') ?? []).map((b) => [b[0], b[4]] as Point),
       nrou: (ready('nrou') ?? []).map((b) => [b[0], b[4]] as Point),
       credit: (ready('baa10y') ?? []).map((b) => [b[0], b[4]] as Point),
@@ -232,6 +241,11 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
       indexBars: Object.fromEntries(INDICES.map((i) => [i.id, ready(i.id) ?? []])) as Record<IndexId, Bar[]>,
     };
   }, [files]);
+  // 美國實質 GDP：年化季增換算年增率（季度起始日）＋GDPNow 當季推估
+  const gdpYoyPts = useMemo(() => gdpYoy(gdpSaar), [gdpSaar]);
+  const nowcast = useMemo(() => gdpNowcast(gdpSaar, gdpNowPts), [gdpSaar, gdpNowPts]);
+  const gdpOn = p5 === 'gdp' && gdpYoyPts.length > 0;
+  const p5On = fcOn || gdpOn;
   // Fed 階段 vs 四個指數：階段區段、各段漲跌、循環第一次動作之後的表現（每個指數各算一份，表格並排）
   const equities = useMemo(() => {
     if (!fed.length) return null;
@@ -412,6 +426,8 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
     if (extras.core_pce && corePce.length > 0) addTop(corePce, '--ma240', 1, 1);
     // 美債 2Y：市場對未來一年 Fed 利率的押注，跑在 Fed 階梯前面
     if (extras.us2y && us2y.length > 0) addTop(us2y, '--ma120', 1, 2);
+    // 美債 10Y：長天期定價錨（房貸、企業借款、股票估值的折現率），比 2Y 更受成長與通膨預期、財政供給影響
+    if (extras.us10y && us10y.length > 0) addTop(us10y, '--ma10', 1, 2);
     // 每格的線尾標籤共用同一段右側留白；allEnds 收集全部文字，用來算留白寬度
     const allEnds: string[] = [];
     // 標籤欄排在時間軸最後一根右邊：各格的線終點不同（月資料較早結束），取所有標籤終點裡最晚的那天
@@ -517,6 +533,56 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
     }
     // 第五格：外資買賣超（上市，億）＝單日柱（獨立刻度貼底）＋5 日細／20 日粗累計線，畫法同外資籌碼對照面板
     const fcPane = 2 + (showSpx ? 1 : 0) + (fxLines ? 1 : 0);
+    // 或：美國實質 GDP 年增（季，階梯；0 以上紅、以下綠依漲跌色）＋GDPNow 推估（虛線段）
+    if (gdpOn) {
+      const lastDay = fed.at(-1)![0];
+      const clampDay = (d: string) => (d > lastDay ? lastDay : d);
+      const lastQ = gdpYoyPts.at(-1)!;
+      // 最後一季畫滿整季（階梯線最後一點只是一個點）；下一季（GDPNow）另畫虛線段
+      const gdpPts: Point[] = [...gdpYoyPts];
+      const tail = clampDay(nextQuarter(lastQ[0]));
+      if (tail > lastQ[0]) gdpPts.push([tail, lastQ[1]]);
+      const up = cssVar('--up');
+      const down = cssVar('--down');
+      const gS = chart.addSeries(
+        BaselineSeries,
+        {
+          baseValue: { type: 'price', price: 0 },
+          lineType: LineType.WithSteps,
+          topLineColor: up,
+          topFillColor1: `${up}55`,
+          topFillColor2: `${up}10`,
+          bottomLineColor: down,
+          bottomFillColor1: `${down}10`,
+          bottomFillColor2: `${down}55`,
+          lineWidth: 2,
+          priceFormat: { type: 'price', precision: 1, minMove: 0.1 },
+          lastValueVisible: false,
+          priceLineVisible: false,
+          autoscaleInfoProvider: includeRange(0, 0),
+        },
+        fcPane,
+      );
+      gS.setData(toData(gdpPts));
+      gS.createPriceLine({ price: 0, color: textColor, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false });
+      const fmt = (v: number) => v.toFixed(1);
+      const labels: LineLabel[] = [{ price: lastQ[1], text: fmt(lastQ[1]), color: lastQ[1] >= 0 ? up : down, endTime: gdpPts.at(-1)![0] as Time, at: follower(gdpPts, fmt) }];
+      if (nowcast && nowcast.yoy !== null && nowcast.date === nextQuarter(lastQ[0])) {
+        const nowColor = cssVar('--warn');
+        const nS = chart.addSeries(
+          LineSeries,
+          { color: nowColor, lineWidth: 2, lineStyle: LineStyle.Dashed, lineType: LineType.WithSteps, priceFormat: { type: 'price', precision: 1, minMove: 0.1 }, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false },
+          fcPane,
+        );
+        // 虛線段＝本季推估（從季初畫到今天）
+        const nPts: Point[] = [[nowcast.date, nowcast.yoy]];
+        const end = clampDay(nextQuarter(nowcast.date));
+        if (end > nowcast.date) nPts.push([end, nowcast.yoy]);
+        nS.setData(toData(nPts));
+        labels.push({ price: nowcast.yoy, text: fmt(nowcast.yoy), color: nowColor, endTime: nPts.at(-1)![0] as Time });
+      }
+      endLabels(gS, labels);
+    }
     if (fcOn) {
       const up = cssVar('--up');
       const down = cssVar('--down');
@@ -542,6 +608,7 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
       // 上方留給窗格標題、下方留給時間軸上緣，線不貼邊
       if (fxLines) chart.priceScale('right', fxPane).applyOptions({ mode: PriceScaleMode.Normal, scaleMargins: { top: 0.22, bottom: 0.1 } });
     }
+    if (gdpOn) chart.priceScale('right', fcPane).applyOptions({ mode: PriceScaleMode.Normal, scaleMargins: { top: 0.22, bottom: 0.08 } });
     if (fcOn) {
       chart.priceScale('right', fcPane).applyOptions({ mode: PriceScaleMode.Normal, scaleMargins: { top: 0.22, bottom: 0.08 } });
       // 單日柱：獨立刻度壓在窗格下半部，否則被 ±上兆的累計線壓扁
@@ -558,6 +625,7 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
     // 文字太長圖表庫會整行縮小到看不清楚 → 只留一句，基準日與數值看上方圖例
     if (fxLines) wm(fxPane, fxLines.mode === 'pct' ? '美元／台幣 累計 %｜藍線往上＝台幣貶' : FX_RAW_TITLE[fxLines.id]);
     if (fcOn) wm(fcPane, '外資買賣超（上市，億）｜柱＝單日、粗線＝20日累計');
+    if (gdpOn) wm(fcPane, '美國實質GDP 年增（%，季）｜橘虛線＝GDPNow');
 
     const handler = (param: MouseEventParams<Time>) => setHoverTime(typeof param.time === 'string' ? param.time : null);
     chart.subscribeCrosshairMove(handler);
@@ -570,7 +638,7 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
       chart.remove();
       chartRef.current = null;
     };
-  }, [loaded, fed, coreCpi, cpi, corePce, us2y, spx, equity, showSpx, indexLabel, real, extras, coreOn, fxLines, fcOn, fcRows, themeKey]);
+  }, [loaded, fed, coreCpi, cpi, corePce, us2y, us10y, spx, equity, showSpx, indexLabel, real, extras, coreOn, fxLines, fcOn, fcRows, gdpOn, gdpYoyPts, nowcast, themeKey]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -592,7 +660,7 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
     };
     const apply = () => {
       resetPriceScales(chart);
-      resetPaneStretch(chart, withFc(showSpx ? (hasFx ? PANE_STRETCH_SPX_FX : PANE_STRETCH_SPX) : hasFx ? PANE_STRETCH_FX : PANE_STRETCH, fcOn));
+      resetPaneStretch(chart, withFc(showSpx ? (hasFx ? PANE_STRETCH_SPX_FX : PANE_STRETCH_SPX) : hasFx ? PANE_STRETCH_FX : PANE_STRETCH, p5On));
       const lastIdx = ts.timeToIndex('9999-12-31' as Time, true);
       const fromIdx = !start || start <= fed[0]![0] ? 0 : ts.timeToIndex(start as Time, true);
       if (lastIdx === null || fromIdx === null) {
@@ -616,7 +684,7 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
       cancelAnimationFrame(raf);
       ts.unsubscribeVisibleLogicalRangeChange(clamp);
     };
-  }, [chartGen, range, resetKey, fed, showSpx, hasFx, fcOn]);
+  }, [chartGen, range, resetKey, fed, showSpx, hasFx, p5On]);
 
   // 圖例：十字線所在日期；沒有十字線時，往左拖曳過＝畫面右緣（標籤欄左緣）那一根，否則最新
   const legend = useMemo(() => {
@@ -638,6 +706,16 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
     const fedV = at(fed);
     const coreV = at(coreCpi);
     const y2 = extras.us2y ? at(us2y) : null;
+    // 10Y、GDP 讀數常駐（不看線開不開）；GDP 取十字線那天所在季度（或之前最後一季）
+    const y10 = at(us10y);
+    const y2all = at(us2y);
+    const gq = (() => {
+      let k = -1;
+      for (let i = gdpYoyPts.length - 1; i >= 0; i--) if (gdpYoyPts[i]![0] <= date) { k = i; break; }
+      if (k < 0) return null;
+      const d = gdpYoyPts[k]![0];
+      return { date: d, yoy: gdpYoyPts[k]![1], saar: valueAtOrBefore(gdpSaar, d) };
+    })();
     const spxV = showSpx ? valueAtOrBefore(spx.map((b) => [b[0], b[4]] as Point), date) : null;
     const phase = showSpx && equity ? phaseAt(equity.segments, date) : null;
     // 十字線所在日期當時的最後一次動作
@@ -651,6 +729,10 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
       real: fedV !== null && coreV !== null ? fedV - coreV : null,
       us2y: y2,
       spread2y: y2 !== null && fedV !== null ? y2 - fedV : null,
+      us10y: y10,
+      curve: y10 !== null && y2all !== null ? y10 - y2all : null,
+      gdp: gq,
+      nowcast: nowcast && date >= nowcast.date ? nowcast : null,
       spx: spxV,
       phase,
       move,
@@ -661,7 +743,7 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
           ? { mode: 'pct' as const, base: fxLines.twd.baseDate, dxy: valueAtOrBefore(fxLines.dxy.points, date), twd: valueAtOrBefore(fxLines.twd.points, date), rate: valueAtOrBefore(twd, date) }
           : { mode: 'raw' as const, id: fxLines.id, base: fxLines.line.baseDate, value: valueAtOrBefore(fxLines.raw, date), change: valueAtOrBefore(fxLines.line.points, date) },
     };
-  }, [loaded, hoverTime, followTime, fed, coreCpi, cpi, corePce, us2y, spx, equity, showSpx, extras, fxLines, twd]);
+  }, [loaded, hoverTime, followTime, fed, coreCpi, cpi, corePce, us2y, us10y, gdpYoyPts, gdpSaar, nowcast, spx, equity, showSpx, extras, fxLines, twd]);
   const currentPhase = equity ? phaseAt(equity.segments, spx.at(-1)![0]) : null;
   // 2Y − Fed：低於 −0.25pp 市場押降息、高於 +0.25pp 押升息（約一碼）
   const spreadText = (v: number | null) =>
@@ -711,6 +793,8 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
         下方「升息 × 台幣」表：升息期裡台幣 3 個月貶 2% 以上的月份，加權之後 3 個月平均較差、跌逾 10% 的比例約是升息期其他月份的兩倍，但一年後沒有比較差；非升息期台幣貶反而常是恐慌尾聲。壞的月份集中在 1997、2000、2018、2022 四次，2004～2006、2016、2023 台幣貶之後照漲——是風險提示，不是崩盤訊號，不計分。USD/TWD 用 FRED 日資料（1983 起），最近幾天以 Yahoo 補。
         「Fed 立場」卡把三把尺排在一起：實質利率（Fed − 核心CPI）、泰勒缺口、美債 2Y − Fed。泰勒法則是 1993 年 John Taylor 提的公式，用通膨和就業算「利率該在哪」：法則利率＝2 ＋ 核心PCE ＋ 0.5 ×（核心PCE − 2）＋ 0.5 × 產出缺口，產出缺口用 2 ×（自然失業率 − 失業率）換算，自然失業率是美國國會預算局（CBO）的估計。缺口＝法則利率 − Fed：正的代表 Fed 比公式低（偏鬆、落後通膨），負的代表 Fed 比公式高（偏緊）。公式裡的 2（中性實質利率）和係數是主觀設定，換一組數字結果差 1～2pp，所以門檻放寬到 ±1pp，只看大方向。
         回測（1987 年起每月底）：泰勒缺口 ≥ +1 時之後 12 個月 Fed 升息的比例約六成（全部月份約四成）；2Y − Fed ≤ −0.25 時之後降息約八成半，是三把尺裡對 Fed 下一步最準的；但三把尺對 S&P、加權之後 12 個月報酬都沒有穩定的分組差異——它們回答的是「Fed 接下來往哪走」，不是「股市往哪走」，不計分。
+        美債 10Y（粉紅線，預設關）是長天期利率的定價錨：房貸、企業借款與股票估值都拿它折現，10Y 急升最傷高本益比的科技股；2Y 看 Fed 預期、10Y 還多了成長、通膨預期與美債供給。讀數列的 10Y−2Y 是殖利率曲線斜率：小於 0 叫倒掛，1978 年起每次美國衰退前都倒掛過，但領先 6～24 個月、2022～2024 長期倒掛也沒衰退，只當背景、不當進出場訊號；利差依規則審查不計分。
+        第五格可切「GDP 成長率」：美國實質 GDP 的年增率（季資料，由 BEA 的年化季增連乘四季換算，和官方年增差 0.1pp 內；不畫年化季增是因為 2020 年單季 −28%／+35% 會把刻度撐爆）；線畫在該季期間，但實際公布晚約一個月、之後還會修正，是落後指標，只用來確認「擴張還是衰退」的大背景。橘色虛線段是亞特蘭大 Fed 的 GDPNow 對當季的即時估計，配上前三季實際值換算成推估年增；GDPNow 季初波動大、越接近公布越準。讀數列的 GDP 一律常駐顯示。
         這張圖與「Fed 120 天」「核心CPI ±0.2pp」規則重疊，只用來解釋 FOMC 為什麼那樣做，不計分。2008 年前 Fed 為單一目標利率。
       </p>
       </PanelNote>
@@ -748,14 +832,27 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
         ))}
         <span className="small muted">{fxOn.dxy && fxOn.twd ? '兩條＝累計 %' : fxOn.dxy || fxOn.twd ? '一條＝原始價位' : '都關＝不顯示'}</span>
       </div>
-      {fcRows.length > 0 && (
-        <div className="cp-mas" role="group" aria-label="第五格外資買賣超">
+      {(fcRows.length > 0 || gdpYoyPts.length > 0) && (
+        <div className="cp-mas" role="group" aria-label="第五格">
           <span className="small muted">第五格</span>
-          <button type="button" className="ma-chip" aria-pressed={fcPref} onClick={toggleFc}>
-            <i className="swatch" style={{ background: 'var(--accent)' }} />
-            外資買賣超
+          {gdpYoyPts.length > 0 && (
+            <button type="button" className="ma-chip" aria-pressed={p5 === 'gdp'} onClick={() => pickP5('gdp')}>
+              <i className="swatch" style={{ background: 'var(--up)' }} />
+              GDP 成長率
+            </button>
+          )}
+          {fcRows.length > 0 && (
+            <button type="button" className="ma-chip" aria-pressed={p5 === 'fc'} onClick={() => pickP5('fc')}>
+              <i className="swatch" style={{ background: 'var(--accent)' }} />
+              外資買賣超
+            </button>
+          )}
+          <button type="button" className="ma-chip" aria-pressed={p5 === 'off'} onClick={() => pickP5('off')}>
+            關
           </button>
-          <span className="small muted">{fcPref ? `上市，${fcRows[0]![0].slice(0, 4)} 起` : '關＝不顯示'}</span>
+          <span className="small muted">
+            {fcOn ? `上市，${fcRows[0]![0].slice(0, 4)} 起` : gdpOn ? `美國實質，年增 %，${gdpYoyPts[0]![0].slice(0, 4)} 起` : ''}
+          </span>
         </div>
       )}
 
@@ -807,6 +904,33 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
                 <div>
                   美債2Y <b>{f2(legend.us2y)}%</b> ｜ 2Y−Fed <b>{fpp(legend.spread2y)}</b>
                   <span className="muted"> ｜ {spreadText(legend.spread2y)}</span>
+                </div>
+              )}
+              {(legend.us10y !== null || legend.gdp) && (
+                <div>
+                  {legend.us10y !== null && (
+                    <>
+                      美債10Y <b>{f2(legend.us10y)}%</b>
+                      {legend.curve !== null && (
+                        <>
+                          {' '}｜ 10Y−2Y <b>{fpp(legend.curve)}</b> <span className="muted">{curveText(legend.curve)}</span>
+                        </>
+                      )}
+                    </>
+                  )}
+                  {legend.us10y !== null && legend.gdp && ' ｜ '}
+                  {legend.gdp && (
+                    <>
+                      GDP 年增 <b className={legend.gdp.yoy > 0 ? 'up' : legend.gdp.yoy < 0 ? 'down' : ''}>{f1(legend.gdp.yoy)}%</b>
+                      <span className="muted">（{quarterLabel(legend.gdp.date)}，季增年化 {f1(legend.gdp.saar)}%）</span>
+                    </>
+                  )}
+                  {legend.nowcast && (
+                    <>
+                      {' '}｜ GDPNow {quarterLabel(legend.nowcast.date)} <b>{f1(legend.nowcast.saar)}%</b>
+                      {legend.nowcast.yoy !== null && <span className="muted">（推估年增 {f1(legend.nowcast.yoy)}%）</span>}
+                    </>
+                  )}
                 </div>
               )}
               {legend.spx !== null && (
@@ -861,7 +985,7 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
               )}
             </div>
           )}
-          <div ref={hostRef} className={`chart-host pi-host${hasFx ? (showSpx ? ' pi-host-4' : ' pi-host-3') : ''}${fcOn ? ' pi-host-fc' : ''}`} />
+          <div ref={hostRef} className={`chart-host pi-host${hasFx ? (showSpx ? ' pi-host-4' : ' pi-host-3') : ''}${p5On ? ' pi-host-fc' : ''}`} />
         </div>
       )}
 
