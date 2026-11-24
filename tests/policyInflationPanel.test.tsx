@@ -342,4 +342,48 @@ describe('政策利率 vs 通膨面板', () => {
     fireEvent.click(screen.getByRole('button', { name: '全部' }));
     expect(window.localStorage.getItem('pi-range')).toBe('ALL');
   });
+  it('美債 10Y 開關（預設關）與第五格 GDP 成長率：讀數列常駐 10Y−2Y、GDP 年增與 GDPNow，選擇記住', async () => {
+    FILES.us10y = series('us10y', [flat('2025-10-14', 4.1), flat('2025-10-15', 4.0)]);
+    FILES.gdp = series('gdp', ['2024-10-01', '2025-01-01', '2025-04-01', '2025-07-01'].map((d) => flat(d, 2)));
+    FILES.gdpnow = series('gdpnow', [flat('2025-07-01', 2.5), flat('2025-10-01', 2)]);
+    try {
+      render(<PolicyInflationPanel version="v1" themeKey="auto-false-tw" />);
+      await waitFor(() => expect(chartLog.series.length).toBe(6));
+      const legend = () => document.querySelector('.cm-legend')!.textContent ?? '';
+      // 10Y 線沒開，讀數仍在：10Y 4.00 − 2Y 3.70 = +0.30pp
+      expect(screen.getByRole('button', { name: '美債 10Y' }).getAttribute('aria-pressed')).toBe('false');
+      expect(legend()).toMatch(/美債10Y 4\.00% ｜ 10Y−2Y \+0\.30pp 偏平/);
+      expect(legend()).toMatch(/GDP 年增 2\.0%（25Q3，季增年化 2\.0%）/);
+      expect(legend()).toMatch(/GDPNow 25Q4 2\.0%（推估年增 2\.0%）/);
+      fireEvent.click(screen.getByRole('button', { name: '美債 10Y' }));
+      await waitFor(() => expect(chartLog.series.length).toBe(13));
+      expect(window.localStorage.getItem('pi-10y')).toBe('1');
+
+      // 第五格切 GDP：多兩條（年增階梯＋GDPNow 虛線），圖加高
+      expect(screen.getByRole('button', { name: '關' , pressed: true })).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: 'GDP 成長率' }));
+      await waitFor(() => expect(chartLog.watermarks.at(-1)).toBe('美國實質GDP 年增（%，季）｜橘虛線＝GDPNow'));
+      expect(chartLog.styles.at(-1)!.dashed).toBe(true);
+      expect(window.localStorage.getItem('pi-p5')).toBe('gdp');
+      expect(document.querySelector('.pi-host')!.className).toMatch(/pi-host-fc/);
+    } finally {
+      delete FILES.us10y;
+      delete FILES.gdp;
+      delete FILES.gdpnow;
+    }
+  });
+
+  it('舊的外資開關 pi-fc=1 沿用成第五格「外資」', async () => {
+    window.localStorage.setItem('pi-fc', '1');
+    FILES.gdp = series('gdp', ['2024-10-01', '2025-01-01', '2025-04-01', '2025-07-01'].map((d) => flat(d, 2)));
+    try {
+      render(<PolicyInflationPanel version="v1" themeKey="auto-false-tw" />);
+      await waitFor(() => expect(screen.getByRole('button', { name: 'GDP 成長率' })).toBeTruthy());
+      // 沒有外資資料時外資鈕不出現，但記住的選擇不會被改掉
+      expect(screen.queryByRole('button', { name: '外資買賣超' })).toBeNull();
+      expect(window.localStorage.getItem('pi-p5')).toBeNull();
+    } finally {
+      delete FILES.gdp;
+    }
+  });
 });
