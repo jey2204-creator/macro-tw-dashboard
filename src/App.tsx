@@ -214,7 +214,7 @@ export default function App() {
             <UsRiskPanel version={summary.generatedAt} themeKey={themeKey} />
             <JpValuationPanel version={summary.generatedAt} themeKey={themeKey} />
             <KrValuationPanel version={summary.generatedAt} themeKey={themeKey} />
-            <ForeignChipsPanel data={foreignChips} themeKey={themeKey} margin={marginStress} breadth={breadthStress} />
+            <ForeignChipsPanel data={foreignChips} version={summary.generatedAt} themeKey={themeKey} margin={marginStress} breadth={breadthStress} />
             <MarginStressPanel data={marginStress} themeKey={themeKey} />
             <BreadthPanel twse={breadthStress} otc={breadthStressOtc} themeKey={themeKey} />
             <ShippingPanel version={summary.generatedAt} themeKey={themeKey} />

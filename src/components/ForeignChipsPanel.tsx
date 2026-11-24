@@ -44,6 +44,13 @@ import { MarkerLabels, type MarkerLabel } from '../lib/markerLabels';
 import { loadPref, savePref } from '../lib/storage';
 import { candleOn, useIndexStyle } from '../lib/candleStyle';
 import { KLineButton, ResetLabel } from './KLineButton';
+import { useSeriesMap } from '../hooks/useData';
+import { splicePolicyRate } from '../shared/policyInflation';
+import { PHASE_COLOR, PHASE_SHORT, PHASE_TEXT, phaseAt, phaseSegments, type FedPhase } from '../shared/fedEquity';
+
+const FED_IDS = ['fed', 'fed_target_legacy'] as const;
+const FED_KEY = 'fc-fed-phase';
+const FED_KEYS = ['on', 'off'] as const;
 
 /** 第 4 格顯示：散戶小台淨 OI／融資維持率＋融資增減（散戶籌碼）、借券（法人空單）、台幣（USD/TWD，外資匯出入），或上市漲跌停家數／漲跌家數（市場廣度），切換對照 */
 export type Pane4Mode = 'retail' | 'margin' | 'sbl' | 'fx' | 'limit' | 'ad';
@@ -105,9 +112,12 @@ function ChipsChart({
   breadth,
   pane4,
   candle,
+  phases,
 }: {
   /** true＝第 1 格加權畫 K 線（需要 data.ohl） */
   candle: boolean;
+  /** 每個交易日（與 data.rows 同索引）的 Fed 階段；null＝不上色 */
+  phases: readonly (FedPhase | null)[] | null;
   data: ForeignChipsFile;
   range: RangeKey;
   themeKey: string;
@@ -202,11 +212,28 @@ function ChipsChart({
       taiex = k;
     } else {
       const l = add(chart.addSeries(LineSeries, { color: text1, lineWidth: 2, priceFormat: lotsFmt }, 0));
-      l.setData(data.rows.map((r) => ({ time: r[0] as Time, value: r[1] })));
+      // 折線：線段顏色＝當天 Fed 階段（與政策利率面板同一套燈號色）
+      const phColor = phases ? Object.fromEntries(Object.entries(PHASE_COLOR).map(([k, v]) => [k, cssVar(v)])) : null;
+      l.setData(data.rows.map((r, n) => {
+        const ph = phases?.[n];
+        return ph && phColor ? { time: r[0] as Time, value: r[1], color: phColor[ph] } : { time: r[0] as Time, value: r[1] };
+      }));
       taiex = l;
     }
     // 圖表庫預設上 20%／下 10% 留白，加上事件標記再多留一層，加權窗格上面會空一大塊；收到 6%（與融資面板一致）
     taiex.priceScale().applyOptions({ scaleMargins: { top: 0.06, bottom: 0.06 } });
+    // Fed 階段色帶：加權窗格最底下一條細帶（K 線紅綠不能改色，所以兩種畫法都用色帶標階段）
+    if (phases) {
+      const strip = add(
+        chart.addSeries(HistogramSeries, { priceScaleId: 'fc-fed', priceLineVisible: false, lastValueVisible: false, base: 0 }, 0),
+      );
+      strip.priceScale().applyOptions({ scaleMargins: { top: 0.965, bottom: 0 }, visible: false });
+      const phColor = Object.fromEntries(Object.entries(PHASE_COLOR).map(([k, v]) => [k, cssVar(v)]));
+      strip.setData(data.rows.map((r, n) => {
+        const ph = phases[n];
+        return ph ? { time: r[0] as Time, value: 1, color: phColor[ph] } : { time: r[0] as Time };
+      }));
+    }
     const markerColor: Record<ForeignEventType, string> = {
       oi_short: down,
       oi_long: up,
@@ -412,7 +439,7 @@ function ChipsChart({
     return () => {
       for (const s of all.reverse()) chart.removeSeries(s);
     };
-  }, [data, themeKey, indexByDate, range, candle, showMargin, marginRows, showSbl, sblRows, showFx, fxRows, breadthMode, breadthRows, tall]);
+  }, [data, themeKey, indexByDate, range, candle, phases, showMargin, marginRows, showSbl, sblRows, showFx, fxRows, breadthMode, breadthRows, tall]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -484,6 +511,11 @@ function ChipsChart({
           {k && (
             <span className="muted fc-ohl">
               開 {num0(k[0])} 高 {num0(k[1])} 低 {num0(k[2])}
+            </span>
+          )}
+          {phases?.[i] && (
+            <span className="muted">
+              {' '}｜ <i className="lamp" style={{ background: `var(${PHASE_COLOR[phases[i]!]})` }} aria-hidden="true" />Fed {PHASE_SHORT[phases[i]!]}
             </span>
           )}
           {dayEvents.length > 0 && <span className="fc-day-events">● {dayEvents.join('、')}</span>}
@@ -636,7 +668,10 @@ export function ForeignChipsPanel({
   themeKey,
   margin = null,
   breadth = null,
+  version = '',
 }: {
+  /** summary.generatedAt：載入 Fed 利率序列的快取鍵 */
+  version?: string;
   data: ForeignChipsFile | null;
   themeKey: string;
   margin?: MarginStressFile | null;
@@ -661,6 +696,24 @@ export function ForeignChipsPanel({
   const pane4Eff: Pane4Mode = modes.some((o) => o.k === pane4) ? pane4 : 'retail';
   const [resetKey, setResetKey] = useState(0);
   const [showEvents, setShowEvents] = useState(false);
+  // Fed 階段：與政策利率面板同一份 Fed 利率（快取共用）、同一套階段規則
+  const [fedPref, setFedPrefState] = useState<'on' | 'off'>(() => loadPref(FED_KEY, FED_KEYS, 'on'));
+  const setFedPref = (v: 'on' | 'off') => {
+    setFedPrefState(v);
+    savePref(FED_KEY, v);
+  };
+  const fedFiles = useSeriesMap(version ? FED_IDS : [], version);
+  const fedUpper = fedFiles.fed?.status === 'ready' ? fedFiles.fed.data.data : null;
+  const fedLegacy = fedFiles.fed_target_legacy?.status === 'ready' ? fedFiles.fed_target_legacy.data.data : null;
+  const allPhases = useMemo(() => {
+    if (!data?.rows.length || !fedUpper) return null;
+    const fed = splicePolicyRate(fedUpper, fedLegacy ?? []);
+    if (!fed.length) return null;
+    const segs = phaseSegments(fed, data.rows.map((r) => r[0]));
+    return data.rows.map((r) => phaseAt(segs, r[0]));
+  }, [data, fedUpper, fedLegacy]);
+  const phases = fedPref === 'on' ? allPhases : null;
+  const nowPhase = allPhases?.at(-1) ?? null;
   if (!data || !data.latest) return null;
   const { latest } = data;
   const years = data.start && data.end ? `${data.start}～${data.end}` : '';
@@ -688,7 +741,15 @@ export function ForeignChipsPanel({
             {pctlText(latest.cum20Pctl)}）｜散戶小台 {lots(latest.retailOi)} 口（{pctlText(latest.retailOiPctl)}）
           </span>
         </div>
-        <span className="small muted num">資料 {latest.date}</span>
+        <span className="small muted num">
+          {nowPhase && (
+            <>
+              <i className="lamp" style={{ background: `var(${PHASE_COLOR[nowPhase]})` }} aria-hidden="true" />
+              {PHASE_TEXT[nowPhase]}｜
+            </>
+          )}
+          資料 {latest.date}
+        </span>
       </div>
 
       <PanelNote>
@@ -708,6 +769,9 @@ export function ForeignChipsPanel({
           ，可用區間列旁的按鈕切換（散戶小台／融資維持率／借券／台幣／漲跌停／漲跌家數）。
         </p>
         <p className="small muted ms-rule">
+          Fed色：加權依當天 Fed 升降息階段上色（紅＝升息、橙＝升息後暫停、藍＝降息、淺藍＝降息後暫停），折線整條上色、K 線只在窗格最底下畫一條色帶；規則與政策利率面板相同（Fed 利率 6 個月沒動作算暫停）。用法：看外資大賣超是發生在升息期還是降息期——升息期的賣超多半是資金回流美元，降息期的賣超較可能是個別事件。只是對照、不計分、不進回測；區間列「Fed色」可關閉。
+        </p>
+        <p className="small muted ms-rule">
         買賣超是流量、淨未平倉是部位，兩者與當日漲跌幾乎同步，單看柱子不會比看 K 棒多知道什麼；要看的是<b>累計 vs 指數的背離</b>與<b>部位極端</b>。
         百分位＝該值在近 {PCTL_WINDOW} 個交易日中的位置；事件只在首次 ≤ 第 {EXTREME_LOW * 100}／≥ 第 {EXTREME_HIGH * 100} 百分位時標一次，回到第 {RESET_PCTL * 100} 百分位另一側才算新的一波。賣超不跌：20 日累計 ≤ 第 {DIVERGE_PCTL * 100} 百分位且加權 20 日不跌。賣壓衰竭：20 日累計在 0 以下、「5 日累計 × {PACE_RATIO}」由下往上穿過 20 日累計（最近一週的賣超步調慢過整月平均），再掉回去才可再標。
         同一波內外資期淨 OI 比前次標記再多 {DEEPER_STEP * 100}% 補一個小標記「OI空↓／OI多↑」，只畫在圖上不進回測。外資期空單多為現貨避險，空單極端不等於看空；散戶小台為法人反推值。第 4 格可切換「融資維持率」：散戶小台是散戶的期貨部位、融資是散戶的現股槓桿，兩者都是散戶籌碼；外資連續賣超時看維持率是否逼近 160／140，判斷賣壓會不會擴大成斷頭（完整事件與回測在下方「融資斷頭監測」面板）。切到「借券」看的是法人空單：借券放空者幾乎都是外資／法人，外資期空單（三格）是避險部位、借券賣出餘額是現貨空單，兩者對照——外資賣超＋借券賣出餘額暴增＝現貨與放空同時出手；外資仍賣超、借券餘額卻連續下降＝空方回補、賣壓接近尾聲；已借未賣擴大＝借了券還沒砸出來的潛在空單。追空／回補極端與回測在下方「融資斷頭監測」面板。切到「台幣」看的是匯率：外資賣股後把錢換成美元匯出，USD/TWD 會往上（台幣貶），所以兩者大多同步（買賣超百分位與台幣 20 日變化相關約 −0.5），台幣是外資動向的另一個鏡子、不是另一個獨立證據；讀數列的「台幣20日」＝USD/TWD 近 {FF_DAYS} 個交易日變化。匯率以 FRED 為主、最近幾天用 Yahoo 補。也可切到「漲跌停」「漲跌家數」：外資賣超是籌碼、家數是廣度，兩者對照看的是「外資賣超時跌停家數是否同步暴增（恐慌）」與「賣超仍在、跌停卻減半（賣壓衰竭）」；恐慌日與回測在下方「漲跌停家數監測」面板。
@@ -725,6 +789,11 @@ export function ForeignChipsPanel({
             <ResetLabel compact={hasOhl} />
           </button>
           {hasOhl && <KLineButton style={style} setStyle={setStyle} range={range} what="第 1 格加權" />}
+          {allPhases && (
+            <button type="button" aria-pressed={fedPref === 'on'} onClick={() => setFedPref(fedPref === 'on' ? 'off' : 'on')} title="加權依 Fed 升降息階段上色（折線上色＋底部色帶）">
+              Fed色
+            </button>
+          )}
         </div>
         {modes.length > 1 && (
           <div className="seg" role="group" aria-label="第四格顯示">
@@ -736,7 +805,7 @@ export function ForeignChipsPanel({
           </div>
         )}
       </div>
-      <ChipsChart data={data} range={range} themeKey={themeKey} resetKey={resetKey} margin={margin} breadth={breadth} pane4={pane4Eff} candle={candle} />
+      <ChipsChart data={data} range={range} themeKey={themeKey} resetKey={resetKey} margin={margin} breadth={breadth} pane4={pane4Eff} candle={candle} phases={phases} />
 
       <div className="table-wrap">
         <table className="bt-table num">
