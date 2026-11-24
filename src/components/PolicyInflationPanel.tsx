@@ -84,10 +84,10 @@ const FX_RAW_TITLE: Record<FxId, string> = { dxy: 'DXY 美元指數（點）', t
 
 /** 可切換的副線（核心 CPI 另有開關 `pi-core`：關掉只是不畫線，實質利率與讀數仍以核心 CPI 計） */
 const EXTRA_LINES = [
-  { id: 'cpi', label: '整體 CPI', key: 'pi-cpi', def: '1' },
-  { id: 'core_pce', label: '核心 PCE', key: 'pi-pce', def: '0' },
-  { id: 'us2y', label: '美債 2Y', key: 'pi-2y', def: '1' },
-  { id: 'us10y', label: '美債 10Y', key: 'pi-10y', def: '0' },
+  { id: 'cpi', label: '整體CPI', aria: '整體 CPI', key: 'pi-cpi', def: '1' },
+  { id: 'core_pce', label: '核心PCE', aria: '核心 PCE', key: 'pi-pce', def: '0' },
+  { id: 'us2y', label: '債2Y', aria: '美債 2Y', key: 'pi-2y', def: '1' },
+  { id: 'us10y', label: '債10Y', aria: '美債 10Y', key: 'pi-10y', def: '0' },
 ] as const;
 const EXTRA_COLOR: Record<ExtraId, string> = { cpi: 'var(--ma60)', core_pce: 'var(--ma240)', us2y: 'var(--ma120)', us10y: 'var(--ma10)' };
 type ExtraId = (typeof EXTRA_LINES)[number]['id'];
@@ -800,12 +800,12 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
       </PanelNote>
 
       <div className="cp-mas" role="group" aria-label="通膨序列">
-        <button type="button" className="ma-chip" aria-pressed={coreOn} onClick={toggleCore}>
+        <button type="button" className="ma-chip" aria-label="核心 CPI" aria-pressed={coreOn} onClick={toggleCore}>
           <i className="swatch" style={{ background: 'var(--accent)' }} />
-          核心 CPI
+          核心CPI
         </button>
         {EXTRA_LINES.map((e) => (
-          <button key={e.id} type="button" className="ma-chip" aria-pressed={extras[e.id]} onClick={() => toggleExtra(e.id)}>
+          <button key={e.id} type="button" className="ma-chip" aria-label={e.aria} aria-pressed={extras[e.id]} onClick={() => toggleExtra(e.id)}>
             <i className="swatch" style={{ background: EXTRA_COLOR[e.id] }} />
             {e.label}
           </button>
