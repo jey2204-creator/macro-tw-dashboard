@@ -299,6 +299,13 @@ export const INDICATORS: IndicatorDef[] = [
     rule: { kind: 'risingIsBearish', lookback: 20, mode: 'pct', bearAt: 15, bullAt: null },
     weight: 0, maxAgeDays: 10, note: '油價急漲推升通膨預期與利率；回測觸發樣本太少，僅供參考不計分',
   },
+  // WTI 長期歷史（FRED 現貨 DCOILWTICO，1986 起）：Yahoo CL=F 只有 2000-08 起，政策利率面板第五格「油價」接在前面用。
+  // 2020-04-20 現貨 −37.63 在 Yahoo 期間內，不會被用到。不列入指標表與計分
+  {
+    id: 'wti_legacy', name: 'WTI 原油（FRED 現貨，長期歷史）', short: 'WTI舊', category: 'energy', frequency: 'daily',
+    unit: 'USD', decimals: 2, sources: [{ provider: 'fred', symbol: 'DCOILWTICO' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 100_000, note: '', hidden: true,
+  },
   {
     id: 'brent', name: 'Brent 原油', short: 'Brent', category: 'energy', frequency: 'daily',
     subtitle: '北海原油｜國際油價基準',
