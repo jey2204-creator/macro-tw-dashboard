@@ -7,6 +7,7 @@ import {
   HistogramSeries,
   LineSeries,
   LineStyle,
+  LineType,
   createChart,
   createSeriesMarkers,
   type IChartApi,
@@ -45,21 +46,27 @@ import { loadPref, savePref } from '../lib/storage';
 import { candleOn, useIndexStyle } from '../lib/candleStyle';
 import { KLineButton, ResetLabel } from './KLineButton';
 import { useSeriesMap } from '../hooks/useData';
-import { splicePolicyRate } from '../shared/policyInflation';
+import { splicePolicyRate, valueAtOrBefore } from '../shared/policyInflation';
 import { PHASE_COLOR, PHASE_SHORT, PHASE_TEXT, phaseAt, phaseSegments, type FedPhase } from '../shared/fedEquity';
 
-const FED_IDS = ['fed', 'fed_target_legacy'] as const;
+const FED_IDS = ['fed', 'fed_target_legacy', 'us2y'] as const;
+/** 每個交易日（與 data.rows 同索引）的 [Fed 利率, 美債 2Y]，% */
+type RateRow = readonly [number | null, number | null];
+/** 2Y − Fed 超過 ±0.25pp（約一碼）＝市場押升／降息，與政策利率面板相同 */
+const SPREAD_BP = 0.25;
+const spreadText = (v: number) => (v <= -SPREAD_BP ? '市場押降息' : v >= SPREAD_BP ? '市場押升息' : '市場押不變');
 const FED_KEY = 'fc-fed-phase';
 const FED_KEYS = ['on', 'off'] as const;
 
 /** 第 4 格顯示：散戶小台淨 OI／融資維持率＋融資增減（散戶籌碼）、借券（法人空單）、台幣（USD/TWD，外資匯出入），或上市漲跌停家數／漲跌家數（市場廣度），切換對照 */
-export type Pane4Mode = 'retail' | 'margin' | 'sbl' | 'fx' | 'limit' | 'ad';
-const PANE4_KEYS = ['retail', 'margin', 'sbl', 'fx', 'limit', 'ad'] as const;
+export type Pane4Mode = 'retail' | 'margin' | 'sbl' | 'fx' | 'fed' | 'limit' | 'ad';
+const PANE4_KEYS = ['retail', 'margin', 'sbl', 'fx', 'fed', 'limit', 'ad'] as const;
 const PANE4_MODES: { k: Pane4Mode; label: string; title: string }[] = [
   { k: 'retail', label: '散戶小台', title: '散戶的期貨部位（小台淨未平倉，法人反推）' },
   { k: 'margin', label: '融資維持率', title: '散戶的現股槓桿（融資維持率＋融資增減）' },
   { k: 'sbl', label: '借券', title: '法人空單（借券賣出餘額＋已借未賣＋日增減）' },
   { k: 'fx', label: '台幣', title: 'USD/TWD 匯率（往上＝台幣貶）＋日變動' },
+  { k: 'fed', label: 'Fed利率', title: 'Fed 利率（階梯線）＋美債 2Y（虛線，市場押注）' },
   { k: 'limit', label: '漲跌停', title: '上市漲停（0 以上）／跌停（0 以下）家數' },
   { k: 'ad', label: '漲跌家數', title: '上市上漲（0 以上）／下跌（0 以下）家數' },
 ];
@@ -113,7 +120,10 @@ function ChipsChart({
   pane4,
   candle,
   phases,
+  rates,
 }: {
+  /** 每個交易日的 [Fed, 2Y]；null＝尚未載入 */
+  rates: readonly RateRow[] | null;
   /** true＝第 1 格加權畫 K 線（需要 data.ohl） */
   candle: boolean;
   /** 每個交易日（與 data.rows 同索引）的 Fed 階段；null＝不上色 */
@@ -141,7 +151,8 @@ function ChipsChart({
   // 台幣：fx 與 rows 同長度同順序，直接用索引
   const fxRows = data.fx?.fx;
   const showFx = pane4 === 'fx' && !!fxRows?.some((x) => x[0] !== null);
-  const tall = showMargin || showSbl || showFx;
+  const showFed = pane4 === 'fed' && !!rates?.some((x) => x[0] !== null);
+  const tall = showMargin || showSbl || showFx || showFed;
   // 家數資料同樣只取外資資料也有的交易日；恐慌日旗標要跟著列一起過濾
   const breadthRows = useMemo(
     () => (breadth?.rows ?? []).flatMap((r, k) => (indexByDate.has(r[0]) ? [{ row: r, panic: breadth!.panic[k] ?? false, downPct: breadth!.downPct[k] ?? null, adRatio10: breadth!.adRatio10[k] ?? null }] : [])),
@@ -422,6 +433,16 @@ function ChipsChart({
         }),
       );
       fxChg.priceScale().applyOptions({ scaleMargins: { top: 0.74, bottom: 0 }, visible: false });
+    } else if (showFed && rates) {
+      // 第 4 格：Fed 利率階梯線＋美債 2Y 虛線（同一個 % 刻度；2Y 跑在 Fed 前面＝市場押注）
+      const pct2 = { type: 'price', precision: 2, minMove: 0.01 } as const;
+      const fedS = add(chart.addSeries(LineSeries, { color: text1, lineWidth: 2, lineType: LineType.WithSteps, priceFormat: pct2, priceLineVisible: false }, 3));
+      fedS.setData(data.rows.flatMap((r, n) => (rates[n]?.[0] != null ? [{ time: r[0] as Time, value: rates[n]![0]! }] : [])));
+      fedS.priceScale().applyOptions({ scaleMargins: { top: 0.12, bottom: 0.1 } });
+      const y2 = add(
+        chart.addSeries(LineSeries, { color: accent, lineWidth: 1, lineStyle: LineStyle.Dashed, priceFormat: pct2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }, 3),
+      );
+      y2.setData(data.rows.flatMap((r, n) => (rates[n]?.[1] != null ? [{ time: r[0] as Time, value: rates[n]![1]! }] : [])));
     } else if (breadthMode) {
       // 第 4 格：上市漲停／跌停或上漲／下跌家數，0 以上為漲、0 以下為跌（鏡像柱，比照漲跌停面板）；跌的那側恐慌日加深
       const ad = breadthMode === 'ad';
@@ -439,7 +460,7 @@ function ChipsChart({
     return () => {
       for (const s of all.reverse()) chart.removeSeries(s);
     };
-  }, [data, themeKey, indexByDate, range, candle, phases, showMargin, marginRows, showSbl, sblRows, showFx, fxRows, breadthMode, breadthRows, tall]);
+  }, [data, themeKey, indexByDate, range, candle, phases, rates, showFed, showMargin, marginRows, showSbl, sblRows, showFx, fxRows, breadthMode, breadthRows, tall]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -495,6 +516,8 @@ function ChipsChart({
   const k = candle ? data.ohl?.[i] : undefined;
   const num0 = (v: number) => v.toLocaleString('en-US', { maximumFractionDigits: 0 });
   const fx = fxRows?.[i] ?? null;
+  const rate = rates?.[i] ?? null;
+  const spread2y = rate?.[0] != null && rate[1] != null ? rate[1] - rate[0] : null;
   const fxPrev = i > 0 ? (fxRows?.[i - 1]?.[0] ?? null) : null;
   const fxDay = fx?.[0] != null && fxPrev !== null ? (fx[0] / fxPrev - 1) * 100 : null;
   const dayEvents = row
@@ -513,9 +536,11 @@ function ChipsChart({
               開 {num0(k[0])} 高 {num0(k[1])} 低 {num0(k[2])}
             </span>
           )}
-          {phases?.[i] && (
+          {(phases?.[i] || rate?.[0] != null) && (
             <span className="muted">
-              {' '}｜ <i className="lamp" style={{ background: `var(${PHASE_COLOR[phases[i]!]})` }} aria-hidden="true" />Fed {PHASE_SHORT[phases[i]!]}
+              {' '}｜ {phases?.[i] && <i className="lamp" style={{ background: `var(${PHASE_COLOR[phases[i]!]})` }} aria-hidden="true" />}Fed{' '}
+              {rate?.[0] != null && <b>{rate[0].toFixed(2)}%</b>}
+              {phases?.[i] && `（${PHASE_SHORT[phases[i]!]}）`}
             </span>
           )}
           {dayEvents.length > 0 && <span className="fc-day-events">● {dayEvents.join('、')}</span>}
@@ -566,6 +591,24 @@ function ChipsChart({
               </>
             ) : (
               <>USD/TWD —</>
+            )
+          ) : showFed ? (
+            rate?.[0] != null ? (
+              <>
+                Fed <b>{rate[0].toFixed(2)}%</b>
+                {rate[1] != null && (
+                  <>
+                    ｜2Y <b>{rate[1].toFixed(2)}%</b>
+                  </>
+                )}
+                {spread2y !== null && (
+                  <>
+                    ｜2Y−Fed <b>{`${spread2y > 0 ? '+' : ''}${spread2y.toFixed(2)}`}</b>pp <span className="muted">{spreadText(spread2y)}</span>
+                  </>
+                )}
+              </>
+            ) : (
+              <>Fed —</>
             )
           ) : breadthMode === 'limit' ? (
             b ? (
@@ -691,9 +734,6 @@ export function ForeignChipsPanel({
   const hasBreadth = !!breadth?.rows.length;
   const hasFx = !!data?.fx?.fx.some((x) => x[0] !== null);
   const [showFxBt, setShowFxBt] = useState(false);
-  // 沒有對應資料的選項不顯示；記住的選項沒資料時退回散戶小台
-  const modes = PANE4_MODES.filter((o) => o.k === 'retail' || (o.k === 'margin' ? hasMargin : o.k === 'sbl' ? hasSbl : o.k === 'fx' ? hasFx : hasBreadth));
-  const pane4Eff: Pane4Mode = modes.some((o) => o.k === pane4) ? pane4 : 'retail';
   const [resetKey, setResetKey] = useState(0);
   const [showEvents, setShowEvents] = useState(false);
   // Fed 階段：與政策利率面板同一份 Fed 利率（快取共用）、同一套階段規則
@@ -705,6 +745,15 @@ export function ForeignChipsPanel({
   const fedFiles = useSeriesMap(version ? FED_IDS : [], version);
   const fedUpper = fedFiles.fed?.status === 'ready' ? fedFiles.fed.data.data : null;
   const fedLegacy = fedFiles.fed_target_legacy?.status === 'ready' ? fedFiles.fed_target_legacy.data.data : null;
+  const us2yBars = fedFiles.us2y?.status === 'ready' ? fedFiles.us2y.data.data : null;
+  const rates = useMemo<RateRow[] | null>(() => {
+    if (!data?.rows.length || !fedUpper) return null;
+    const fed = splicePolicyRate(fedUpper, fedLegacy ?? []);
+    const y2 = (us2yBars ?? []).map((b) => [b[0], b[4]] as [string, number]);
+    if (!fed.length) return null;
+    // 美國資料晚台股半天：取該日（含）以前最近一筆
+    return data.rows.map((r) => [valueAtOrBefore(fed, r[0]), y2.length ? valueAtOrBefore(y2, r[0]) : null] as const);
+  }, [data, fedUpper, fedLegacy, us2yBars]);
   const allPhases = useMemo(() => {
     if (!data?.rows.length || !fedUpper) return null;
     const fed = splicePolicyRate(fedUpper, fedLegacy ?? []);
@@ -713,6 +762,11 @@ export function ForeignChipsPanel({
     return data.rows.map((r) => phaseAt(segs, r[0]));
   }, [data, fedUpper, fedLegacy]);
   const phases = fedPref === 'on' ? allPhases : null;
+  // 沒有對應資料的選項不顯示；記住的選項沒資料時退回散戶小台
+  const modes = PANE4_MODES.filter(
+    (o) => o.k === 'retail' || (o.k === 'margin' ? hasMargin : o.k === 'sbl' ? hasSbl : o.k === 'fx' ? hasFx : o.k === 'fed' ? !!rates : hasBreadth),
+  );
+  const pane4Eff: Pane4Mode = modes.some((o) => o.k === pane4) ? pane4 : 'retail';
   const nowPhase = allPhases?.at(-1) ?? null;
   if (!data || !data.latest) return null;
   const { latest } = data;
@@ -759,6 +813,8 @@ export function ForeignChipsPanel({
             ? '融資維持率（%，虛線＝警戒 160／斷頭區 140／追繳 130）＋融資增減（億，紅增綠減）'
             : pane4Eff === 'sbl'
               ? '借券賣出餘額（粗線，萬張；追空極端段紅、回補極端段綠）＋已借未賣（藍虛線，獨立刻度，現值標在線尾）＋日增減（柱，增加＝空方加碼）'
+            : pane4Eff === 'fed'
+              ? 'Fed 利率（黑色階梯線，%）＋美債 2Y（藍虛線，市場對未來一年利率的押注；2Y 明顯低於 Fed＝市場押降息、高於＝押升息）'
             : pane4Eff === 'fx'
               ? 'USD/TWD 匯率（線，往上＝台幣貶）＋日變動（柱，貶綠升紅）'
             : pane4Eff === 'limit'
@@ -766,7 +822,7 @@ export function ForeignChipsPanel({
               : pane4Eff === 'ad'
                 ? '上市上漲（0 以上）／下跌（0 以下，恐慌日加深）家數'
                 : '散戶小台淨 OI（口）＋日增減柱'}
-          ，可用區間列旁的按鈕切換（散戶小台／融資維持率／借券／台幣／漲跌停／漲跌家數）。
+          ，可用區間列旁的按鈕切換（散戶小台／融資維持率／借券／台幣／Fed利率／漲跌停／漲跌家數）。
         </p>
         <p className="small muted ms-rule">
           Fed色：加權依當天 Fed 升降息階段上色（紅＝升息、橙＝升息後暫停、藍＝降息、淺藍＝降息後暫停），折線整條上色、K 線只在窗格最底下畫一條色帶；規則與政策利率面板相同（Fed 利率 6 個月沒動作算暫停）。用法：看外資大賣超是發生在升息期還是降息期——升息期的賣超多半是資金回流美元，降息期的賣超較可能是個別事件。只是對照、不計分、不進回測；區間列「Fed色」可關閉。
@@ -805,7 +861,7 @@ export function ForeignChipsPanel({
           </div>
         )}
       </div>
-      <ChipsChart data={data} range={range} themeKey={themeKey} resetKey={resetKey} margin={margin} breadth={breadth} pane4={pane4Eff} candle={candle} phases={phases} />
+      <ChipsChart data={data} range={range} themeKey={themeKey} resetKey={resetKey} margin={margin} breadth={breadth} pane4={pane4Eff} candle={candle} phases={phases} rates={rates} />
 
       <div className="table-wrap">
         <table className="bt-table num">
