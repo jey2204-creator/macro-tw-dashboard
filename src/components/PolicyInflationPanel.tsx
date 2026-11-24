@@ -162,7 +162,7 @@ interface Props {
 
 /** 第五格三選一：美國 GDP 成長率／外資買賣超／關 */
 type P5 = 'fc' | 'gdp' | 'oil' | 'off';
-const P5_PICKS: readonly P5[] = ['gdp', 'fc', 'oil', 'off'];
+const P5_PICKS: readonly P5[] = ['gdp', 'oil', 'fc', 'off'];
 const OIL_COLOR = '--ma5';
 /** 第五格在整張圖裡占的比例；開啟時圖表同步加高，其他格維持原本高度 */
 const FC_SHARE = 0.2;
@@ -866,16 +866,16 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
               GDP 成長率
             </button>
           )}
-          {fcRows.length > 0 && (
-            <button type="button" className="ma-chip" aria-pressed={p5 === 'fc'} onClick={() => pickP5('fc')}>
-              <i className="swatch" style={{ background: 'var(--accent)' }} />
-              外資買賣超
-            </button>
-          )}
           {wti.length > 0 && (
             <button type="button" className="ma-chip" aria-pressed={p5 === 'oil'} onClick={() => pickP5('oil')}>
               <i className="swatch" style={{ background: `var(${OIL_COLOR})` }} />
               油價
+            </button>
+          )}
+          {fcRows.length > 0 && (
+            <button type="button" className="ma-chip" aria-pressed={p5 === 'fc'} onClick={() => pickP5('fc')}>
+              <i className="swatch" style={{ background: 'var(--accent)' }} />
+              外資買賣超
             </button>
           )}
           <button type="button" className="ma-chip" aria-pressed={p5 === 'off'} onClick={() => pickP5('off')}>
