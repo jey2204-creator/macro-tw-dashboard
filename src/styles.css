@@ -1280,6 +1280,25 @@ th {
 .wide .pi-host.pi-host-4 {
   height: 560px;
 }
+/* 開第五格外資買賣超：整張圖 ×1.25（第五格占 20%），原本各格維持高度 */
+.pi-host.pi-host-fc {
+  height: max(450px, 62.5vh);
+}
+.pi-host.pi-host-3.pi-host-fc {
+  height: max(525px, 72.5vh);
+}
+.pi-host.pi-host-4.pi-host-fc {
+  height: max(625px, 82.5vh);
+}
+.wide .pi-host.pi-host-fc {
+  height: 550px;
+}
+.wide .pi-host.pi-host-3.pi-host-fc {
+  height: 625px;
+}
+.wide .pi-host.pi-host-4.pi-host-fc {
+  height: 700px;
+}
 .pi-state {
   margin: 2px 0 0;
 }
