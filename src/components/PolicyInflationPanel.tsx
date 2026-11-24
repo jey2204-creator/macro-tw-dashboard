@@ -616,7 +616,13 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
     // 或：WTI 原油（美元／桶），2000-08 前為 FRED 現貨
     if (oilOn) {
       const color = cssVar(OIL_COLOR);
-      const oS = chart.addSeries(LineSeries, { color, lineWidth: 2, priceFormat: { type: 'price', precision: 2, minMove: 0.01 }, lastValueVisible: false, priceLineVisible: false }, fcPane);
+      // 2020-04-20 期貨結算 −37.63 是真實資料，但會把刻度撐到負值、壓扁其他年份 → Y 軸下限不低於 0（那一天的線會掉出窗格）
+      const floor0: AutoscaleInfoProvider = (original) => {
+        const r = original();
+        if (!r?.priceRange) return r;
+        return { ...r, priceRange: { minValue: Math.max(0, r.priceRange.minValue), maxValue: r.priceRange.maxValue } };
+      };
+      const oS = chart.addSeries(LineSeries, { color, lineWidth: 2, priceFormat: { type: 'price', precision: 2, minMove: 0.01 }, lastValueVisible: false, priceLineVisible: false, autoscaleInfoProvider: floor0 }, fcPane);
       oS.setData(toData(wti));
       const last = wti.at(-1)!;
       const fmt = (v: number) => v.toFixed(1);
@@ -813,7 +819,7 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
         回測（1987 年起每月底）：泰勒缺口 ≥ +1 時之後 12 個月 Fed 升息的比例約六成（全部月份約四成）；2Y − Fed ≤ −0.25 時之後降息約八成半，是三把尺裡對 Fed 下一步最準的；但三把尺對 S&P、加權之後 12 個月報酬都沒有穩定的分組差異——它們回答的是「Fed 接下來往哪走」，不是「股市往哪走」，不計分。
         美債 10Y（粉紅線，預設關）是長天期利率的定價錨：房貸、企業借款與股票估值都拿它折現，10Y 急升最傷高本益比的科技股；2Y 看 Fed 預期、10Y 還多了成長、通膨預期與美債供給。讀數列的 10Y−2Y 是殖利率曲線斜率：小於 0 叫倒掛，1978 年起每次美國衰退前都倒掛過，但領先 6～24 個月、2022～2024 長期倒掛也沒衰退，只當背景、不當進出場訊號；利差依規則審查不計分。
         第五格可切「GDP 成長率」：美國實質 GDP 的年增率（季資料，由 BEA 的年化季增連乘四季換算，和官方年增差 0.1pp 內；不畫年化季增是因為 2020 年單季 −28%／+35% 會把刻度撐爆）；線畫在該季期間，但實際公布晚約一個月、之後還會修正，是落後指標，只用來確認「擴張還是衰退」的大背景。橘色虛線段是亞特蘭大 Fed 的 GDPNow 對當季的即時估計，配上前三季實際值換算成推估年增；GDPNow 季初波動大、越接近公布越準。讀數列的 GDP 一律常駐顯示。
-        第五格「油價」是 WTI 原油（美元／桶；2000-08 前接 FRED 現貨價，1986 起）。油價先推整體 CPI（汽油、運費），約 1～3 個月反映，核心 CPI 才慢慢跟（2022 年油價衝到 120 美元、整體 CPI 9.1%，Fed 一年升息 425bp）；所以整體 CPI 和核心 CPI 拉開時先看油價。讀數列 WTI 一律常駐：年增超過 +30% 時整體 CPI 通常跟著上去、Fed 較難降息；油價急跌（2014～2015、2020）多半是需求或供給衝擊，對台股不一定是好消息。依規則審查油價觸發樣本太少，不計分。
+        第五格「油價」是 WTI 原油（美元／桶；2000-08 前接 FRED 現貨價，1986 起；2020-04-20 期貨跌到 −37 美元是真實紀錄，刻度下限固定 0、那天的線會掉出窗格）。油價先推整體 CPI（汽油、運費），約 1～3 個月反映，核心 CPI 才慢慢跟（2022 年油價衝到 120 美元、整體 CPI 9.1%，Fed 一年升息 425bp）；所以整體 CPI 和核心 CPI 拉開時先看油價。讀數列 WTI 一律常駐：年增超過 +30% 時整體 CPI 通常跟著上去、Fed 較難降息；油價急跌（2014～2015、2020）多半是需求或供給衝擊，對台股不一定是好消息。依規則審查油價觸發樣本太少，不計分。
         這張圖與「Fed 120 天」「核心CPI ±0.2pp」規則重疊，只用來解釋 FOMC 為什麼那樣做，不計分。2008 年前 Fed 為單一目標利率。
       </p>
       </PanelNote>
