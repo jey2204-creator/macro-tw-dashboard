@@ -386,4 +386,21 @@ describe('政策利率 vs 通膨面板', () => {
       delete FILES.gdp;
     }
   });
+  it('第五格「油價」：WTI 接 FRED 舊資料、讀數列常駐 WTI、選擇記住', async () => {
+    FILES.wti = series('wti', [flat('2025-10-14', 60), flat('2025-10-15', 62)]);
+    FILES.wti_legacy = series('wti_legacy', [flat('2024-10-15', 40), flat('2025-10-14', 99)]);
+    try {
+      render(<PolicyInflationPanel version="v1" themeKey="auto-false-tw" />);
+      await waitFor(() => expect(chartLog.series.length).toBe(6));
+      // 舊資料只用 Yahoo 第一天之前：一年前 40 → 62＝+55.0%
+      expect(document.querySelector('.cm-legend')!.textContent).toMatch(/WTI 62\.00 美元 ｜ 年增 \+55\.0%/);
+      fireEvent.click(screen.getByRole('button', { name: '油價' }));
+      await waitFor(() => expect(chartLog.watermarks.at(-1)).toBe('WTI 原油（美元／桶）'));
+      expect(window.localStorage.getItem('pi-p5')).toBe('oil');
+      expect(document.body.textContent).toMatch(/WTI，2024 起/);
+    } finally {
+      delete FILES.wti;
+      delete FILES.wti_legacy;
+    }
+  });
 });
