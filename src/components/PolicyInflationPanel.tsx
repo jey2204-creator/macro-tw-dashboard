@@ -3,6 +3,7 @@ import {
   type AutoscaleInfoProvider,
   ColorType,
   CrosshairMode,
+  HistogramSeries,
   LineSeries,
   LineStyle,
   LineType,
@@ -54,6 +55,7 @@ import {
 } from '../shared/policyInflation';
 import { rangeStart, type Point, type RangeKey } from '../shared/timeseries';
 import type { Bar } from '../shared/types';
+import type { ForeignChipsFile } from '../shared/foreignChips';
 
 const RANGES: { k: RangeKey; label: string }[] = [
   { k: '3M', label: '3個月' },
@@ -151,9 +153,31 @@ function useNearViewport(ref: { current: HTMLElement | null }): boolean {
 interface Props {
   version: string;
   themeKey: string;
+  /** 外資籌碼對照的資料（第五格外資買賣超用；沒有就不顯示開關） */
+  foreign?: ForeignChipsFile | null;
 }
 
-export function PolicyInflationPanel({ version, themeKey }: Props) {
+/** 第五格外資買賣超在整張圖裡占的比例；開啟時圖表同步加高，其他格維持原本高度 */
+const FC_SHARE = 0.2;
+const withFc = (base: readonly number[], on: boolean) => (on ? [...base.map((x) => x * (1 - FC_SHARE)), FC_SHARE] : base);
+const fcPctl = (p: number | null | undefined) => (p === null || p === undefined ? '—' : `第 ${Math.round(p * 100)} 百分位`);
+const fcNum = (v: number | null | undefined) => (v === null || v === undefined ? '—' : `${v > 0 ? '+' : ''}${v.toLocaleString('en-US', { maximumFractionDigits: 0 })}`);
+/** 依日期找外資資料列（當天或之前最近一個台股交易日） */
+function fcIndexAt(rows: ForeignChipsFile['rows'], date: string): number | null {
+  let lo = 0;
+  let hi = rows.length - 1;
+  let ans: number | null = null;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (rows[mid]![0] <= date) {
+      ans = mid;
+      lo = mid + 1;
+    } else hi = mid - 1;
+  }
+  return ans;
+}
+
+export function PolicyInflationPanel({ version, themeKey, foreign = null }: Props) {
   const sectionRef = useRef<HTMLElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -169,6 +193,14 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
   }));
   const [coreOn, setCoreOn] = useState(() => loadPref('pi-core', ['1', '0'] as const, '1') === '1');
   const [indexPick, setIndexPick] = useState<IndexPick>(() => loadPref<IndexPick>('pi-idx', INDEX_PICKS, 'spx'));
+  // 第五格：外資買賣超（預設關、記住開關）
+  const [fcPref, setFcPref] = useState(() => loadPref('pi-fc', ['1', '0'] as const, '0') === '1');
+  const toggleFc = () => {
+    setFcPref(!fcPref);
+    savePref('pi-fc', fcPref ? '0' : '1');
+  };
+  const fcRows = useMemo(() => (foreign?.rows ?? []).filter((r) => r[2] !== null), [foreign]);
+  const fcOn = fcPref && fcRows.length > 0;
   const [fxOn, setFxOn] = useState<Record<FxId, boolean>>(() => ({
     dxy: loadPref('pi-fx-dxy', ['1', '0'] as const, '0') === '1',
     twd: loadPref('pi-fx-twd', ['1', '0'] as const, '0') === '1',
@@ -483,6 +515,25 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       const last = fxLines.raw.at(-1);
       if (last) endLabels(rawS, [{ price: last[1], text: last[1].toFixed(2), color: cssVar(FX_COLOR[fxLines.id]), endTime: last[0] as Time, at: follower(fxLines.raw, (v) => v.toFixed(2)) }]);
     }
+    // 第五格：外資買賣超（上市，億）＝單日柱（獨立刻度貼底）＋5 日細／20 日粗累計線，畫法同外資籌碼對照面板
+    const fcPane = 2 + (showSpx ? 1 : 0) + (fxLines ? 1 : 0);
+    if (fcOn) {
+      const up = cssVar('--up');
+      const down = cssVar('--down');
+      const yi = { type: 'price', precision: 0, minMove: 1 } as const;
+      const net = chart.addSeries(HistogramSeries, { priceFormat: yi, priceScaleId: 'pi-fc-net', priceLineVisible: false, lastValueVisible: false }, fcPane);
+      net.setData(fcRows.map((r) => ({ time: r[0] as Time, value: r[2]!, color: r[2]! >= 0 ? `${up}aa` : `${down}aa` })));
+      const cum5 = chart.addSeries(LineSeries, { color: cssVar('--warn'), lineWidth: 1, priceFormat: yi, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }, fcPane);
+      cum5.setData(fcRows.filter((r) => r[3] !== null).map((r) => ({ time: r[0] as Time, value: r[3]! })));
+      const c20 = fcRows.filter((r) => r[4] !== null);
+      const cum20 = chart.addSeries(LineSeries, { color: cssVar('--accent'), lineWidth: 2, priceFormat: yi, priceLineVisible: false, lastValueVisible: false }, fcPane);
+      cum20.setData(c20.map((r) => ({ time: r[0] as Time, value: r[4]! })));
+      cum20.createPriceLine({ price: 0, color: textColor, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false });
+      const last = c20.at(-1);
+      const pts = c20.map((r) => [r[0], r[4]!] as Point);
+      const fmt = (v: number) => v.toLocaleString('en-US', { maximumFractionDigits: 0 });
+      if (last) endLabels(cum20, [{ price: last[4]!, text: fmt(last[4]!), color: cssVar('--accent'), endTime: last[0] as Time, at: follower(pts, fmt) }]);
+    }
     // priceScale(...).applyOptions 會把選項併進圖表層級預設，之後建立的窗格都繼承 → 所有窗格建好後再逐一設定
     if (showSpx || fxLines) {
       chart.priceScale('right', 0).applyOptions({ mode: PriceScaleMode.Normal });
@@ -490,6 +541,11 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       if (showSpx) chart.priceScale('right', 2).applyOptions({ mode: PriceScaleMode.Logarithmic });
       // 上方留給窗格標題、下方留給時間軸上緣，線不貼邊
       if (fxLines) chart.priceScale('right', fxPane).applyOptions({ mode: PriceScaleMode.Normal, scaleMargins: { top: 0.22, bottom: 0.1 } });
+    }
+    if (fcOn) {
+      chart.priceScale('right', fcPane).applyOptions({ mode: PriceScaleMode.Normal, scaleMargins: { top: 0.22, bottom: 0.08 } });
+      // 單日柱：獨立刻度壓在窗格下半部，否則被 ±上兆的累計線壓扁
+      chart.priceScale('pi-fc-net', fcPane).applyOptions({ visible: false, scaleMargins: { top: 0.6, bottom: 0 } });
     }
 
     const wm = (paneIndex: number, text: string) => {
@@ -501,6 +557,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
     if (showSpx) wm(2, `${indexLabel}（對數）｜線色＝Fed 階段（見圖例、下表）`);
     // 文字太長圖表庫會整行縮小到看不清楚 → 只留一句，基準日與數值看上方圖例
     if (fxLines) wm(fxPane, fxLines.mode === 'pct' ? '美元／台幣 累計 %｜藍線往上＝台幣貶' : FX_RAW_TITLE[fxLines.id]);
+    if (fcOn) wm(fcPane, '外資買賣超（上市，億）｜柱＝單日、粗線＝20日累計');
 
     const handler = (param: MouseEventParams<Time>) => setHoverTime(typeof param.time === 'string' ? param.time : null);
     chart.subscribeCrosshairMove(handler);
@@ -513,7 +570,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       chart.remove();
       chartRef.current = null;
     };
-  }, [loaded, fed, coreCpi, cpi, corePce, us2y, spx, equity, showSpx, indexLabel, real, extras, coreOn, fxLines, themeKey]);
+  }, [loaded, fed, coreCpi, cpi, corePce, us2y, spx, equity, showSpx, indexLabel, real, extras, coreOn, fxLines, fcOn, fcRows, themeKey]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -535,7 +592,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
     };
     const apply = () => {
       resetPriceScales(chart);
-      resetPaneStretch(chart, showSpx ? (hasFx ? PANE_STRETCH_SPX_FX : PANE_STRETCH_SPX) : hasFx ? PANE_STRETCH_FX : PANE_STRETCH);
+      resetPaneStretch(chart, withFc(showSpx ? (hasFx ? PANE_STRETCH_SPX_FX : PANE_STRETCH_SPX) : hasFx ? PANE_STRETCH_FX : PANE_STRETCH, fcOn));
       const lastIdx = ts.timeToIndex('9999-12-31' as Time, true);
       const fromIdx = !start || start <= fed[0]![0] ? 0 : ts.timeToIndex(start as Time, true);
       if (lastIdx === null || fromIdx === null) {
@@ -559,7 +616,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
       cancelAnimationFrame(raf);
       ts.unsubscribeVisibleLogicalRangeChange(clamp);
     };
-  }, [chartGen, range, resetKey, fed, showSpx, hasFx]);
+  }, [chartGen, range, resetKey, fed, showSpx, hasFx, fcOn]);
 
   // 圖例：十字線所在日期；沒有十字線時，往左拖曳過＝畫面右緣（標籤欄左緣）那一根，否則最新
   const legend = useMemo(() => {
@@ -691,6 +748,16 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
         ))}
         <span className="small muted">{fxOn.dxy && fxOn.twd ? '兩條＝累計 %' : fxOn.dxy || fxOn.twd ? '一條＝原始價位' : '都關＝不顯示'}</span>
       </div>
+      {fcRows.length > 0 && (
+        <div className="cp-mas" role="group" aria-label="第五格外資買賣超">
+          <span className="small muted">第五格</span>
+          <button type="button" className="ma-chip" aria-pressed={fcPref} onClick={toggleFc}>
+            <i className="swatch" style={{ background: 'var(--accent)' }} />
+            外資買賣超
+          </button>
+          <span className="small muted">{fcPref ? `上市，${fcRows[0]![0].slice(0, 4)} 起` : '關＝不顯示'}</span>
+        </div>
+      )}
 
       <div className="seg" role="group" aria-label="時間區間">
         {RANGES.map((r) => (
@@ -769,6 +836,19 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
                   )}
                 </div>
               )}
+              {fcOn && foreign && (() => {
+                const k = fcIndexAt(foreign.rows, legend.date);
+                const r = k === null ? null : foreign.rows[k]!;
+                if (!r || r[2] === null) return <div>外資買賣超 —</div>;
+                const cls = (v: number | null) => (v === null ? '' : v > 0 ? 'up' : v < 0 ? 'down' : '');
+                return (
+                  <div>
+                    外資 <b className={cls(r[2])}>{fcNum(r[2])}</b> 億 ｜ 5日 <span className={cls(r[3])}>{fcNum(r[3])}</span> ｜ 20日 <b className={cls(r[4])}>{fcNum(r[4])}</b>
+                    <span className="muted">（{fcPctl(foreign.pctl.cum20[k!])}）</span>
+                    {r[0] !== legend.date && <span className="muted"> ｜ {r[0].slice(5)}</span>}
+                  </div>
+                );
+              })()}
               {legend.fx?.mode === 'raw' && (
                 <div>
                   <i className="swatch" style={{ background: `var(${FX_COLOR[legend.fx.id]})` }} aria-hidden="true" />{' '}
@@ -781,7 +861,7 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
               )}
             </div>
           )}
-          <div ref={hostRef} className={`chart-host pi-host${hasFx ? (showSpx ? ' pi-host-4' : ' pi-host-3') : ''}`} />
+          <div ref={hostRef} className={`chart-host pi-host${hasFx ? (showSpx ? ' pi-host-4' : ' pi-host-3') : ''}${fcOn ? ' pi-host-fc' : ''}`} />
         </div>
       )}
 

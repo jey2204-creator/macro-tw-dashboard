@@ -208,7 +208,7 @@ export default function App() {
               summary={summary}
               now={new Date(nowMs)}
             />
-            <PolicyInflationPanel version={summary.generatedAt} themeKey={themeKey} />
+            <PolicyInflationPanel version={summary.generatedAt} themeKey={themeKey} foreign={foreignChips} />
             <TwValuationPanel version={summary.generatedAt} themeKey={themeKey} />
             <UsValuationPanel version={summary.generatedAt} themeKey={themeKey} />
             <UsRiskPanel version={summary.generatedAt} themeKey={themeKey} />
