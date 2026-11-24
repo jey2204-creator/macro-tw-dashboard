@@ -1305,13 +1305,13 @@ th {
 .pi .ma-chip[aria-disabled='true'] {
   cursor: default;
 }
-/* 政策利率面板：手機上控制列按鈕縮小約 20%（28→22px）、列距 6→4px，少滑一點 */
+/* 全站：手機上控制列按鈕縮小約 20%（28→22px）、列距 6→4px，少滑一點（時間區間列 .seg 不縮） */
 @media (max-width: 600px) {
-  .pi .cp-mas {
+  .cp-mas {
     margin-bottom: 4px;
     align-items: center;
   }
-  .pi .ma-chip {
+  .ma-chip {
     min-height: 22px;
     padding: 1px 7px;
     border-radius: 11px;
