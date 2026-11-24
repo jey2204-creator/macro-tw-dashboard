@@ -564,7 +564,19 @@ export function PolicyInflationPanel({ version, themeKey }: Props) {
   // 圖例：十字線所在日期；沒有十字線時，往左拖曳過＝畫面右緣（標籤欄左緣）那一根，否則最新
   const legend = useMemo(() => {
     if (!loaded) return null;
-    const date = hoverTime ?? followTime ?? fed.at(-1)![0];
+    // 最新：取畫面上各條日資料線裡最晚的一天（FRED 的 Fed 常晚一天，加權／台幣當天就有），Fed／CPI 沿用前一筆
+    let latest = fed.at(-1)![0];
+    const bump = (d: string | undefined) => {
+      if (d && d > latest) latest = d;
+    };
+    if (showSpx) bump(spx.at(-1)?.[0]);
+    if (fxLines) {
+      if (fxLines.mode === 'pct') {
+        bump(fxLines.dxy.points.at(-1)?.[0]);
+        bump(fxLines.twd.points.at(-1)?.[0]);
+      } else bump(fxLines.raw.at(-1)?.[0]);
+    }
+    const date = hoverTime ?? followTime ?? latest;
     const at = (pts: readonly Point[]) => (pts.length ? valueAtOrBefore(pts, date) : null);
     const fedV = at(fed);
     const coreV = at(coreCpi);
