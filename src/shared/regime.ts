@@ -1,4 +1,4 @@
-import { addDays } from './dates';
+import { addDays, monthKey } from './dates';
 import { CATEGORY_ORDER, INDICATORS, type IndicatorDef } from './indicators';
 import { closedWeekdaysBetween, marketOf } from './marketHolidays';
 import { evaluateSignal, isStale, type SignalResult } from './signals';
@@ -27,6 +27,8 @@ export interface IndicatorEval {
   points: Point[];
   signal: SignalResult;
   stale: boolean;
+  /** 年增率缺基期：最新一期原始資料的月份（YYYY-MM），去年同月沒有資料可比；沒有缺＝null */
+  yoyGap: string | null;
   /** 是否納入綜合計分 */
   counted: boolean;
   /** 不計分原因 */
@@ -59,16 +61,32 @@ export function scoreToSignal(score: number): Signal {
   return 'neutral';
 }
 
+/**
+ * 年增率指標：最新一期原始資料算不出年增率（去年同月缺），回傳那一期的月份；否則 null。
+ * 只認「最新一期」且只缺一期：缺更多代表來源真的有問題，照原規則判過時。
+ */
+export function yoyGapMonth(def: Pick<IndicatorDef, 'transform'>, raw: readonly Point[], transformed: readonly Point[]): string | null {
+  if (def.transform !== 'yoy') return null;
+  const last = raw.at(-1)?.[0];
+  const prev = raw.at(-2)?.[0];
+  const shown = transformed.at(-1)?.[0];
+  if (!last || !prev || !shown) return null;
+  return shown === prev ? monthKey(last) : null;
+}
+
 export function evaluateIndicator(def: IndicatorDef, summary: SummaryFile, today: string): IndicatorEval {
   const entry = summary.entries[def.id];
   const points = entry ? transformPoints(def, entry.tail) : [];
   const signal = evaluateSignal(def, points);
   const lastDate = points.at(-1)?.[0] ?? null;
-  // 台股參考型指標（權重 0）：連假沒有新資料不算過時——把公告休市的平日從天數扣掉再比。
-  // 有計分的指標（加權、櫃買、美股…）不走這條，計分行為不變。
-  const mkt = def.weight === 0 ? marketOf(def) : null;
-  const closedDays = mkt === 'tw' && lastDate ? closedWeekdaysBetween('tw', lastDate, today) : 0;
-  const stale = isStale(def, lastDate, closedDays > 0 ? addDays(today, -closedDays) : today);
+  // 台股每日指標（含有計分的加權、櫃買）：連假沒有新資料不算過時——把公告休市的平日從天數扣掉再比。
+  // 春節封關到開紅盤約 10 天，不扣的話加權、櫃買會在連假中途退出總分、開紅盤又回來，總分無故跳動。
+  // 美股不扣：美股休市最多連 1 個平日，原本的 5 天門檻本來就不會誤判。
+  const closedDays = marketOf(def) === 'tw' && lastDate ? closedWeekdaysBetween('tw', lastDate, today) : 0;
+  // 年增率缺基期：原始指數有更新，但去年同月官方沒公布（2025-10 CPI），年增率算不出來、官方也不公布。
+  // 這不是資料過時——過時與否改看原始指數的日期，判斷沿用最後一期有年增率的數字。
+  const yoyGap = yoyGapMonth(def, entry?.tail ?? [], points);
+  const stale = isStale(def, yoyGap ? (entry?.tail.at(-1)?.[0] ?? lastDate) : lastDate, closedDays > 0 ? addDays(today, -closedDays) : today);
   let excludedReason: string | null = null;
   if (!entry || entry.status === 'error' || points.length === 0) excludedReason = '資料抓取失敗';
   else if (stale) excludedReason = '資料過時';
@@ -80,6 +98,7 @@ export function evaluateIndicator(def: IndicatorDef, summary: SummaryFile, today
     points,
     signal,
     stale,
+    yoyGap,
     counted,
     excludedReason,
     contribution: counted ? SIGNAL_SCORE[signal.signal] * def.weight : 0,

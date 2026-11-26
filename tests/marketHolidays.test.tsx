@@ -5,7 +5,7 @@ import { buildIcs } from '../scripts/fetch-data/writeIcs';
 import { EventsBar } from '../src/components/EventsBar';
 import { statusTags, type RowModel } from '../src/lib/rows';
 import { GEO_EVENTS, geoProblems } from '../src/shared/geoEvents';
-import { INDICATOR_MAP, INDICATORS } from '../src/shared/indicators';
+import { INDICATOR_MAP } from '../src/shared/indicators';
 import {
   closedWeekdaysBetween,
   closureNote,
@@ -180,9 +180,10 @@ describe('休市標籤（closureNote）', () => {
   });
 });
 
-describe('連假不判過時（只限台股權重 0 的參考指標）', () => {
+describe('連假不判過時（台股每日指標，含加權、櫃買）', () => {
   const summaryWith = (id: string, lastDate: string): SummaryFile =>
     ({ generatedAt: '', entries: { [id]: { status: 'ok', errors: [], tail: [[lastDate, 1]], lastDate } } }) as unknown as SummaryFile;
+  const staleOn = (id: string, last: string, today: string) => evaluateIndicator(INDICATOR_MAP[id]!, summaryWith(id, last), today).stale;
 
   it('2027 春節：封關 2/1 → 2/10 共 9 天，中間 7 個休市平日', () => {
     expect(closedWeekdaysBetween('tw', '2027-02-01', '2027-02-10')).toBe(7);
@@ -190,22 +191,69 @@ describe('連假不判過時（只限台股權重 0 的參考指標）', () => {
   });
 
   it('外資買賣超（權重 0、5 天）：春節期間不過時；平常超過 5 天仍過時', () => {
-    const def = INDICATOR_MAP.net_foreign!;
-    expect(def.weight).toBe(0);
-    expect(evaluateIndicator(def, summaryWith('net_foreign', '2027-02-01'), '2027-02-10').stale).toBe(false);
-    expect(evaluateIndicator(def, summaryWith('net_foreign', '2027-02-01'), '2027-02-11').stale).toBe(false);
-    // 開紅盤後還是沒更新 → 2/17 起過時
-    expect(evaluateIndicator(def, summaryWith('net_foreign', '2027-02-01'), '2027-02-17').stale).toBe(true);
-    expect(evaluateIndicator(def, summaryWith('net_foreign', '2026-11-18'), '2026-11-26').stale).toBe(true);
+    expect(staleOn('net_foreign', '2027-02-01', '2027-02-10')).toBe(false);
+    expect(staleOn('net_foreign', '2027-02-01', '2027-02-17')).toBe(true);
+    expect(staleOn('net_foreign', '2026-11-18', '2026-11-26')).toBe(true);
   });
 
-  it('有計分的指標不受影響：扣不扣休市日，判定方式都和原本一樣', () => {
-    const scoredDaily = INDICATORS.filter((d) => d.weight > 0 && marketOf(d) !== null).map((d) => d.id);
-    expect(scoredDaily).toEqual(expect.arrayContaining(['taiex', 'tpex', 'spx', 'nasdaq', 'sox']));
+  it('加權、櫃買（有計分、5 天）：整個春節都不過時；開紅盤後一直沒更新 → 2/14 起過時', () => {
     for (const id of ['taiex', 'tpex']) {
-      // 原規則：超過 maxAgeDays（日曆天）就過時——春節期間照舊
-      expect(evaluateIndicator(INDICATOR_MAP[id]!, summaryWith(id, '2027-02-01'), '2027-02-10').stale).toBe(true);
+      expect(INDICATOR_MAP[id]!.weight).toBeGreaterThan(0);
+      for (const d of ['2027-02-06', '2027-02-07', '2027-02-10', '2027-02-11', '2027-02-13']) expect(staleOn(id, '2027-02-01', d), `${id} ${d}`).toBe(false);
+      expect(staleOn(id, '2027-02-01', '2027-02-14')).toBe(true);
+      // 沒有休市的平常日：規則和原本一樣（超過 5 個日曆天）
+      expect(staleOn(id, '2026-11-20', '2026-11-25')).toBe(false);
+      expect(staleOn(id, '2026-11-20', '2026-11-26')).toBe(true);
     }
+  });
+
+  it('美股不扣休市日：感恩節前後判定和原本一樣', () => {
     expect(holidayOn('us', '2026-11-26')?.name).toBe('感恩節');
+    expect(staleOn('spx', '2026-11-25', '2026-11-30')).toBe(false);
+    expect(staleOn('spx', '2026-11-25', '2026-12-01')).toBe(true);
+  });
+});
+
+describe('年增率缺基期（2025-10 CPI 沒公布）', () => {
+  const months = (from: string, n: number, skip: string[] = []): [string, number][] => {
+    const out: [string, number][] = [];
+    let [y, m] = from.split('-').map(Number) as [number, number];
+    for (let i = 0; i < n; i++) {
+      const d = `${y}-${String(m).padStart(2, '0')}-01`;
+      if (!skip.includes(d)) out.push([d, 300 + i]);
+      if (++m > 12) { m = 1; y += 1; }
+    }
+    return out;
+  };
+  const summary = (tail: [string, number][]): SummaryFile =>
+    ({ generatedAt: '', entries: { core_cpi: { status: 'ok', errors: [], tail, lastDate: tail.at(-1)![0] } } }) as unknown as SummaryFile;
+  const def = INDICATOR_MAP.core_cpi!;
+
+  it('10 月指數已公布、去年 10 月缺：不過時、照常計分，年增率停在 9 月並標示缺基期', () => {
+    const ev = evaluateIndicator(def, summary(months('2024-06', 29, ['2025-10-01'])), '2026-11-26');
+    expect(ev.points.at(-1)![0]).toBe('2026-09-01');
+    expect(ev.yoyGap).toBe('2026-10');
+    expect(ev.stale).toBe(false);
+    expect(ev.excludedReason).toBeNull();
+    const row = { ev, entry: { status: 'ok', errors: [], partial: false, source: { provider: 'fred' } } } as unknown as RowModel;
+    expect(statusTags(row).map((t) => t.text)).toEqual(['缺基期']);
+  });
+
+  it('沒有缺：yoyGap 為 null，原規則不變', () => {
+    const ev = evaluateIndicator(def, summary(months('2024-06', 29)), '2026-11-26');
+    expect(ev.yoyGap).toBeNull();
+    expect(ev.points.at(-1)![0]).toBe('2026-10-01');
+    expect(ev.stale).toBe(false);
+  });
+
+  it('原始指數本身沒更新：照樣過時', () => {
+    // 只到 2026-08：年增率與原始資料都停在 8 月，到 11/26 已超過 75 天
+    const ev = evaluateIndicator(def, summary(months('2024-06', 27)), '2026-11-26');
+    expect(ev.yoyGap).toBeNull();
+    expect(ev.stale).toBe(true);
+    // 缺基期但原始指數也太舊（停在 10 月、隔年 2 月才看）：仍過時
+    const old = evaluateIndicator(def, summary(months('2024-06', 29, ['2025-10-01'])), '2027-02-01');
+    expect(old.yoyGap).toBe('2026-10');
+    expect(old.stale).toBe(true);
   });
 });
