@@ -27,8 +27,8 @@ function NextRelease({ o, nowScore, now }: { o: IndicatorOutlook; nowScore: numb
       {o.pendingData &&
         (o.noYoyPeriod ? (
           <span className="next-line warn">
-            {Number(o.noYoyPeriod.slice(5))} 月無年增率（去年 {Number(o.noYoyPeriod.slice(5))} 月政府關門缺基期，BLS 只公布月增），判斷沿用{' '}
-            {((Number(o.noYoyPeriod.slice(5)) + 10) % 12) + 1} 月
+            {Number(o.noYoyPeriod.slice(5, 7))} 月無年增率（去年 {Number(o.noYoyPeriod.slice(5, 7))} 月政府關門缺基期，BLS 只公布月增），判斷沿用{' '}
+            {((Number(o.noYoyPeriod.slice(5, 7)) + 10) % 12) + 1} 月
           </span>
         ) : (
           <span className="next-line warn">上次公布的數據尚未更新進網站，門檻待資料更新後計算</span>
