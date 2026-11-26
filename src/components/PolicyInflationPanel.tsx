@@ -674,7 +674,7 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
         const urColor = cssVar(JOBS_UR_COLOR);
         const uS = chart.addSeries(
           LineSeries,
-          { color: urColor, lineWidth: 2, priceScaleId: 'pi-job-ur', priceFormat: { type: 'price', precision: 1, minMove: 0.1 }, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false },
+          { color: urColor, lineWidth: 2, lineType: LineType.WithSteps, priceScaleId: 'pi-job-ur', priceFormat: { type: 'price', precision: 1, minMove: 0.1 }, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false },
           fcPane,
         );
         uS.setData(toData(urPts));
@@ -749,7 +749,7 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
     if (fcOn) wm(fcPane, '外資買賣超（上市，億）｜柱＝單日、粗線＝20日累計');
     if (gdpOn) wm(fcPane, '美國實質GDP 年增（%，季）｜橘虛線＝GDPNow');
     if (oilOn) wm(fcPane, 'WTI 原油（美元／桶）');
-    if (jobsOn) wm(fcPane, '非農月增（萬人）｜深線＝3月均、藍線＝失業率');
+    if (jobsOn) wm(fcPane, '非農月增（萬人）｜主線＝3月均、藍線＝失業率');
 
     const handler = (param: MouseEventParams<Time>) => setHoverTime(typeof param.time === 'string' ? param.time : null);
     chart.subscribeCrosshairMove(handler);
@@ -924,7 +924,7 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
         美債 10Y（粉紅線，預設關）是長天期利率的定價錨：房貸、企業借款與股票估值都拿它折現，10Y 急升最傷高本益比的科技股；2Y 看 Fed 預期、10Y 還多了成長、通膨預期與美債供給。讀數列的 10Y−2Y 是殖利率曲線斜率：小於 0 叫倒掛，1978 年起每次美國衰退前都倒掛過，但領先 6～24 個月、2022～2024 長期倒掛也沒衰退，只當背景、不當進出場訊號；利差依規則審查不計分。
         第五格可切「GDP 成長率」：美國實質 GDP 的年增率（季資料，由 BEA 的年化季增連乘四季換算，和官方年增差 0.1pp 內；不畫年化季增是因為 2020 年單季 −28%／+35% 會把刻度撐爆）；線畫在該季期間，但實際公布晚約一個月、之後還會修正，是落後指標，只用來確認「擴張還是衰退」的大背景。橘色虛線段是亞特蘭大 Fed 的 GDPNow 對當季的即時估計，配上前三季實際值換算成推估年增；GDPNow 季初波動大、越接近公布越準。讀數列的 GDP 一律常駐顯示。
         第五格「油價」是 WTI 原油（美元／桶；2000-08 前接 FRED 現貨價，1986 起；2020-04-20 期貨跌到 −37 美元是真實紀錄，刻度下限固定 0、那天的線會掉出窗格）。油價先推整體 CPI（汽油、運費），約 1～3 個月反映，核心 CPI 才慢慢跟（2022 年油價衝到 120 美元、整體 CPI 9.1%，Fed 一年升息 425bp）；所以整體 CPI 和核心 CPI 拉開時先看油價。讀數列 WTI 一律常駐：年增超過 +30% 時整體 CPI 通常跟著上去、Fed 較難降息；油價急跌（2014～2015、2020）多半是需求或供給衝擊，對台股不一定是好消息。依規則審查油價觸發樣本太少，不計分。
-        第五格「就業」：色塊是非農就業每月新增人數（萬人，紅＝增加、綠＝減少；美國每月第一個週五公布上個月的數字，之後兩個月還會修正），深色線是近 3 個月平均（單月很吵，Fed 和指標表都看 3 個月平均），藍線是失業率（刻度獨立、不顯示軸，數值看線尾藍框與讀數列）。資料畫在所屬月份，實際公布晚約一個月。2020 年 4 月單月 −2,050 萬會把其他月份壓成一條線，所以刻度限制在 ±{JOBS_CLAMP} 萬人，超出的月份畫到窗格邊為止、真實數字看讀數列。怎麼讀：3 個月平均掉到 0 以下、失業率從低點升 0.5pp 以上（Sahm 規則）才是衰退警訊；數字強反而讓 Fed 更不急著降息。依規則審查，就業是落後指標、對加權之後 60 日沒有鑑別力，指標表的非農與失業率只判中性／偏空，這一格不另外計分。讀數列的非農／失業率一律常駐。
+        第五格「就業」：色塊是非農就業每月新增人數（萬人，紅＝增加、綠＝減少；美國每月第一個週五公布上個月的數字，之後兩個月還會修正），黑色主線（深色模式為白色）是近 3 個月平均（單月很吵，Fed 和指標表都看 3 個月平均），藍線是失業率（刻度獨立、不顯示軸，數值看線尾藍框與讀數列）。資料畫在所屬月份，實際公布晚約一個月。2020 年 4 月單月 −2,050 萬會把其他月份壓成一條線，所以刻度限制在 ±{JOBS_CLAMP} 萬人，超出的月份畫到窗格邊為止、真實數字看讀數列。怎麼讀：3 個月平均掉到 0 以下、失業率從低點升 0.5pp 以上（Sahm 規則）才是衰退警訊；數字強反而讓 Fed 更不急著降息。依規則審查，就業是落後指標、對加權之後 60 日沒有鑑別力，指標表的非農與失業率只判中性／偏空，這一格不另外計分。讀數列的非農／失業率一律常駐。
         這張圖與「Fed 120 天」「核心CPI ±0.2pp」規則重疊，只用來解釋 FOMC 為什麼那樣做，不計分。2008 年前 Fed 為單一目標利率。
       </p>
       </PanelNote>

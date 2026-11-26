@@ -414,7 +414,7 @@ describe('政策利率 vs 通膨面板', () => {
       expect(legend()).toMatch(/非農 \+16\.5萬（9月） ｜ 3月均 \+10\.5萬 ｜ 失業率 4\.2%/);
       const before = chartLog.series.length;
       fireEvent.click(screen.getByRole('button', { name: '就業' }));
-      await waitFor(() => expect(chartLog.watermarks.at(-1)).toBe('非農月增（萬人）｜深線＝3月均、藍線＝失業率'));
+      await waitFor(() => expect(chartLog.watermarks.at(-1)).toBe('非農月增（萬人）｜主線＝3月均、藍線＝失業率'));
       expect(window.localStorage.getItem('pi-p5')).toBe('jobs');
       expect(document.querySelector('.pi-host')!.className).toMatch(/pi-host-fc/);
       expect(document.body.textContent).toMatch(/非農＋失業率，2025 起/);
