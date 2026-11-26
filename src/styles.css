@@ -1200,7 +1200,8 @@ th {
 .ev-ref {
   cursor: default;
 }
-.ev-geo .ev-name .muted {
+.ev-geo .ev-name .muted,
+.ev-hol .ev-name .muted {
   font-weight: 400;
 }
 .cm-event .swatch.cm-geo-swatch {

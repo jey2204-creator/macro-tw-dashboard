@@ -25,6 +25,7 @@ import { INDICATOR_MAP } from './shared/indicators';
 import { computeRegime } from './shared/regime';
 import { outlooksFor } from './shared/outlook';
 import { weekdayHoursBetween } from './lib/dataAge';
+import { closureNote, MARKET_TEXT } from './shared/marketHolidays';
 import { MA_PERIODS, type MaPeriod, type Period, type RangeKey } from './shared/timeseries';
 
 const WIDE_QUERY = '(min-width: 1100px)';
@@ -128,6 +129,8 @@ export default function App() {
   const themeKey = `${theme}-${systemDark}-${upDown}`;
   // 只計平日時數：排程週末不跑，週末沒更新不算異常
   const dataAgeHours = summary ? weekdayHoursBetween(Date.parse(summary.generatedAt), nowMs) : 0;
+  // 公告休市：頁首提示「今天沒有新行情是正常的」（只在休市當下顯示）
+  const closures = (['tw', 'us'] as const).map((m) => closureNote(m, new Date(nowMs))).filter((c) => c !== null);
 
   return (
     <div className="app">
@@ -142,6 +145,12 @@ export default function App() {
               {dataAgeHours > 24 && '（平日超過 24 小時未更新）'}
             </span>
           )}
+          {closures.map((c) => (
+            <span key={c.market} className="small muted closure-note" title={`${c.date} ${c.name}：${MARKET_TEXT[c.market].name}沒有新資料是正常的`}>
+              {MARKET_TEXT[c.market].flag} {MARKET_TEXT[c.market].name}
+              {c.when === 'today' ? '今天' : '上個交易日'}休市（{c.name}）
+            </span>
+          ))}
         </div>
         <div className="tools">
           <button
