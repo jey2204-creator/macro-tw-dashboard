@@ -13,6 +13,7 @@ import type { SummaryFile } from '../../src/shared/types';
  * 產生 public/data/macro-events.ics：美國重要總經公布（CPI、就業報告、GDP、FOMC）與台灣景氣指標公布。
  * 手機行事曆以 webcal:// 訂閱後會自動同步；每次資料更新都重寫描述中的門檻與總分影響。
  * 美國事件公布前 30 分鐘提醒；台灣事件（不計分）不設提醒，只列在行事曆上。
+ * 參考事件（ADP、密大初值、零售銷售、美股財報季開跑）：不計分、不設提醒。
  * Fed「升息滿 120 天」等不需公布就會改變判斷的日子也列入。
  * 重大事件（config/geo-events.json：APEC、G20、川習會、關稅期限、選舉）以全天事件列入，不計分、不設提醒。
  */
@@ -75,7 +76,10 @@ export function buildIcs(opts: {
     const desc: string[] = [];
     const isTw = kind.region === 'tw';
     const isNext = kind.indicators.some((id) => outlooks[id]?.release === r);
-    if (isTw) {
+    if (kind.reference) {
+      desc.push('參考事件：網站沒有對應指標，不計入總分、不設提醒。');
+      if (kind.hint) desc.push(kind.hint);
+    } else if (isTw) {
       desc.push('台灣景氣指標：僅供參考，不計入網站總分。');
     } else if (regime && isNext) {
       const range = eventRange(regime, r, outlooks);
@@ -99,7 +103,7 @@ export function buildIcs(opts: {
       `SUMMARY:${esc(`${isTw ? '🇹🇼' : '🇺🇸'} ${kind.name}${r.note ? `（${r.note}）` : ''}`)}`,
       `DESCRIPTION:${esc(desc.join('\n'))}`,
       `URL:${SITE}`,
-      ...(isTw
+      ...(isTw || kind.reference
         ? []
         : ['BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${esc(`${kind.name} 30 分鐘後公布`)}`, 'TRIGGER:-PT30M', 'END:VALARM']),
       'END:VEVENT',
