@@ -18,6 +18,13 @@ import { daysBetween, todayInTaipei } from './dates';
  *    台灣採購經理人指數（國發會）16:00、貨幣總計數（央行）16:20
  *  - 時間表寫「X日以前」者以該日為準並標「最晚」（PMI 通常在每月第 1 個工作日公布）
  *
+ * 參考事件（reference: true；2026-11-26 查證）：網站沒有對應指標、不計分、行事曆不設提醒，只提醒「這幾天波動會放大」
+ *  - ADP 就業報告（小非農）：ADP Research 發布行事曆 https://adpemploymentreport.com/（08:15 ET）
+ *  - 密大消費者信心／通膨預期初值：University of Michigan Surveys of Consumers「Release Dates」
+ *    https://data.sca.isr.umich.edu/survey-info.php（10:00 ET；只列初值，終值兩週後公布、變動通常小）
+ *  - 零售銷售（Advance Monthly Retail Trade）：Census https://www.census.gov/retail/release_schedule.html（08:30 ET）
+ *  - 美股財報季開跑：以摩根大通（JPM）財報日為準（公司公告，約 06:45 ET 發布），當週大型銀行陸續公布
+ *
  * 每年 10 月左右官方會公布隔年日程；GDPNow 清單較短，到期前 UI 會顯示「日程待更新」。
  */
 
@@ -29,6 +36,10 @@ export type ReleaseKind =
   | 'pce'
   | 'fomc'
   | 'gdpnow'
+  | 'adp'
+  | 'umich'
+  | 'retail'
+  | 'earnings'
   | 'tw_signal'
   | 'tw_exports'
   | 'tw_orders'
@@ -46,6 +57,10 @@ export interface ReleaseKindDef {
   source: string;
   /** 台灣的公布（台北時間、不計分）；預設美國 */
   region?: 'us' | 'tw';
+  /** 參考事件：網站沒有對應指標（indicators 為空）、不計分；事件列不可點、行事曆不設提醒 */
+  reference?: true;
+  /** 事件列第二行的一句話說明（參考事件用） */
+  hint?: string;
 }
 
 export const RELEASE_KINDS: Record<ReleaseKind, ReleaseKindDef> = {
@@ -56,6 +71,42 @@ export const RELEASE_KINDS: Record<ReleaseKind, ReleaseKindDef> = {
   pce: { kind: 'pce', name: 'PCE 物價（個人所得與支出）', indicators: ['pce', 'core_pce'], importance: 'high', source: 'BEA' },
   fomc: { kind: 'fomc', name: 'FOMC 利率決議', indicators: ['fed'], importance: 'high', source: 'Federal Reserve' },
   gdpnow: { kind: 'gdpnow', name: 'GDPNow 更新', indicators: ['gdpnow'], importance: 'low', source: 'Atlanta Fed' },
+  adp: {
+    kind: 'adp',
+    name: 'ADP 就業（小非農）',
+    indicators: [],
+    importance: 'high',
+    source: 'ADP Research',
+    reference: true,
+    hint: '民間薪資單統計，週五非農的前哨；與非農常不同向，只看大幅意外',
+  },
+  umich: {
+    kind: 'umich',
+    name: '密大消費者信心／通膨預期',
+    indicators: [],
+    importance: 'high',
+    source: 'University of Michigan',
+    reference: true,
+    hint: '看 1 年、5 年通膨預期：升高＝Fed 更難降息',
+  },
+  retail: {
+    kind: 'retail',
+    name: '零售銷售',
+    indicators: [],
+    importance: 'high',
+    source: 'Census Bureau',
+    reference: true,
+    hint: '消費約占美國 GDP 七成；太強＝降息預期降溫、太弱＝擔心衰退',
+  },
+  earnings: {
+    kind: 'earnings',
+    name: '美股財報季開跑',
+    indicators: [],
+    importance: 'high',
+    source: 'JPMorganChase',
+    reference: true,
+    hint: '摩根大通領頭，之後 3～4 週個股波動放大；台股看台積電法說',
+  },
   tw_signal: { kind: 'tw_signal', name: '台灣景氣燈號', indicators: ['tw_signal'], importance: 'high', source: '國發會', region: 'tw' },
   tw_exports: { kind: 'tw_exports', name: '台灣出口', indicators: ['tw_exports'], importance: 'high', source: '財政部', region: 'tw' },
   tw_orders: { kind: 'tw_orders', name: '台灣外銷訂單', indicators: ['tw_orders'], importance: 'high', source: '經濟部', region: 'tw' },
@@ -207,6 +258,66 @@ const GDPNOW: [string, string, string, string?][] = [
   ['2026-12-23', '10:00', m(2026, 10)],
 ];
 
+/** ADP 就業報告（08:15 ET）：[公布日, 參考月份]；3/31、6/30 那兩次在月底公布當月 */
+const ADP: [string, string][] = [
+  ['2026-12-02', m(2026, 11)],
+  ['2027-01-06', m(2026, 12)],
+  ['2027-02-03', m(2027, 1)],
+  ['2027-03-03', m(2027, 2)],
+  ['2027-03-31', m(2027, 3)],
+  ['2027-05-05', m(2027, 4)],
+  ['2027-06-03', m(2027, 5)],
+  ['2027-06-30', m(2027, 6)],
+  ['2027-08-04', m(2027, 7)],
+  ['2027-09-01', m(2027, 8)],
+  ['2027-10-06', m(2027, 9)],
+  ['2027-11-03', m(2027, 10)],
+  ['2027-12-01', m(2027, 11)],
+];
+
+/** 密大消費者信心初值（10:00 ET）：[公布日, 調查月份＝當月] */
+const UMICH: [string, string][] = [
+  ['2026-12-04', m(2026, 12)],
+  ['2027-01-08', m(2027, 1)],
+  ['2027-02-12', m(2027, 2)],
+  ['2027-03-12', m(2027, 3)],
+  ['2027-04-09', m(2027, 4)],
+  ['2027-05-07', m(2027, 5)],
+  ['2027-06-11', m(2027, 6)],
+  ['2027-07-16', m(2027, 7)],
+  ['2027-08-13', m(2027, 8)],
+  ['2027-09-10', m(2027, 9)],
+  ['2027-10-08', m(2027, 10)],
+  ['2027-11-05', m(2027, 11)],
+  ['2027-12-03', m(2027, 12)],
+];
+
+/** 零售銷售（Census Advance Monthly Retail Trade，08:30 ET）：[公布日, 參考月份] */
+const RETAIL: [string, string][] = [
+  ['2026-12-16', m(2026, 11)],
+  ['2027-01-15', m(2026, 12)],
+  ['2027-02-17', m(2027, 1)],
+  ['2027-03-16', m(2027, 2)],
+  ['2027-04-16', m(2027, 3)],
+  ['2027-05-14', m(2027, 4)],
+  ['2027-06-16', m(2027, 5)],
+  ['2027-07-16', m(2027, 6)],
+  ['2027-08-16', m(2027, 7)],
+  ['2027-09-16', m(2027, 8)],
+  ['2027-10-15', m(2027, 9)],
+  ['2027-11-16', m(2027, 10)],
+  ['2027-12-15', m(2027, 11)],
+];
+
+/** 美股財報季開跑＝摩根大通財報日（約 06:45 ET 發布）：[日期, 哪一季的財報] */
+const EARNINGS: [string, string][] = [
+  ['2027-01-14', '2026 Q4 財報'],
+  ['2027-04-13', '2027 Q1 財報'],
+  ['2027-07-13', '2027 Q2 財報'],
+  ['2027-10-12', '2027 Q3 財報'],
+  ['2028-01-13', '2027 Q4 財報'],
+];
+
 /** 台灣景氣對策信號（國發會，16:00）：[公布日, 參考月份]；1 月資料在 3 月初公布 */
 const TW_SIGNAL: [string, string][] = [
   ['2026-09-29', m(2026, 8)],
@@ -320,6 +431,10 @@ export const SCHEDULE: ScheduledRelease[] = [
     note,
     approx: true,
   })),
+  ...ADP.map(([date, period]): ScheduledRelease => ({ kind: 'adp', date, timeET: '08:15', period })),
+  ...UMICH.map(([date, period]): ScheduledRelease => ({ kind: 'umich', date, timeET: '10:00', period, note: '初值' })),
+  ...RETAIL.map(([date, period]): ScheduledRelease => ({ kind: 'retail', date, timeET: '08:30', period })),
+  ...EARNINGS.map(([date, note]): ScheduledRelease => ({ kind: 'earnings', date, timeET: '06:45', period: null, note })),
   ...TW_SIGNAL.map(tw('tw_signal', '16:00')),
   ...TW_EXPORTS.map(tw('tw_exports', '16:00')),
   ...TW_ORDERS.map(tw('tw_orders', '16:00')),

@@ -79,7 +79,7 @@ export function EventsBar({
         <button type="button" className="linkbtn" onClick={() => setAll(!all)}>
           {all ? '只看 14 天' : '看 60 天'}
         </button>
-        <span>台北時間；區間＝這次公布最好／最壞情況下的總分（只算這一項，美債、美元會另外反應）；台灣指標僅供參考；🌐＝重大事件（當地日期，人工清單、不計分）</span>
+        <span>台北時間；區間＝這次公布最好／最壞情況下的總分（只算這一項，美債、美元會另外反應）；台灣指標僅供參考；ADP、密大、零售銷售、財報季＝參考事件（不計分、不設提醒）；🌐＝重大事件（當地日期，人工清單、不計分）</span>
       </div>
       {stale.length > 0 && (
         <p className="warn small">
@@ -133,9 +133,16 @@ function EventRow({
   const unscored = def.indicators.every((id) => (INDICATOR_MAP[id]?.weight ?? 0) === 0);
   const flips = range && (range.best.regime !== range.now.regime || range.worst.regime !== range.now.regime);
   const cd = countdownText(releaseAt(r), now);
+  // 參考事件（ADP、密大、零售銷售、財報季）：網站沒有對應指標，不可點
+  const target = def.indicators[0];
   return (
     <li>
-      <button type="button" className="event" onClick={() => onSelect(def.indicators[0]!)}>
+      <button
+        type="button"
+        className={`event${target ? '' : ' ev-ref'}`}
+        onClick={target ? () => onSelect(target) : undefined}
+        title={def.hint}
+      >
         <span className={`ev-cd${cd === '今天' || cd === '明天' ? ' soon' : ''}`}>{cd}</span>
         <span className="ev-main">
           <span className="ev-name">
@@ -145,7 +152,7 @@ function EventRow({
           <span className="ev-when num">{whenText(r)}</span>
         </span>
         <span className={`ev-impact small${flips ? ' flip' : ''}`}>
-          {range ? `${flips ? '⚠️ 可能翻轉結論：' : ''}${rangeText(range)}` : <span className="muted">{unscored ? '不計分' : '—'}</span>}
+          {range ? `${flips ? '⚠️ 可能翻轉結論：' : ''}${rangeText(range)}` : <span className="muted">{unscored ? `不計分${def.hint ? `｜${def.hint}` : ''}` : '—'}</span>}
         </span>
       </button>
     </li>
