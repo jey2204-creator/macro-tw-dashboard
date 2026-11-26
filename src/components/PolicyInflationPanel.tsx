@@ -672,9 +672,18 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
       const urPts = extend(unrate);
       if (urPts.length) {
         const urColor = cssVar(JOBS_UR_COLOR);
+        // 短區間失業率只差 0.1pp 時，自動刻度會把它放大成整格高的落差 → 刻度至少涵蓋 1pp
+        const minSpan: AutoscaleInfoProvider = (original) => {
+          const r = original();
+          if (!r?.priceRange) return r;
+          const { minValue, maxValue } = r.priceRange;
+          if (maxValue - minValue >= 1) return r;
+          const mid = (minValue + maxValue) / 2;
+          return { ...r, priceRange: { minValue: mid - 0.5, maxValue: mid + 0.5 } };
+        };
         const uS = chart.addSeries(
           LineSeries,
-          { color: urColor, lineWidth: 2, lineType: LineType.WithSteps, priceScaleId: 'pi-job-ur', priceFormat: { type: 'price', precision: 1, minMove: 0.1 }, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false },
+          { color: urColor, lineWidth: 2, lineType: LineType.WithSteps, priceScaleId: 'pi-job-ur', priceFormat: { type: 'price', precision: 1, minMove: 0.1 }, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false, autoscaleInfoProvider: minSpan },
           fcPane,
         );
         uS.setData(toData(urPts));
