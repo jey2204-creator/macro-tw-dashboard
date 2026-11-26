@@ -1,0 +1,2680 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//macro-tw-dashboard//US and Taiwan macro releases//ZH-TW
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:總經公布（美國・台灣）＋重大事件＋休市日
+X-WR-TIMEZONE:Asia/Taipei
+X-PUBLISHED-TTL:PT6H
+REFRESH-INTERVAL;VALUE=DURATION:PT6H
+BEGIN:VEVENT
+UID:ppi-2026-11-13@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20261113T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PPI 生產者物價
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PPI 生產者物價 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_orders-2026-11-20@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20261120T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣外銷訂單
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：經濟部｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:gdp-2026-11-25@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20261125T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 GDP（Q3 修正值）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BEA｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:GDP 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:pce-2026-11-25@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20261125T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PCE 物價（個人所得與支出）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BEA｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PCE 物價（個人所得與支出） 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_signal-2026-11-27@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20261127T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣景氣燈號
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：國發會｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_pmi-2026-12-02@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20261202T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣製造業PMI（最晚）
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：國發會／中經院｜https://jey2204-creator.github.io/macro-t
+ w-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:adp-2026-12-02@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20261202T131500Z
+DURATION:PT15M
+SUMMARY:🇺🇸 ADP 就業（小非農）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n民間薪資單統計，週五非農的前哨；與非農常
+ 不同向，只看大幅意外\n來源：ADP Research｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:jobs-2026-12-04@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20261204T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 就業報告（非農／失業率）
+DESCRIPTION:目前總分 -0.35（偏空）\n這次公布可能讓總分落
+ 在：總分 −0.46（偏空）～ −0.35（偏空）\n\n非農：目前
+ 中性\n新增 ≤ -226k → 偏空｜≥ -225k → 中性\n若轉偏空
+ ：總分 −0.35 → −0.41（偏空）\n\n失業率：目前中性\n失
+ 業率 ≤ 5.5% → 中性｜≥ 5.6% → 偏空\n若轉偏空：總分 
+ −0.35 → −0.41（偏空）\n\n門檻依 2026-11-26 資料計算，會
+ 隨每次更新改寫。\n來源：BLS｜https://jey2204-creator.github.io
+ /macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:就業報告（非農／失業率） 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:umich-2026-12-04@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20261204T150000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 密大消費者信心／通膨預期（初值）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n看 1 年、5 年通膨預期：升高＝Fed 更難降息\n
+ 來源：University of Michigan｜https://jey2204-creator.github.io/macro-
+ tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_exports-2026-12-09@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20261209T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣出口
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：財政部｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:fomc-2026-12-09@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20261209T190000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 FOMC 利率決議（含經濟預測（SEP））
+DESCRIPTION:目前總分 -0.35（偏空）\n這次公布可能讓總分落
+ 在：總分 −0.35（偏空）～ −0.24（偏空）\n\nFed利率：目
+ 前偏空\n降息 25bp → 中性｜不變 → 偏空｜升息 25bp → 
+ 偏空\n若一直不變，01/15 起轉中性\n若轉中性：總分 −0.3
+ 5 → −0.24（偏空）\n\n門檻依 2026-11-26 資料計算，會隨每
+ 次更新改寫。\n來源：Federal Reserve｜https://jey2204-creator.git
+ hub.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:FOMC 利率決議 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:cpi-2026-12-10@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20261210T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 CPI 消費者物價
+DESCRIPTION:目前總分 -0.35（偏空）\n這次公布可能讓總分落
+ 在：不影響總分（−0.35）\n\nCPI：目前偏空\n\n核心CPI：
+ 目前中性\n\n門檻依 2026-11-26 資料計算，會隨每次更新改
+ 寫。\n來源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboar
+ d/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:CPI 消費者物價 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:ppi-2026-12-15@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20261215T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PPI 生產者物價
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PPI 生產者物價 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:retail-2026-12-16@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20261216T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 零售銷售
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n消費約占美國 GDP 七成；太強＝降息預期降溫
+ 、太弱＝擔心衰退\n來源：Census Bureau｜https://jey2204-creator
+ .github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_orders-2026-12-22@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20261222T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣外銷訂單
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：經濟部｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:gdp-2026-12-23@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20261223T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 GDP（Q3 確定值）
+DESCRIPTION:目前總分 -0.35（偏空）\n這次公布可能讓總分落
+ 在：總分 −0.46（偏空）～ −0.35（偏空）\n\n實質GDP：目
+ 前偏多\n年化季增 ≤ -0.1% → 偏空｜0.0%～1.9% → 中性｜
+ ≥ 2.0% → 偏多\n若轉偏空：總分 −0.35 → −0.46（偏空）
+ \n若轉中性：總分 −0.35 → −0.41（偏空）\n\n門檻依 2026-
+ 11-26 資料計算，會隨每次更新改寫。\n來源：BEA｜https://j
+ ey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:GDP 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:pce-2026-12-23@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20261223T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PCE 物價（個人所得與支出）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BEA｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PCE 物價（個人所得與支出） 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_signal-2026-12-28@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20261228T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣景氣燈號
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：國發會｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_pmi-2027-01-05@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270105T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣製造業PMI（最晚）
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：國發會／中經院｜https://jey2204-creator.github.io/macro-t
+ w-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:adp-2027-01-06@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270106T131500Z
+DURATION:PT15M
+SUMMARY:🇺🇸 ADP 就業（小非農）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n民間薪資單統計，週五非農的前哨；與非農常
+ 不同向，只看大幅意外\n來源：ADP Research｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_exports-2027-01-08@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270108T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣出口
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：財政部｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:jobs-2027-01-08@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270108T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 就業報告（非農／失業率）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:就業報告（非農／失業率） 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:umich-2027-01-08@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270108T150000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 密大消費者信心／通膨預期（初值）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n看 1 年、5 年通膨預期：升高＝Fed 更難降息\n
+ 來源：University of Michigan｜https://jey2204-creator.github.io/macro-
+ tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:cpi-2027-01-13@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270113T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 CPI 消費者物價
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:CPI 消費者物價 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:earnings-2027-01-14@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270114T114500Z
+DURATION:PT15M
+SUMMARY:🇺🇸 美股財報季開跑（2026 Q4 財報）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n摩根大通領頭，之後 3～4 週個股波動放大；
+ 台股看台積電法說\n來源：JPMorganChase｜https://jey2204-creator
+ .github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:ppi-2027-01-14@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270114T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PPI 生產者物價
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PPI 生產者物價 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:retail-2027-01-15@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270115T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 零售銷售
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n消費約占美國 GDP 七成；太強＝降息預期降溫
+ 、太弱＝擔心衰退\n來源：Census Bureau｜https://jey2204-creator
+ .github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_orders-2027-01-20@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270120T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣外銷訂單
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：經濟部｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:fomc-2027-01-27@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270127T190000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 FOMC 利率決議
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：Federal Reserve｜https://jey2204-creator.github.io/macro-tw-dashboa
+ rd/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:FOMC 利率決議 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_signal-2027-01-28@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270128T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣景氣燈號
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：國發會｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:gdp-2027-01-28@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270128T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 GDP（Q4 初值）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BEA｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:GDP 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:pce-2027-01-28@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270128T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PCE 物價（個人所得與支出）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BEA｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PCE 物價（個人所得與支出） 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_pmi-2027-02-03@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270203T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣製造業PMI（最晚）
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：國發會／中經院｜https://jey2204-creator.github.io/macro-t
+ w-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:adp-2027-02-03@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270203T131500Z
+DURATION:PT15M
+SUMMARY:🇺🇸 ADP 就業（小非農）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n民間薪資單統計，週五非農的前哨；與非農常
+ 不同向，只看大幅意外\n來源：ADP Research｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:jobs-2027-02-05@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270205T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 就業報告（非農／失業率）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:就業報告（非農／失業率） 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:cpi-2027-02-11@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270211T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 CPI 消費者物價
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:CPI 消費者物價 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:ppi-2027-02-12@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270212T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PPI 生產者物價
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PPI 生產者物價 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:umich-2027-02-12@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270212T150000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 密大消費者信心／通膨預期（初值）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n看 1 年、5 年通膨預期：升高＝Fed 更難降息\n
+ 來源：University of Michigan｜https://jey2204-creator.github.io/macro-
+ tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_exports-2027-02-16@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270216T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣出口
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：財政部｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:retail-2027-02-17@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270217T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 零售銷售
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n消費約占美國 GDP 七成；太強＝降息預期降溫
+ 、太弱＝擔心衰退\n來源：Census Bureau｜https://jey2204-creator
+ .github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_orders-2027-02-24@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270224T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣外銷訂單
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：經濟部｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:gdp-2027-02-25@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270225T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 GDP（Q4 修正值）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BEA｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:GDP 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:pce-2027-02-25@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270225T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PCE 物價（個人所得與支出）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BEA｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PCE 物價（個人所得與支出） 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:adp-2027-03-03@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270303T131500Z
+DURATION:PT15M
+SUMMARY:🇺🇸 ADP 就業（小非農）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n民間薪資單統計，週五非農的前哨；與非農常
+ 不同向，只看大幅意外\n來源：ADP Research｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:jobs-2027-03-05@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270305T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 就業報告（非農／失業率）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:就業報告（非農／失業率） 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_signal-2027-03-08@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270308T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣景氣燈號
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：國發會｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_exports-2027-03-09@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270309T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣出口
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：財政部｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_pmi-2027-03-10@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270310T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣製造業PMI（最晚）
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：國發會／中經院｜https://jey2204-creator.github.io/macro-t
+ w-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:cpi-2027-03-10@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270310T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 CPI 消費者物價
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:CPI 消費者物價 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:ppi-2027-03-12@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270312T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PPI 生產者物價
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PPI 生產者物價 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:umich-2027-03-12@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270312T150000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 密大消費者信心／通膨預期（初值）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n看 1 年、5 年通膨預期：升高＝Fed 更難降息\n
+ 來源：University of Michigan｜https://jey2204-creator.github.io/macro-
+ tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:retail-2027-03-16@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270316T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 零售銷售
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n消費約占美國 GDP 七成；太強＝降息預期降溫
+ 、太弱＝擔心衰退\n來源：Census Bureau｜https://jey2204-creator
+ .github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:fomc-2027-03-17@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270317T180000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 FOMC 利率決議（含經濟預測（SEP））
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：Federal Reserve｜https://jey2204-creator.github.io/macro-tw-dashboa
+ rd/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:FOMC 利率決議 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_orders-2027-03-23@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270323T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣外銷訂單
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：經濟部｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_signal-2027-03-26@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270326T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣景氣燈號
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：國發會｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:adp-2027-03-31@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270331T121500Z
+DURATION:PT15M
+SUMMARY:🇺🇸 ADP 就業（小非農）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n民間薪資單統計，週五非農的前哨；與非農常
+ 不同向，只看大幅意外\n來源：ADP Research｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:gdp-2027-03-31@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270331T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 GDP（Q4 確定值）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BEA｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:GDP 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:pce-2027-03-31@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270331T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PCE 物價（個人所得與支出）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BEA｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PCE 物價（個人所得與支出） 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_pmi-2027-04-02@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270402T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣製造業PMI（最晚）
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：國發會／中經院｜https://jey2204-creator.github.io/macro-t
+ w-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:jobs-2027-04-02@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270402T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 就業報告（非農／失業率）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:就業報告（非農／失業率） 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_exports-2027-04-09@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270409T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣出口
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：財政部｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:umich-2027-04-09@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270409T140000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 密大消費者信心／通膨預期（初值）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n看 1 年、5 年通膨預期：升高＝Fed 更難降息\n
+ 來源：University of Michigan｜https://jey2204-creator.github.io/macro-
+ tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:earnings-2027-04-13@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270413T104500Z
+DURATION:PT15M
+SUMMARY:🇺🇸 美股財報季開跑（2027 Q1 財報）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n摩根大通領頭，之後 3～4 週個股波動放大；
+ 台股看台積電法說\n來源：JPMorganChase｜https://jey2204-creator
+ .github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:cpi-2027-04-13@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270413T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 CPI 消費者物價
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:CPI 消費者物價 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:ppi-2027-04-14@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270414T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PPI 生產者物價
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PPI 生產者物價 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:retail-2027-04-16@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270416T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 零售銷售
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n消費約占美國 GDP 七成；太強＝降息預期降溫
+ 、太弱＝擔心衰退\n來源：Census Bureau｜https://jey2204-creator
+ .github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_orders-2027-04-20@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270420T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣外銷訂單
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：經濟部｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_signal-2027-04-28@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270428T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣景氣燈號
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：國發會｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:fomc-2027-04-28@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270428T180000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 FOMC 利率決議
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：Federal Reserve｜https://jey2204-creator.github.io/macro-tw-dashboa
+ rd/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:FOMC 利率決議 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:gdp-2027-04-29@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270429T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 GDP（Q1 初值）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BEA｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:GDP 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:pce-2027-04-29@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270429T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PCE 物價（個人所得與支出）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BEA｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PCE 物價（個人所得與支出） 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_pmi-2027-05-05@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270505T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣製造業PMI（最晚）
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：國發會／中經院｜https://jey2204-creator.github.io/macro-t
+ w-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:adp-2027-05-05@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270505T121500Z
+DURATION:PT15M
+SUMMARY:🇺🇸 ADP 就業（小非農）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n民間薪資單統計，週五非農的前哨；與非農常
+ 不同向，只看大幅意外\n來源：ADP Research｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_exports-2027-05-07@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270507T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣出口
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：財政部｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:jobs-2027-05-07@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270507T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 就業報告（非農／失業率）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:就業報告（非農／失業率） 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:umich-2027-05-07@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270507T140000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 密大消費者信心／通膨預期（初值）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n看 1 年、5 年通膨預期：升高＝Fed 更難降息\n
+ 來源：University of Michigan｜https://jey2204-creator.github.io/macro-
+ tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:cpi-2027-05-12@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270512T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 CPI 消費者物價
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:CPI 消費者物價 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:ppi-2027-05-13@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270513T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PPI 生產者物價
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PPI 生產者物價 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:retail-2027-05-14@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270514T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 零售銷售
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n消費約占美國 GDP 七成；太強＝降息預期降溫
+ 、太弱＝擔心衰退\n來源：Census Bureau｜https://jey2204-creator
+ .github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_orders-2027-05-20@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270520T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣外銷訂單
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：經濟部｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_signal-2027-05-27@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270527T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣景氣燈號
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：國發會｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:gdp-2027-05-27@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270527T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 GDP（Q1 修正值）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BEA｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:GDP 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:pce-2027-05-27@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270527T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PCE 物價（個人所得與支出）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BEA｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PCE 物價（個人所得與支出） 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_pmi-2027-06-03@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270603T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣製造業PMI（最晚）
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：國發會／中經院｜https://jey2204-creator.github.io/macro-t
+ w-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:adp-2027-06-03@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270603T121500Z
+DURATION:PT15M
+SUMMARY:🇺🇸 ADP 就業（小非農）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n民間薪資單統計，週五非農的前哨；與非農常
+ 不同向，只看大幅意外\n來源：ADP Research｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:jobs-2027-06-04@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270604T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 就業報告（非農／失業率）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:就業報告（非農／失業率） 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_exports-2027-06-08@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270608T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣出口
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：財政部｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:fomc-2027-06-09@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270609T180000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 FOMC 利率決議（含經濟預測（SEP））
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：Federal Reserve｜https://jey2204-creator.github.io/macro-tw-dashboa
+ rd/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:FOMC 利率決議 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:cpi-2027-06-10@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270610T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 CPI 消費者物價
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:CPI 消費者物價 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:ppi-2027-06-11@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270611T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PPI 生產者物價
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PPI 生產者物價 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:umich-2027-06-11@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270611T140000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 密大消費者信心／通膨預期（初值）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n看 1 年、5 年通膨預期：升高＝Fed 更難降息\n
+ 來源：University of Michigan｜https://jey2204-creator.github.io/macro-
+ tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:retail-2027-06-16@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270616T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 零售銷售
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n消費約占美國 GDP 七成；太強＝降息預期降溫
+ 、太弱＝擔心衰退\n來源：Census Bureau｜https://jey2204-creator
+ .github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_orders-2027-06-22@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270622T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣外銷訂單
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：經濟部｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:gdp-2027-06-25@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270625T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 GDP（Q1 確定值）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BEA｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:GDP 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:pce-2027-06-25@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270625T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PCE 物價（個人所得與支出）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BEA｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PCE 物價（個人所得與支出） 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_signal-2027-06-28@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270628T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣景氣燈號
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：國發會｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:adp-2027-06-30@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270630T121500Z
+DURATION:PT15M
+SUMMARY:🇺🇸 ADP 就業（小非農）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n民間薪資單統計，週五非農的前哨；與非農常
+ 不同向，只看大幅意外\n來源：ADP Research｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:jobs-2027-07-02@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270702T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 就業報告（非農／失業率）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:就業報告（非農／失業率） 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_pmi-2027-07-05@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270705T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣製造業PMI（最晚）
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：國發會／中經院｜https://jey2204-creator.github.io/macro-t
+ w-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_exports-2027-07-09@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270709T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣出口
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：財政部｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:earnings-2027-07-13@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270713T104500Z
+DURATION:PT15M
+SUMMARY:🇺🇸 美股財報季開跑（2027 Q2 財報）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n摩根大通領頭，之後 3～4 週個股波動放大；
+ 台股看台積電法說\n來源：JPMorganChase｜https://jey2204-creator
+ .github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:cpi-2027-07-14@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270714T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 CPI 消費者物價
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:CPI 消費者物價 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:ppi-2027-07-15@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270715T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PPI 生產者物價
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PPI 生產者物價 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:retail-2027-07-16@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270716T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 零售銷售
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n消費約占美國 GDP 七成；太強＝降息預期降溫
+ 、太弱＝擔心衰退\n來源：Census Bureau｜https://jey2204-creator
+ .github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:umich-2027-07-16@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270716T140000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 密大消費者信心／通膨預期（初值）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n看 1 年、5 年通膨預期：升高＝Fed 更難降息\n
+ 來源：University of Michigan｜https://jey2204-creator.github.io/macro-
+ tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_orders-2027-07-20@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270720T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣外銷訂單
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：經濟部｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_signal-2027-07-27@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270727T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣景氣燈號
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：國發會｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:fomc-2027-07-28@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270728T180000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 FOMC 利率決議
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：Federal Reserve｜https://jey2204-creator.github.io/macro-tw-dashboa
+ rd/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:FOMC 利率決議 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:gdp-2027-07-29@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270729T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 GDP（Q2 初值）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BEA｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:GDP 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:pce-2027-07-29@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270729T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PCE 物價（個人所得與支出）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BEA｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PCE 物價（個人所得與支出） 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_pmi-2027-08-04@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270804T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣製造業PMI（最晚）
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：國發會／中經院｜https://jey2204-creator.github.io/macro-t
+ w-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:adp-2027-08-04@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270804T121500Z
+DURATION:PT15M
+SUMMARY:🇺🇸 ADP 就業（小非農）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n民間薪資單統計，週五非農的前哨；與非農常
+ 不同向，只看大幅意外\n來源：ADP Research｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:jobs-2027-08-06@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270806T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 就業報告（非農／失業率）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:就業報告（非農／失業率） 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_exports-2027-08-09@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270809T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣出口
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：財政部｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:ppi-2027-08-10@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270810T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PPI 生產者物價
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PPI 生產者物價 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:cpi-2027-08-11@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270811T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 CPI 消費者物價
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:CPI 消費者物價 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:umich-2027-08-13@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270813T140000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 密大消費者信心／通膨預期（初值）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n看 1 年、5 年通膨預期：升高＝Fed 更難降息\n
+ 來源：University of Michigan｜https://jey2204-creator.github.io/macro-
+ tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:retail-2027-08-16@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270816T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 零售銷售
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n消費約占美國 GDP 七成；太強＝降息預期降溫
+ 、太弱＝擔心衰退\n來源：Census Bureau｜https://jey2204-creator
+ .github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_orders-2027-08-20@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270820T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣外銷訂單
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：經濟部｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:gdp-2027-08-25@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270825T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 GDP（Q2 修正值）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BEA｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:GDP 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:pce-2027-08-25@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270825T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PCE 物價（個人所得與支出）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BEA｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PCE 物價（個人所得與支出） 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_signal-2027-08-27@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270827T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣景氣燈號
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：國發會｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:adp-2027-09-01@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270901T121500Z
+DURATION:PT15M
+SUMMARY:🇺🇸 ADP 就業（小非農）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n民間薪資單統計，週五非農的前哨；與非農常
+ 不同向，只看大幅意外\n來源：ADP Research｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_pmi-2027-09-03@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270903T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣製造業PMI（最晚）
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：國發會／中經院｜https://jey2204-creator.github.io/macro-t
+ w-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:jobs-2027-09-03@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270903T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 就業報告（非農／失業率）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:就業報告（非農／失業率） 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_exports-2027-09-09@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270909T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣出口
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：財政部｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:ppi-2027-09-10@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270910T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PPI 生產者物價
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PPI 生產者物價 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:umich-2027-09-10@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270910T140000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 密大消費者信心／通膨預期（初值）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n看 1 年、5 年通膨預期：升高＝Fed 更難降息\n
+ 來源：University of Michigan｜https://jey2204-creator.github.io/macro-
+ tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:cpi-2027-09-14@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270914T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 CPI 消費者物價
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:CPI 消費者物價 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:fomc-2027-09-15@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270915T180000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 FOMC 利率決議（含經濟預測（SEP））
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：Federal Reserve｜https://jey2204-creator.github.io/macro-tw-dashboa
+ rd/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:FOMC 利率決議 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:retail-2027-09-16@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270916T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 零售銷售
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n消費約占美國 GDP 七成；太強＝降息預期降溫
+ 、太弱＝擔心衰退\n來源：Census Bureau｜https://jey2204-creator
+ .github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_orders-2027-09-21@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270921T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣外銷訂單
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：經濟部｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:tw_signal-2027-09-27@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270927T080000Z
+DURATION:PT15M
+SUMMARY:🇹🇼 台灣景氣燈號
+DESCRIPTION:台灣景氣指標：僅供參考，不計入網站總分。\n
+ 來源：國發會｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:gdp-2027-09-30@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270930T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 GDP（Q2 確定值）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BEA｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:GDP 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:pce-2027-09-30@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20270930T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PCE 物價（個人所得與支出）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BEA｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PCE 物價（個人所得與支出） 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:adp-2027-10-06@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20271006T121500Z
+DURATION:PT15M
+SUMMARY:🇺🇸 ADP 就業（小非農）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n民間薪資單統計，週五非農的前哨；與非農常
+ 不同向，只看大幅意外\n來源：ADP Research｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:jobs-2027-10-08@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20271008T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 就業報告（非農／失業率）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:就業報告（非農／失業率） 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:umich-2027-10-08@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20271008T140000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 密大消費者信心／通膨預期（初值）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n看 1 年、5 年通膨預期：升高＝Fed 更難降息\n
+ 來源：University of Michigan｜https://jey2204-creator.github.io/macro-
+ tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:earnings-2027-10-12@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20271012T104500Z
+DURATION:PT15M
+SUMMARY:🇺🇸 美股財報季開跑（2027 Q3 財報）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n摩根大通領頭，之後 3～4 週個股波動放大；
+ 台股看台積電法說\n來源：JPMorganChase｜https://jey2204-creator
+ .github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:cpi-2027-10-14@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20271014T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 CPI 消費者物價
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:CPI 消費者物價 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:ppi-2027-10-15@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20271015T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PPI 生產者物價
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PPI 生產者物價 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:retail-2027-10-15@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20271015T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 零售銷售
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n消費約占美國 GDP 七成；太強＝降息預期降溫
+ 、太弱＝擔心衰退\n來源：Census Bureau｜https://jey2204-creator
+ .github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:fomc-2027-10-27@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20271027T180000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 FOMC 利率決議
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：Federal Reserve｜https://jey2204-creator.github.io/macro-tw-dashboa
+ rd/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:FOMC 利率決議 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:gdp-2027-10-28@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20271028T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 GDP（Q3 初值）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BEA｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:GDP 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:pce-2027-10-28@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20271028T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PCE 物價（個人所得與支出）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BEA｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PCE 物價（個人所得與支出） 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:adp-2027-11-03@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20271103T121500Z
+DURATION:PT15M
+SUMMARY:🇺🇸 ADP 就業（小非農）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n民間薪資單統計，週五非農的前哨；與非農常
+ 不同向，只看大幅意外\n來源：ADP Research｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:jobs-2027-11-05@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20271105T123000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 就業報告（非農／失業率）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:就業報告（非農／失業率） 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:umich-2027-11-05@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20271105T140000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 密大消費者信心／通膨預期（初值）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n看 1 年、5 年通膨預期：升高＝Fed 更難降息\n
+ 來源：University of Michigan｜https://jey2204-creator.github.io/macro-
+ tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:cpi-2027-11-10@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20271110T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 CPI 消費者物價
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:CPI 消費者物價 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:ppi-2027-11-12@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20271112T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PPI 生產者物價
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PPI 生產者物價 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:retail-2027-11-16@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20271116T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 零售銷售
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n消費約占美國 GDP 七成；太強＝降息預期降溫
+ 、太弱＝擔心衰退\n來源：Census Bureau｜https://jey2204-creator
+ .github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:gdp-2027-11-24@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20271124T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 GDP（Q3 修正值）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BEA｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:GDP 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:pce-2027-11-24@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20271124T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PCE 物價（個人所得與支出）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BEA｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PCE 物價（個人所得與支出） 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:adp-2027-12-01@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20271201T131500Z
+DURATION:PT15M
+SUMMARY:🇺🇸 ADP 就業（小非農）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n民間薪資單統計，週五非農的前哨；與非農常
+ 不同向，只看大幅意外\n來源：ADP Research｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:jobs-2027-12-03@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20271203T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 就業報告（非農／失業率）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:就業報告（非農／失業率） 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:umich-2027-12-03@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20271203T150000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 密大消費者信心／通膨預期（初值）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n看 1 年、5 年通膨預期：升高＝Fed 更難降息\n
+ 來源：University of Michigan｜https://jey2204-creator.github.io/macro-
+ tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:fomc-2027-12-08@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20271208T190000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 FOMC 利率決議（含經濟預測（SEP））
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：Federal Reserve｜https://jey2204-creator.github.io/macro-tw-dashboa
+ rd/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:FOMC 利率決議 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:cpi-2027-12-10@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20271210T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 CPI 消費者物價
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:CPI 消費者物價 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:ppi-2027-12-15@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20271215T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PPI 生產者物價
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BLS｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PPI 生產者物價 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:retail-2027-12-15@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20271215T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 零售銷售
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n消費約占美國 GDP 七成；太強＝降息預期降溫
+ 、太弱＝擔心衰退\n來源：Census Bureau｜https://jey2204-creator
+ .github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:gdp-2027-12-22@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20271222T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 GDP（Q3 確定值）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BEA｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:GDP 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:pce-2027-12-22@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20271222T133000Z
+DURATION:PT15M
+SUMMARY:🇺🇸 PCE 物價（個人所得與支出）
+DESCRIPTION:門檻會在前一次公布後計算並同步到這裡。\n來
+ 源：BEA｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:PCE 物價（個人所得與支出） 30 分鐘後公布
+TRIGGER:-PT30M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:earnings-2028-01-13@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART:20280113T114500Z
+DURATION:PT15M
+SUMMARY:🇺🇸 美股財報季開跑（2027 Q4 財報）
+DESCRIPTION:參考事件：網站沒有對應指標，不計入總分、不
+ 設提醒。\n摩根大通領頭，之後 3～4 週個股波動放大；
+ 台股看台積電法說\n來源：JPMorganChase｜https://jey2204-creator
+ .github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:geo-apec-2026@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20261118
+DTEND;VALUE=DATE:20261120
+SUMMARY:🌐 APEC 領袖會議（深圳）
+DESCRIPTION:重大事件（峰會）：僅供參考，不計入網站總分
+ 。日期為當地日期。\n11/19 場邊川習會（今年第三次）與
+ 美中俄三方會晤；通過「深圳展望」，無新關稅承諾\n台
+ 股首個反應交易日（預估）：2026-11-20\n人工清單｜https://
+ jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://www.cna.com.tw/news/acn/202611190372.aspx
+END:VEVENT
+BEGIN:VEVENT
+UID:geo-tw-local-2026@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20261128
+DTEND;VALUE=DATE:20261129
+SUMMARY:🌐 台灣九合一地方選舉＋公投
+DESCRIPTION:重大事件（選舉）：僅供參考，不計入網站總分
+ 。日期為當地日期。\n週六投票、當晚開票；同日舉行全
+ 國性公投。台股 11/30（一）反應\n台股首個反應交易日（
+ 預估）：2026-11-30\n人工清單｜https://jey2204-creator.github.io/m
+ acro-tw-dashboard/
+URL:https://www.ey.gov.tw/File/ED4151F1E591AAE6?A=C
+END:VEVENT
+BEGIN:VEVENT
+UID:geo-g20-2026@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20261214
+DTEND;VALUE=DATE:20261216
+SUMMARY:🌐 G20 領袖峰會（邁阿密）
+DESCRIPTION:重大事件（峰會）：僅供參考，不計入網站總分
+ 。日期為當地日期。\n美國主辦；留意場邊川習會（今年
+ 第四次，未確認）\n台股首個反應交易日（預估）：2026-1
+ 2-16\n人工清單｜https://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://www.cityofdoral.com/Elected-officials/Christi-Fraga/Doral-at-th
+ e-Center-of-G20
+END:VEVENT
+BEGIN:VEVENT
+UID:geo-us-cn-truce-2027-01@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20270110
+DTEND;VALUE=DATE:20270111
+SUMMARY:🌐 美中貿易休戰到期
+DESCRIPTION:重大事件（期限）：僅供參考，不計入網站總分
+ 。日期為當地日期。\n24% 加徵關稅暫停、301 豁免、稀土
+ 管制豁免同日到期；留意是否再延長\n台股首個反應交易
+ 日（預估）：2027-01-11\n人工清單｜https://jey2204-creator.githu
+ b.io/macro-tw-dashboard/
+URL:https://www.chinatimes.com/realtimenews/20261109001759-260409
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-us-closed-2026-11-26@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20261126
+DTEND;VALUE=DATE:20261127
+SUMMARY:🇺🇸 美股休市（感恩節）
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n美東日期；當晚沒有美股，隔天台股少一個參考\n
+ 來源：https://www.nyse.com/markets/hours-calendars｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-us-early-2026-11-27@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20261127
+DTEND;VALUE=DATE:20261128
+SUMMARY:🇺🇸 美股提早收盤（感恩節翌日）
+DESCRIPTION:交易所公告的提早收盤日：僅供參考，不計入網
+ 站總分。\n美東 13:00 收盤（台北隔天 02:00），量縮\n來源
+ ：https://www.nyse.com/markets/hours-calendars｜https://jey2204-creator.
+ github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-us-early-2026-12-24@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20261224
+DTEND;VALUE=DATE:20261225
+SUMMARY:🇺🇸 美股提早收盤（聖誕夜）
+DESCRIPTION:交易所公告的提早收盤日：僅供參考，不計入網
+ 站總分。\n美東 13:00 收盤（台北隔天 02:00），量縮\n來源
+ ：https://www.nyse.com/markets/hours-calendars｜https://jey2204-creator.
+ github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-us-closed-2026-12-25@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20261225
+DTEND;VALUE=DATE:20261226
+SUMMARY:🇺🇸 美股休市（聖誕節）
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n美東日期；當晚沒有美股，隔天台股少一個參考\n
+ 來源：https://www.nyse.com/markets/hours-calendars｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-us-closed-2027-01-01@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20270101
+DTEND;VALUE=DATE:20270102
+SUMMARY:🇺🇸 美股休市（元旦）
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n美東日期；當晚沒有美股，隔天台股少一個參考\n
+ 來源：https://www.nyse.com/markets/hours-calendars｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-us-closed-2027-01-18@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20270118
+DTEND;VALUE=DATE:20270119
+SUMMARY:🇺🇸 美股休市（馬丁路德金恩日）
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n美東日期；當晚沒有美股，隔天台股少一個參考\n
+ 來源：https://www.nyse.com/markets/hours-calendars｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-us-closed-2027-02-15@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20270215
+DTEND;VALUE=DATE:20270216
+SUMMARY:🇺🇸 美股休市（總統日）
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n美東日期；當晚沒有美股，隔天台股少一個參考\n
+ 來源：https://www.nyse.com/markets/hours-calendars｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-us-closed-2027-03-26@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20270326
+DTEND;VALUE=DATE:20270327
+SUMMARY:🇺🇸 美股休市（耶穌受難日）
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n美東日期；當晚沒有美股，隔天台股少一個參考\n
+ 來源：https://www.nyse.com/markets/hours-calendars｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-us-closed-2027-05-31@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20270531
+DTEND;VALUE=DATE:20270601
+SUMMARY:🇺🇸 美股休市（陣亡將士紀念日）
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n美東日期；當晚沒有美股，隔天台股少一個參考\n
+ 來源：https://www.nyse.com/markets/hours-calendars｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-us-closed-2027-06-18@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20270618
+DTEND;VALUE=DATE:20270619
+SUMMARY:🇺🇸 美股休市（六月節（補假））
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n美東日期；當晚沒有美股，隔天台股少一個參考\n
+ 來源：https://www.nyse.com/markets/hours-calendars｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-us-closed-2027-07-05@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20270705
+DTEND;VALUE=DATE:20270706
+SUMMARY:🇺🇸 美股休市（獨立紀念日（補假））
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n美東日期；當晚沒有美股，隔天台股少一個參考\n
+ 來源：https://www.nyse.com/markets/hours-calendars｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-us-closed-2027-09-06@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20270906
+DTEND;VALUE=DATE:20270907
+SUMMARY:🇺🇸 美股休市（勞動節）
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n美東日期；當晚沒有美股，隔天台股少一個參考\n
+ 來源：https://www.nyse.com/markets/hours-calendars｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-us-closed-2027-11-25@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20271125
+DTEND;VALUE=DATE:20271126
+SUMMARY:🇺🇸 美股休市（感恩節）
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n美東日期；當晚沒有美股，隔天台股少一個參考\n
+ 來源：https://www.nyse.com/markets/hours-calendars｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-us-early-2027-11-26@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20271126
+DTEND;VALUE=DATE:20271127
+SUMMARY:🇺🇸 美股提早收盤（感恩節翌日）
+DESCRIPTION:交易所公告的提早收盤日：僅供參考，不計入網
+ 站總分。\n美東 13:00 收盤（台北隔天 02:00），量縮\n來源
+ ：https://www.nyse.com/markets/hours-calendars｜https://jey2204-creator.
+ github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-us-closed-2027-12-24@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20271224
+DTEND;VALUE=DATE:20271225
+SUMMARY:🇺🇸 美股休市（聖誕節（補假））
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n美東日期；當晚沒有美股，隔天台股少一個參考\n
+ 來源：https://www.nyse.com/markets/hours-calendars｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-us-closed-2028-01-17@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20280117
+DTEND;VALUE=DATE:20280118
+SUMMARY:🇺🇸 美股休市（馬丁路德金恩日）
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n美東日期；當晚沒有美股，隔天台股少一個參考\n
+ 來源：https://www.nyse.com/markets/hours-calendars｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-us-closed-2028-02-21@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20280221
+DTEND;VALUE=DATE:20280222
+SUMMARY:🇺🇸 美股休市（總統日）
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n美東日期；當晚沒有美股，隔天台股少一個參考\n
+ 來源：https://www.nyse.com/markets/hours-calendars｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-us-closed-2028-04-14@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20280414
+DTEND;VALUE=DATE:20280415
+SUMMARY:🇺🇸 美股休市（耶穌受難日）
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n美東日期；當晚沒有美股，隔天台股少一個參考\n
+ 來源：https://www.nyse.com/markets/hours-calendars｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-us-closed-2028-05-29@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20280529
+DTEND;VALUE=DATE:20280530
+SUMMARY:🇺🇸 美股休市（陣亡將士紀念日）
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n美東日期；當晚沒有美股，隔天台股少一個參考\n
+ 來源：https://www.nyse.com/markets/hours-calendars｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-us-closed-2028-06-19@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20280619
+DTEND;VALUE=DATE:20280620
+SUMMARY:🇺🇸 美股休市（六月節）
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n美東日期；當晚沒有美股，隔天台股少一個參考\n
+ 來源：https://www.nyse.com/markets/hours-calendars｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-us-early-2028-07-03@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20280703
+DTEND;VALUE=DATE:20280704
+SUMMARY:🇺🇸 美股提早收盤（獨立紀念日前一天）
+DESCRIPTION:交易所公告的提早收盤日：僅供參考，不計入網
+ 站總分。\n美東 13:00 收盤（台北隔天 01:00），量縮\n來源
+ ：https://www.nyse.com/markets/hours-calendars｜https://jey2204-creator.
+ github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-us-closed-2028-07-04@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20280704
+DTEND;VALUE=DATE:20280705
+SUMMARY:🇺🇸 美股休市（獨立紀念日）
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n美東日期；當晚沒有美股，隔天台股少一個參考\n
+ 來源：https://www.nyse.com/markets/hours-calendars｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-us-closed-2028-09-04@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20280904
+DTEND;VALUE=DATE:20280905
+SUMMARY:🇺🇸 美股休市（勞動節）
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n美東日期；當晚沒有美股，隔天台股少一個參考\n
+ 來源：https://www.nyse.com/markets/hours-calendars｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-us-closed-2028-11-23@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20281123
+DTEND;VALUE=DATE:20281124
+SUMMARY:🇺🇸 美股休市（感恩節）
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n美東日期；當晚沒有美股，隔天台股少一個參考\n
+ 來源：https://www.nyse.com/markets/hours-calendars｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-us-early-2028-11-24@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20281124
+DTEND;VALUE=DATE:20281125
+SUMMARY:🇺🇸 美股提早收盤（感恩節翌日）
+DESCRIPTION:交易所公告的提早收盤日：僅供參考，不計入網
+ 站總分。\n美東 13:00 收盤（台北隔天 02:00），量縮\n來源
+ ：https://www.nyse.com/markets/hours-calendars｜https://jey2204-creator.
+ github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-us-closed-2028-12-25@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20281225
+DTEND;VALUE=DATE:20281226
+SUMMARY:🇺🇸 美股休市（聖誕節）
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n美東日期；當晚沒有美股，隔天台股少一個參考\n
+ 來源：https://www.nyse.com/markets/hours-calendars｜https://jey2204-cr
+ eator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-tw-closed-2026-12-25@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20261225
+DTEND;VALUE=DATE:20261226
+SUMMARY:🇹🇼 台股休市（行憲紀念日）
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n12/28 恢復交易；籌碼資料當天不更新\n來源：https:/
+ /www.twse.com.tw/holidaySchedule/holidaySchedule?response=html｜https://j
+ ey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-tw-closed-2027-01-01@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20270101
+DTEND;VALUE=DATE:20270102
+SUMMARY:🇹🇼 台股休市（元旦）
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n1/4 恢復交易；籌碼資料當天不更新\n來源：https://w
+ ww.twse.com.tw/holidaySchedule/holidaySchedule?response=html｜https://jey
+ 2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-tw-closed-2027-02-02@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20270202
+DTEND;VALUE=DATE:20270211
+SUMMARY:🇹🇼 台股休市（農曆春節）
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n封關 2/1、開紅盤 2/11；2/2、2/3 僅結算交割\n來源：
+ https://www.twse.com.tw/holidaySchedule/holidaySchedule?response=html｜ht
+ tps://jey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-tw-closed-2027-03-01@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20270301
+DTEND;VALUE=DATE:20270302
+SUMMARY:🇹🇼 台股休市（和平紀念日（補假））
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n3/2 恢復交易；籌碼資料當天不更新\n來源：https://w
+ ww.twse.com.tw/holidaySchedule/holidaySchedule?response=html｜https://jey
+ 2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-tw-closed-2027-04-05@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20270405
+DTEND;VALUE=DATE:20270407
+SUMMARY:🇹🇼 台股休市（清明節＋兒童節（補假））
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n4/7 恢復交易；籌碼資料當天不更新\n來源：https://w
+ ww.twse.com.tw/holidaySchedule/holidaySchedule?response=html｜https://jey
+ 2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-tw-closed-2027-04-30@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20270430
+DTEND;VALUE=DATE:20270501
+SUMMARY:🇹🇼 台股休市（勞動節（補假））
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n5/3 恢復交易；籌碼資料當天不更新\n來源：https://w
+ ww.twse.com.tw/holidaySchedule/holidaySchedule?response=html｜https://jey
+ 2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-tw-closed-2027-06-09@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20270609
+DTEND;VALUE=DATE:20270610
+SUMMARY:🇹🇼 台股休市（端午節）
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n6/10 恢復交易；籌碼資料當天不更新\n來源：https://
+ www.twse.com.tw/holidaySchedule/holidaySchedule?response=html｜https://je
+ y2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-tw-closed-2027-09-15@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20270915
+DTEND;VALUE=DATE:20270916
+SUMMARY:🇹🇼 台股休市（中秋節）
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n9/16 恢復交易；籌碼資料當天不更新\n來源：https://
+ www.twse.com.tw/holidaySchedule/holidaySchedule?response=html｜https://je
+ y2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-tw-closed-2027-09-28@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20270928
+DTEND;VALUE=DATE:20270929
+SUMMARY:🇹🇼 台股休市（教師節）
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n9/29 恢復交易；籌碼資料當天不更新\n來源：https://
+ www.twse.com.tw/holidaySchedule/holidaySchedule?response=html｜https://je
+ y2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-tw-closed-2027-10-11@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20271011
+DTEND;VALUE=DATE:20271012
+SUMMARY:🇹🇼 台股休市（國慶日（補假））
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n10/12 恢復交易；籌碼資料當天不更新\n來源：https:/
+ /www.twse.com.tw/holidaySchedule/holidaySchedule?response=html｜https://j
+ ey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-tw-closed-2027-10-25@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20271025
+DTEND;VALUE=DATE:20271026
+SUMMARY:🇹🇼 台股休市（光復節）
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n10/26 恢復交易；籌碼資料當天不更新\n來源：https:/
+ /www.twse.com.tw/holidaySchedule/holidaySchedule?response=html｜https://j
+ ey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-tw-closed-2027-12-24@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20271224
+DTEND;VALUE=DATE:20271225
+SUMMARY:🇹🇼 台股休市（行憲紀念日（補假））
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n12/27 恢復交易；籌碼資料當天不更新\n來源：https:/
+ /www.twse.com.tw/holidaySchedule/holidaySchedule?response=html｜https://j
+ ey2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:hol-tw-closed-2027-12-31@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20271231
+DTEND;VALUE=DATE:20280101
+SUMMARY:🇹🇼 台股休市（元旦（補假））
+DESCRIPTION:交易所公告的休市日：僅供參考，不計入網站總
+ 分。\n1/3 恢復交易；籌碼資料當天不更新\n來源：https://w
+ ww.twse.com.tw/holidaySchedule/holidaySchedule?response=html｜https://jey
+ 2204-creator.github.io/macro-tw-dashboard/
+URL:https://jey2204-creator.github.io/macro-tw-dashboard/
+END:VEVENT
+BEGIN:VEVENT
+UID:fed-window-2027-01-15@macro-tw-dashboard
+DTSTAMP:20261126T145403Z
+DTSTART;VALUE=DATE:20270115
+DTEND;VALUE=DATE:20270116
+SUMMARY:Fed 利率變動滿 120 天：若期間沒再調整，判斷轉中
+ 性
+DESCRIPTION:規則：與 120 天前比較。https://jey2204-creator.github.
+ io/macro-tw-dashboard/
+END:VEVENT
+END:VCALENDAR
