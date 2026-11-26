@@ -534,6 +534,25 @@ export const INDICATORS: IndicatorDef[] = [
     unit: '%', decimals: 2, sources: [{ provider: 'fred', symbol: 'NROU' }], transform: 'none',
     market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 400, note: '', hidden: true,
   },
+  // 通膨預期與薪資（政策利率面板「通膨預期與薪資卡」用；參考、不計分、不列入指標表）
+  //  - 密大 1 年通膨預期：家庭問卷（FRED MICH，1978 起）；密大 5～10 年預期 FRED 沒有，不抓
+  //  - 5 年後的 5 年平均通膨（5Y5Y，FRED T5YIFR，2003 起）：債市隱含的長期通膨預期，Fed 最常引用的市場指標
+  //  - 平均時薪年增（FRED CES0500000003 民間全體員工，2006-03 起 → 年增 2007-03 起）
+  {
+    id: 'mich', name: '密大 1 年通膨預期', short: '密大通膨預期', category: 'macro', frequency: 'monthly',
+    unit: '%', decimals: 1, sources: [{ provider: 'fred', symbol: 'MICH' }], transform: 'none',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 95, note: '', hidden: true,
+  },
+  {
+    id: 'be5y5y', name: '5 年後 5 年平均通膨預期（5Y5Y）', short: '5Y5Y', category: 'rates', frequency: 'daily',
+    unit: '%', decimals: 2, sources: [{ provider: 'fred', symbol: 'T5YIFR' }], transform: 'none',
+    market: true, rule: { kind: 'info' }, weight: 0, maxAgeDays: 10, note: '', hidden: true,
+  },
+  {
+    id: 'ahe', name: '平均時薪年增率', short: '時薪年增', category: 'macro', frequency: 'monthly',
+    unit: '%', decimals: 1, sources: [{ provider: 'fred', symbol: 'CES0500000003' }], transform: 'yoy',
+    market: false, rule: { kind: 'info' }, weight: 0, maxAgeDays: 75, note: '', hidden: true,
+  },
   {
     id: 'nfp', name: '非農就業新增', short: '非農', category: 'macro', frequency: 'monthly',
     subtitle: '非農就業｜每月新增工作數',
