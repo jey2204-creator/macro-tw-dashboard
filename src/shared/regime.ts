@@ -1,4 +1,6 @@
+import { addDays } from './dates';
 import { CATEGORY_ORDER, INDICATORS, type IndicatorDef } from './indicators';
+import { closedWeekdaysBetween, marketOf } from './marketHolidays';
 import { evaluateSignal, isStale, type SignalResult } from './signals';
 import { transformPoints, type Point } from './timeseries';
 import type { Category, Signal, SummaryFile } from './types';
@@ -62,7 +64,11 @@ export function evaluateIndicator(def: IndicatorDef, summary: SummaryFile, today
   const points = entry ? transformPoints(def, entry.tail) : [];
   const signal = evaluateSignal(def, points);
   const lastDate = points.at(-1)?.[0] ?? null;
-  const stale = isStale(def, lastDate, today);
+  // 台股參考型指標（權重 0）：連假沒有新資料不算過時——把公告休市的平日從天數扣掉再比。
+  // 有計分的指標（加權、櫃買、美股…）不走這條，計分行為不變。
+  const mkt = def.weight === 0 ? marketOf(def) : null;
+  const closedDays = mkt === 'tw' && lastDate ? closedWeekdaysBetween('tw', lastDate, today) : 0;
+  const stale = isStale(def, lastDate, closedDays > 0 ? addDays(today, -closedDays) : today);
   let excludedReason: string | null = null;
   if (!entry || entry.status === 'error' || points.length === 0) excludedReason = '資料抓取失敗';
   else if (stale) excludedReason = '資料過時';

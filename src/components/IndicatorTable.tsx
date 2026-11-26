@@ -110,7 +110,7 @@ function Row({
         : def.signedValue && last && last[1] > 0
           ? `+${formatValue(def, last[1])}`
           : formatValue(def, last?.[1]);
-  const tags = statusTags(row);
+  const tags = statusTags(row, now);
   const lampColor = last ? zoneAt(coloredZones(def), last[1])?.color : undefined;
   // 有官方日程時，「下次」改由 NextRelease 顯示（含門檻），避免重複
   const relLines = releaseLines(releases).filter((l) => !(outlook && l.head.startsWith('下次')));

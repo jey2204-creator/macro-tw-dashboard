@@ -149,6 +149,16 @@
       "source": "https://www.cna.com.tw/news/acn/202611190372.aspx"
     },
     {
+      "id": "tw-local-2026",
+      "type": "election",
+      "name": "台灣九合一地方選舉＋公投",
+      "short": "九合一",
+      "start": "2026-11-28",
+      "react": "2026-11-30",
+      "note": "週六投票、當晚開票；同日舉行全國性公投。台股 11/30（一）反應",
+      "source": "https://www.ey.gov.tw/File/ED4151F1E591AAE6?A=C"
+    },
+    {
       "id": "g20-2026",
       "type": "summit",
       "name": "G20 領袖峰會（邁阿密）",

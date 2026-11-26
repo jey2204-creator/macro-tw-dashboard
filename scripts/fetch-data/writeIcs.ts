@@ -4,6 +4,7 @@ import { outlookPlain, rangeText } from '../../src/lib/outlookText';
 import type { CalendarFile } from '../../src/shared/calendar';
 import { addDays, todayInTaipei } from '../../src/shared/dates';
 import { GEO_EVENTS, GEO_TYPE_TEXT, geoEnd, type GeoEvent } from '../../src/shared/geoEvents';
+import { HOLIDAYS, holidayHint, holidayId, holidaySpans, holidayTitle, type HolidaySpan } from '../../src/shared/marketHolidays';
 import { eventRange, outlooksFor } from '../../src/shared/outlook';
 import { computeRegime, SIGNAL_LABEL } from '../../src/shared/regime';
 import { RELEASE_KINDS, releaseAt, SCHEDULE, type ScheduledRelease } from '../../src/shared/schedule';
@@ -16,6 +17,7 @@ import type { SummaryFile } from '../../src/shared/types';
  * 參考事件（ADP、密大初值、零售銷售、美股財報季開跑）：不計分、不設提醒。
  * Fed「升息滿 120 天」等不需公布就會改變判斷的日子也列入。
  * 重大事件（config/geo-events.json：APEC、G20、川習會、關稅期限、選舉）以全天事件列入，不計分、不設提醒。
+ * 美股／台股休市與美股提早收盤（config/market-holidays.json）以全天事件列入（當地日期），不計分、不設提醒。
  */
 
 const SITE = 'https://jey2204-creator.github.io/macro-tw-dashboard/';
@@ -50,6 +52,7 @@ export function buildIcs(opts: {
   now: Date;
   schedule?: readonly ScheduledRelease[];
   geo?: readonly GeoEvent[];
+  holidays?: readonly HolidaySpan[];
 }): string {
   const { now } = opts;
   const today = todayInTaipei(now);
@@ -62,7 +65,7 @@ export function buildIcs(opts: {
     'PRODID:-//macro-tw-dashboard//US and Taiwan macro releases//ZH-TW',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    'X-WR-CALNAME:總經公布（美國・台灣）＋重大事件',
+    'X-WR-CALNAME:總經公布（美國・台灣）＋重大事件＋休市日',
     'X-WR-TIMEZONE:Asia/Taipei',
     'X-PUBLISHED-TTL:PT6H',
     'REFRESH-INTERVAL;VALUE=DURATION:PT6H',
@@ -125,6 +128,24 @@ export function buildIcs(opts: {
       `SUMMARY:${esc(`🌐 ${g.name}`)}`,
       `DESCRIPTION:${esc(desc.join('\n'))}`,
       `URL:${g.source ?? SITE}`,
+      'END:VEVENT',
+    );
+  }
+
+  // 休市／提早收盤：全天事件（當地日期），不計分、不設提醒；已結束超過 14 天的不列
+  for (const h of opts.holidays ?? [...holidaySpans('us'), ...holidaySpans('tw')]) {
+    if (h.end < from) continue;
+    const t = holidayTitle(h);
+    const src = HOLIDAYS[h.market].source;
+    lines.push(
+      'BEGIN:VEVENT',
+      `UID:hol-${holidayId(h)}@macro-tw-dashboard`,
+      `DTSTAMP:${dtstamp}`,
+      `DTSTART;VALUE=DATE:${h.start.replace(/-/g, '')}`,
+      `DTEND;VALUE=DATE:${addDays(h.end, 1).replace(/-/g, '')}`,
+      `SUMMARY:${esc(`${t.head}（${t.name}）`)}`,
+      `DESCRIPTION:${esc([`交易所公告的${h.kind === 'early' ? '提早收盤' : '休市'}日：僅供參考，不計入網站總分。`, holidayHint(h), `來源：${src}｜${SITE}`].join('\n'))}`,
+      `URL:${SITE}`,
       'END:VEVENT',
     );
   }
