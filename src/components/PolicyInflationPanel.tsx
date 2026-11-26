@@ -60,6 +60,7 @@ import type { Bar } from '../shared/types';
 import type { ForeignChipsFile } from '../shared/foreignChips';
 import { oilReading } from '../shared/oil';
 import { curveText, gdpNowcast, gdpYoy, nextQuarter, quarterLabel } from '../shared/gdpGrowth';
+import { JOBS_CLAMP, avg3, jobsReading, monthLabel, nextMonth, payrollChanges } from '../shared/jobs';
 
 const RANGES: { k: RangeKey; label: string }[] = [
   { k: '3M', label: '3個月' },
@@ -106,9 +107,9 @@ type IndexId = (typeof INDICES)[number]['id'];
 type IndexPick = IndexId | 'off';
 const INDEX_PICKS: readonly IndexPick[] = ['spx', 'nasdaq', 'sox', 'taiex', 'off'];
 
-const IDS = ['fed', 'fed_target_legacy', 'core_cpi', 'cpi', 'core_pce', 'us2y', 'us10y', 'gdp', 'gdpnow', 'wti', 'wti_legacy', 'unrate', 'nrou', 'mich', 'be5y5y', 'ahe', 'baa10y', 'hy_oas', 'dxy', 'usdtwd', 'usdtwd_legacy', ...INDICES.map((i) => i.id)];
+const IDS = ['fed', 'fed_target_legacy', 'core_cpi', 'cpi', 'core_pce', 'us2y', 'us10y', 'gdp', 'gdpnow', 'wti', 'wti_legacy', 'nfp', 'unrate', 'nrou', 'mich', 'be5y5y', 'ahe', 'baa10y', 'hy_oas', 'dxy', 'usdtwd', 'usdtwd_legacy', ...INDICES.map((i) => i.id)];
 /** FRED 的 USD/TWD（長期、乾淨）抓不到時退回 Yahoo，照常顯示（回測只剩 2004 起且較吵），不報載入失敗 */
-const OPTIONAL_IDS = new Set(['usdtwd_legacy', 'nrou', 'mich', 'be5y5y', 'ahe', 'us10y', 'gdp', 'gdpnow', 'wti', 'wti_legacy']);
+const OPTIONAL_IDS = new Set(['usdtwd_legacy', 'nrou', 'mich', 'be5y5y', 'ahe', 'us10y', 'gdp', 'gdpnow', 'wti', 'wti_legacy', 'nfp']);
 /** Fed 立場卡回測起點（Greenspan 上任那年；之前 Fed 以貨幣供給為操作目標） */
 const STANCE_FROM = '1987-01-01';
 const STANCE_INDEX_IDS = ['spx', 'taiex'] as const;
@@ -162,9 +163,13 @@ interface Props {
   foreign?: ForeignChipsFile | null;
 }
 
-/** 第五格三選一：美國 GDP 成長率／外資買賣超／關 */
-type P5 = 'fc' | 'gdp' | 'oil' | 'off';
-const P5_PICKS: readonly P5[] = ['gdp', 'oil', 'fc', 'off'];
+/** 第五格一次一個：美國 GDP 成長率／就業（非農＋失業率）／油價／外資買賣超／關 */
+type P5 = 'fc' | 'gdp' | 'jobs' | 'oil' | 'off';
+const P5_PICKS: readonly P5[] = ['gdp', 'jobs', 'oil', 'fc', 'off'];
+/** 第五格「就業」：3 個月均線、失業率線的顏色 */
+const JOBS_AVG_COLOR = '--text-1';
+const JOBS_UR_COLOR = '--accent';
+const wan = (v: number | null | undefined) => (v === null || v === undefined || !Number.isFinite(v) ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(1)}`);
 const OIL_COLOR = '--ma5';
 /** 第五格在整張圖裡占的比例；開啟時圖表同步加高，其他格維持原本高度 */
 const FC_SHARE = 0.2;
@@ -224,7 +229,7 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
   const [chartGen, setChartGen] = useState(0);
 
   const files = useSeriesMap(near ? IDS : [], version);
-  const { fed, coreCpi, cpi, corePce, us2y, us10y, gdpSaar, gdpNowPts, wti, unrate, nrou, mich, be5y5y, wageYoy, credit, hy, dxy, twd, indexBars } = useMemo(() => {
+  const { fed, coreCpi, cpi, corePce, us2y, us10y, gdpSaar, gdpNowPts, wti, jobChg, unrate, nrou, mich, be5y5y, wageYoy, credit, hy, dxy, twd, indexBars } = useMemo(() => {
     const ready = (id: string) => (files[id]?.status === 'ready' ? files[id]!.data.data : null);
     const upper = ready('fed');
     return {
@@ -238,6 +243,8 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
       gdpNowPts: (ready('gdpnow') ?? []).map((b) => [b[0], b[4]] as Point),
       // WTI：Yahoo 期貨（2000-08 起）為主，之前接 FRED 現貨（1986 起）
       wti: spliceCloses(ready('wti') ?? [], ready('wti_legacy') ?? []),
+      // 非農：就業人數水準（千人）→ 月增（萬人）
+      jobChg: payrollChanges((ready('nfp') ?? []).map((b) => [b[0], b[4]] as Point)),
       unrate: (ready('unrate') ?? []).map((b) => [b[0], b[4]] as Point),
       nrou: (ready('nrou') ?? []).map((b) => [b[0], b[4]] as Point),
       mich: (ready('mich') ?? []).map((b) => [b[0], b[4]] as Point),
@@ -255,7 +262,9 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
   const nowcast = useMemo(() => gdpNowcast(gdpSaar, gdpNowPts), [gdpSaar, gdpNowPts]);
   const gdpOn = p5 === 'gdp' && gdpYoyPts.length > 0;
   const oilOn = p5 === 'oil' && wti.length > 0;
-  const p5On = fcOn || gdpOn || oilOn;
+  const jobAvg = useMemo(() => avg3(jobChg), [jobChg]);
+  const jobsOn = p5 === 'jobs' && jobChg.length > 0;
+  const p5On = fcOn || gdpOn || oilOn || jobsOn;
   // Fed 階段 vs 四個指數：階段區段、各段漲跌、循環第一次動作之後的表現（每個指數各算一份，表格並排）
   const equities = useMemo(() => {
     if (!fed.length) return null;
@@ -605,6 +614,76 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
       }
       endLabels(gS, labels);
     }
+    // 或：就業＝非農月增（萬人，階梯；增加紅、減少綠依漲跌色）＋3 個月均線＋失業率（獨立刻度、不顯示軸，數值看線尾標籤）
+    if (jobsOn) {
+      const lastDay = fed.at(-1)![0];
+      const clampDay = (d: string) => (d > lastDay ? lastDay : d);
+      // 最後一個月畫滿整月（階梯線最後一點只是一個點）
+      const extend = (pts: readonly Point[]): Point[] => {
+        const last = pts.at(-1);
+        if (!last) return [];
+        const tail = clampDay(nextMonth(last[0]));
+        return tail > last[0] ? [...pts, [tail, last[1]]] : [...pts];
+      };
+      const up = cssVar('--up');
+      const down = cssVar('--down');
+      // 2020-04 −2,050 萬、2020-06 +460 萬會把其他月份壓成一條線 → 刻度限制在 ±JOBS_CLAMP 萬人，並固定含 0
+      const clamp: AutoscaleInfoProvider = (original) => {
+        const r = original();
+        if (!r?.priceRange) return r;
+        return { ...r, priceRange: { minValue: Math.max(-JOBS_CLAMP, Math.min(r.priceRange.minValue, 0)), maxValue: Math.min(JOBS_CLAMP, Math.max(r.priceRange.maxValue, 0)) } };
+      };
+      const wanFormat = { type: 'price' as const, precision: 0, minMove: 1 };
+      const chgPts = extend(jobChg);
+      const jS = chart.addSeries(
+        BaselineSeries,
+        {
+          baseValue: { type: 'price', price: 0 },
+          lineType: LineType.WithSteps,
+          topLineColor: up,
+          topFillColor1: `${up}66`,
+          topFillColor2: `${up}66`,
+          bottomLineColor: down,
+          bottomFillColor1: `${down}66`,
+          bottomFillColor2: `${down}66`,
+          lineWidth: 1,
+          priceFormat: wanFormat,
+          lastValueVisible: false,
+          priceLineVisible: false,
+          autoscaleInfoProvider: clamp,
+        },
+        fcPane,
+      );
+      jS.setData(toData(chgPts));
+      jS.createPriceLine({ price: 0, color: textColor, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false });
+      const labels: LineLabel[] = [];
+      const avgPts = extend(jobAvg);
+      if (avgPts.length) {
+        const avgColor = cssVar(JOBS_AVG_COLOR);
+        const aS = chart.addSeries(
+          LineSeries,
+          { color: avgColor, lineWidth: 2, lineType: LineType.WithSteps, priceFormat: wanFormat, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false, autoscaleInfoProvider: clamp },
+          fcPane,
+        );
+        aS.setData(toData(avgPts));
+        const last = avgPts.at(-1)!;
+        labels.push({ price: last[1], text: wan(last[1]), color: avgColor, endTime: last[0] as Time, at: follower(avgPts, wan) });
+      }
+      const urPts = extend(unrate);
+      if (urPts.length) {
+        const urColor = cssVar(JOBS_UR_COLOR);
+        const uS = chart.addSeries(
+          LineSeries,
+          { color: urColor, lineWidth: 2, priceScaleId: 'pi-job-ur', priceFormat: { type: 'price', precision: 1, minMove: 0.1 }, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false },
+          fcPane,
+        );
+        uS.setData(toData(urPts));
+        const last = urPts.at(-1)!;
+        const fmt = (v: number) => `${v.toFixed(1)}%`;
+        labels.push({ price: last[1], text: fmt(last[1]), color: urColor, endTime: last[0] as Time, at: follower(urPts, fmt), series: uS });
+      }
+      endLabels(jS, labels);
+    }
     if (fcOn) {
       const up = cssVar('--up');
       const down = cssVar('--down');
@@ -647,6 +726,11 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
       chart.priceScale('right', fcPane).applyOptions({ mode: PriceScaleMode.Normal, scaleMargins: { top: 0.22, bottom: 0.08 } });
     }
     if (gdpOn) chart.priceScale('right', fcPane).applyOptions({ mode: PriceScaleMode.Normal, scaleMargins: { top: 0.22, bottom: 0.08 } });
+    if (jobsOn) {
+      chart.priceScale('right', fcPane).applyOptions({ mode: PriceScaleMode.Normal, scaleMargins: { top: 0.22, bottom: 0.08 } });
+      // 失業率：獨立刻度（不顯示軸），和非農共用整格高度
+      chart.priceScale('pi-job-ur', fcPane).applyOptions({ visible: false, scaleMargins: { top: 0.22, bottom: 0.08 } });
+    }
     if (fcOn) {
       chart.priceScale('right', fcPane).applyOptions({ mode: PriceScaleMode.Normal, scaleMargins: { top: 0.22, bottom: 0.08 } });
       // 單日柱：獨立刻度壓在窗格下半部，否則被 ±上兆的累計線壓扁
@@ -665,6 +749,7 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
     if (fcOn) wm(fcPane, '外資買賣超（上市，億）｜柱＝單日、粗線＝20日累計');
     if (gdpOn) wm(fcPane, '美國實質GDP 年增（%，季）｜橘虛線＝GDPNow');
     if (oilOn) wm(fcPane, 'WTI 原油（美元／桶）');
+    if (jobsOn) wm(fcPane, '非農月增（萬人）｜深線＝3月均、藍線＝失業率');
 
     const handler = (param: MouseEventParams<Time>) => setHoverTime(typeof param.time === 'string' ? param.time : null);
     chart.subscribeCrosshairMove(handler);
@@ -677,7 +762,7 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
       chart.remove();
       chartRef.current = null;
     };
-  }, [loaded, fed, coreCpi, cpi, corePce, us2y, us10y, spx, equity, showSpx, indexLabel, real, extras, coreOn, fxLines, fcOn, fcRows, gdpOn, gdpYoyPts, nowcast, oilOn, wti, themeKey]);
+  }, [loaded, fed, coreCpi, cpi, corePce, us2y, us10y, spx, equity, showSpx, indexLabel, real, extras, coreOn, fxLines, fcOn, fcRows, gdpOn, gdpYoyPts, nowcast, oilOn, wti, jobsOn, jobChg, jobAvg, unrate, themeKey]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -773,6 +858,7 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
       curve: y10 !== null && y2all !== null ? y10 - y2all : null,
       gdp: gq,
       oil: wti.length ? oilReading(wti, date) : null,
+      jobs: jobChg.length ? jobsReading(jobChg, unrate, date) : null,
       nowcast: nowcast && date >= nowcast.date ? nowcast : null,
       spx: spxV,
       phase,
@@ -784,7 +870,7 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
           ? { mode: 'pct' as const, base: fxLines.twd.baseDate, dxy: valueAtOrBefore(fxLines.dxy.points, date), twd: valueAtOrBefore(fxLines.twd.points, date), rate: valueAtOrBefore(twd, date) }
           : { mode: 'raw' as const, id: fxLines.id, base: fxLines.line.baseDate, value: valueAtOrBefore(fxLines.raw, date), change: valueAtOrBefore(fxLines.line.points, date) },
     };
-  }, [loaded, hoverTime, followTime, fed, coreCpi, cpi, corePce, us2y, us10y, gdpYoyPts, gdpSaar, nowcast, wti, oilOn, spx, equity, showSpx, extras, fxLines, twd]);
+  }, [loaded, hoverTime, followTime, fed, coreCpi, cpi, corePce, us2y, us10y, gdpYoyPts, gdpSaar, nowcast, wti, oilOn, jobChg, unrate, spx, equity, showSpx, extras, fxLines, twd]);
   const currentPhase = equity ? phaseAt(equity.segments, spx.at(-1)![0]) : null;
   // 2Y − Fed：低於 −0.25pp 市場押降息、高於 +0.25pp 押升息（約一碼）
   const spreadText = (v: number | null) =>
@@ -838,6 +924,7 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
         美債 10Y（粉紅線，預設關）是長天期利率的定價錨：房貸、企業借款與股票估值都拿它折現，10Y 急升最傷高本益比的科技股；2Y 看 Fed 預期、10Y 還多了成長、通膨預期與美債供給。讀數列的 10Y−2Y 是殖利率曲線斜率：小於 0 叫倒掛，1978 年起每次美國衰退前都倒掛過，但領先 6～24 個月、2022～2024 長期倒掛也沒衰退，只當背景、不當進出場訊號；利差依規則審查不計分。
         第五格可切「GDP 成長率」：美國實質 GDP 的年增率（季資料，由 BEA 的年化季增連乘四季換算，和官方年增差 0.1pp 內；不畫年化季增是因為 2020 年單季 −28%／+35% 會把刻度撐爆）；線畫在該季期間，但實際公布晚約一個月、之後還會修正，是落後指標，只用來確認「擴張還是衰退」的大背景。橘色虛線段是亞特蘭大 Fed 的 GDPNow 對當季的即時估計，配上前三季實際值換算成推估年增；GDPNow 季初波動大、越接近公布越準。讀數列的 GDP 一律常駐顯示。
         第五格「油價」是 WTI 原油（美元／桶；2000-08 前接 FRED 現貨價，1986 起；2020-04-20 期貨跌到 −37 美元是真實紀錄，刻度下限固定 0、那天的線會掉出窗格）。油價先推整體 CPI（汽油、運費），約 1～3 個月反映，核心 CPI 才慢慢跟（2022 年油價衝到 120 美元、整體 CPI 9.1%，Fed 一年升息 425bp）；所以整體 CPI 和核心 CPI 拉開時先看油價。讀數列 WTI 一律常駐：年增超過 +30% 時整體 CPI 通常跟著上去、Fed 較難降息；油價急跌（2014～2015、2020）多半是需求或供給衝擊，對台股不一定是好消息。依規則審查油價觸發樣本太少，不計分。
+        第五格「就業」：色塊是非農就業每月新增人數（萬人，紅＝增加、綠＝減少；美國每月第一個週五公布上個月的數字，之後兩個月還會修正），深色線是近 3 個月平均（單月很吵，Fed 和指標表都看 3 個月平均），藍線是失業率（刻度獨立、不顯示軸，數值看線尾藍框與讀數列）。資料畫在所屬月份，實際公布晚約一個月。2020 年 4 月單月 −2,050 萬會把其他月份壓成一條線，所以刻度限制在 ±{JOBS_CLAMP} 萬人，超出的月份畫到窗格邊為止、真實數字看讀數列。怎麼讀：3 個月平均掉到 0 以下、失業率從低點升 0.5pp 以上（Sahm 規則）才是衰退警訊；數字強反而讓 Fed 更不急著降息。依規則審查，就業是落後指標、對加權之後 60 日沒有鑑別力，指標表的非農與失業率只判中性／偏空，這一格不另外計分。讀數列的非農／失業率一律常駐。
         這張圖與「Fed 120 天」「核心CPI ±0.2pp」規則重疊，只用來解釋 FOMC 為什麼那樣做，不計分。2008 年前 Fed 為單一目標利率。
       </p>
       </PanelNote>
@@ -875,13 +962,19 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
         ))}
         <span className="small muted">{fxOn.dxy && fxOn.twd ? '兩條＝累計 %' : fxOn.dxy || fxOn.twd ? '一條＝原始價位' : '都關＝不顯示'}</span>
       </div>
-      {(fcRows.length > 0 || gdpYoyPts.length > 0 || wti.length > 0) && (
+      {(fcRows.length > 0 || gdpYoyPts.length > 0 || wti.length > 0 || jobChg.length > 0) && (
         <div className="cp-mas" role="group" aria-label="第五格">
           <span className="small muted">第五格</span>
           {gdpYoyPts.length > 0 && (
             <button type="button" className="ma-chip" aria-pressed={p5 === 'gdp'} onClick={() => pickP5('gdp')}>
               <i className="swatch" style={{ background: 'var(--up)' }} />
               GDP 成長率
+            </button>
+          )}
+          {jobChg.length > 0 && (
+            <button type="button" className="ma-chip" aria-pressed={p5 === 'jobs'} onClick={() => pickP5('jobs')}>
+              <i className="swatch" style={{ background: `var(${JOBS_UR_COLOR})` }} />
+              就業
             </button>
           )}
           {wti.length > 0 && (
@@ -900,7 +993,7 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
             關
           </button>
           <span className="small muted">
-            {fcOn ? `上市，${fcRows[0]![0].slice(0, 4)} 起` : gdpOn ? `美國實質，年增 %，${gdpYoyPts[0]![0].slice(0, 4)} 起` : oilOn ? `WTI，${wti[0]![0].slice(0, 4)} 起` : ''}
+            {fcOn ? `上市，${fcRows[0]![0].slice(0, 4)} 起` : gdpOn ? `美國實質，年增 %，${gdpYoyPts[0]![0].slice(0, 4)} 起` : oilOn ? `WTI，${wti[0]![0].slice(0, 4)} 起` : jobsOn ? `非農＋失業率，${jobChg[0]![0].slice(0, 4)} 起` : ''}
           </span>
         </div>
       )}
@@ -987,6 +1080,18 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
                   <i className="swatch" style={{ background: `var(${OIL_COLOR})` }} aria-hidden="true" /> WTI <b>{legend.oil.price.toFixed(2)}</b>
                   <span className="muted"> 美元</span> ｜ 年增 <b>{signed(legend.oil.yoy)}</b> ｜ 20日 {signed(legend.oil.d20)}
                   {legend.oil.date !== legend.date && <span className="muted"> ｜ {legend.oil.date.slice(5)}</span>}
+                </div>
+              )}
+              {legend.jobs && (
+                <div>
+                  非農 <b className={legend.jobs.change > 0 ? 'up' : legend.jobs.change < 0 ? 'down' : ''}>{wan(legend.jobs.change)}萬</b>
+                  <span className="muted">（{monthLabel(legend.jobs.date)}）</span> ｜ 3月均 <b>{wan(legend.jobs.avg)}萬</b>
+                  {legend.jobs.unrate !== null && (
+                    <>
+                      {' '}｜ 失業率 <b>{f1(legend.jobs.unrate)}%</b>
+                      {legend.jobs.unrateDate !== null && ym(legend.jobs.unrateDate) !== ym(legend.jobs.date) && <span className="muted">（{monthLabel(legend.jobs.unrateDate)}）</span>}
+                    </>
+                  )}
                 </div>
               )}
               {legend.spx !== null && (
