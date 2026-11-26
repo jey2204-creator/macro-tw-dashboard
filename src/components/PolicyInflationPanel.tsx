@@ -16,6 +16,7 @@ import {
 } from 'lightweight-charts';
 import { CutRegimeCard } from './CutRegimeCard';
 import { FedStanceCard } from './FedStanceCard';
+import { InflExpectCard } from './InflExpectCard';
 import { PanelNote } from './PanelNote';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSeriesMap } from '../hooks/useData';
@@ -38,6 +39,7 @@ import {
 } from '../shared/fedEquity';
 import { assessCuts, readingsAt, verdictStats } from '../shared/cutRegime';
 import { stanceAt, stanceBaseline, stanceSamples, stanceStats } from '../shared/fedStance';
+import { expAt, expBaselines, expSamples, expStats } from '../shared/inflExpect';
 import { baseDateLabel } from '../lib/breadthPct';
 import { CRASH_PCT, FX_GROUP_TEXT, FX_LOOKBACK_MONTHS, fxPctLine, fxSamples, fxStats, hikeCycles, spliceCloses, spliceUsdTwd, type FxStat } from '../shared/fedFx';
 import { daysBetween } from '../shared/dates';
@@ -104,9 +106,9 @@ type IndexId = (typeof INDICES)[number]['id'];
 type IndexPick = IndexId | 'off';
 const INDEX_PICKS: readonly IndexPick[] = ['spx', 'nasdaq', 'sox', 'taiex', 'off'];
 
-const IDS = ['fed', 'fed_target_legacy', 'core_cpi', 'cpi', 'core_pce', 'us2y', 'us10y', 'gdp', 'gdpnow', 'wti', 'wti_legacy', 'unrate', 'nrou', 'baa10y', 'hy_oas', 'dxy', 'usdtwd', 'usdtwd_legacy', ...INDICES.map((i) => i.id)];
+const IDS = ['fed', 'fed_target_legacy', 'core_cpi', 'cpi', 'core_pce', 'us2y', 'us10y', 'gdp', 'gdpnow', 'wti', 'wti_legacy', 'unrate', 'nrou', 'mich', 'be5y5y', 'ahe', 'baa10y', 'hy_oas', 'dxy', 'usdtwd', 'usdtwd_legacy', ...INDICES.map((i) => i.id)];
 /** FRED 的 USD/TWD（長期、乾淨）抓不到時退回 Yahoo，照常顯示（回測只剩 2004 起且較吵），不報載入失敗 */
-const OPTIONAL_IDS = new Set(['usdtwd_legacy', 'nrou', 'us10y', 'gdp', 'gdpnow', 'wti', 'wti_legacy']);
+const OPTIONAL_IDS = new Set(['usdtwd_legacy', 'nrou', 'mich', 'be5y5y', 'ahe', 'us10y', 'gdp', 'gdpnow', 'wti', 'wti_legacy']);
 /** Fed 立場卡回測起點（Greenspan 上任那年；之前 Fed 以貨幣供給為操作目標） */
 const STANCE_FROM = '1987-01-01';
 const STANCE_INDEX_IDS = ['spx', 'taiex'] as const;
@@ -222,7 +224,7 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
   const [chartGen, setChartGen] = useState(0);
 
   const files = useSeriesMap(near ? IDS : [], version);
-  const { fed, coreCpi, cpi, corePce, us2y, us10y, gdpSaar, gdpNowPts, wti, unrate, nrou, credit, hy, dxy, twd, indexBars } = useMemo(() => {
+  const { fed, coreCpi, cpi, corePce, us2y, us10y, gdpSaar, gdpNowPts, wti, unrate, nrou, mich, be5y5y, wageYoy, credit, hy, dxy, twd, indexBars } = useMemo(() => {
     const ready = (id: string) => (files[id]?.status === 'ready' ? files[id]!.data.data : null);
     const upper = ready('fed');
     return {
@@ -238,6 +240,9 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
       wti: spliceCloses(ready('wti') ?? [], ready('wti_legacy') ?? []),
       unrate: (ready('unrate') ?? []).map((b) => [b[0], b[4]] as Point),
       nrou: (ready('nrou') ?? []).map((b) => [b[0], b[4]] as Point),
+      mich: (ready('mich') ?? []).map((b) => [b[0], b[4]] as Point),
+      be5y5y: (ready('be5y5y') ?? []).map((b) => [b[0], b[4]] as Point),
+      wageYoy: ready('ahe') ? yoyPoints(ready('ahe')!) : ([] as Point[]),
       credit: (ready('baa10y') ?? []).map((b) => [b[0], b[4]] as Point),
       hy: (ready('hy_oas') ?? []).map((b) => [b[0], b[4]] as Point),
       dxy: spliceCloses(ready('dxy') ?? []),
@@ -275,6 +280,18 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
     const samples = stanceSamples(inp, { spx: indexBars.spx, taiex: indexBars.taiex }, STANCE_FROM);
     return { now, stats: stanceStats(samples, STANCE_INDEX_IDS), baseline: stanceBaseline(samples, STANCE_INDEX_IDS), hasTaiex: indexBars.taiex.length > 0 };
   }, [fed, coreCpi, corePce, unrate, nrou, us2y, indexBars]);
+  // 通膨預期與薪資卡：密大 1 年預期、5Y5Y、平均時薪年增（三個都抓不到就不顯示）
+  const infl = useMemo(() => {
+    if (!fed.length || !coreCpi.length || (!mich.length && !be5y5y.length && !wageYoy.length)) return null;
+    const inp = { mich, be: be5y5y, wage: wageYoy, fed, coreCpi };
+    const samples = expSamples(inp, { spx: indexBars.spx, taiex: indexBars.taiex }, STANCE_FROM);
+    return {
+      now: expAt(inp, fed.at(-1)![0]),
+      stats: expStats(samples, STANCE_INDEX_IDS),
+      baselines: expBaselines(samples, STANCE_INDEX_IDS),
+      hasTaiex: indexBars.taiex.length > 0,
+    };
+  }, [fed, coreCpi, mich, be5y5y, wageYoy, indexBars]);
   // 升息 × 美元／台幣 vs 加權：每個升息循環期間各走多少＋每月底樣本依台幣 3 個月變化分組
   const fxBt = useMemo(() => {
     const taiex = indexBars.taiex;
@@ -817,6 +834,7 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
         下方「升息 × 台幣」表：升息期裡台幣 3 個月貶 2% 以上的月份，加權之後 3 個月平均較差、跌逾 10% 的比例約是升息期其他月份的兩倍，但一年後沒有比較差；非升息期台幣貶反而常是恐慌尾聲。壞的月份集中在 1997、2000、2018、2022 四次，2004～2006、2016、2023 台幣貶之後照漲——是風險提示，不是崩盤訊號，不計分。USD/TWD 用 FRED 日資料（1983 起），最近幾天以 Yahoo 補。
         「Fed 立場」卡把三把尺排在一起：實質利率（Fed − 核心CPI）、泰勒缺口、美債 2Y − Fed。泰勒法則是 1993 年 John Taylor 提的公式，用通膨和就業算「利率該在哪」：法則利率＝2 ＋ 核心PCE ＋ 0.5 ×（核心PCE − 2）＋ 0.5 × 產出缺口，產出缺口用 2 ×（自然失業率 − 失業率）換算，自然失業率是美國國會預算局（CBO）的估計。缺口＝法則利率 − Fed：正的代表 Fed 比公式低（偏鬆、落後通膨），負的代表 Fed 比公式高（偏緊）。公式裡的 2（中性實質利率）和係數是主觀設定，換一組數字結果差 1～2pp，所以門檻放寬到 ±1pp，只看大方向。
         回測（1987 年起每月底）：泰勒缺口 ≥ +1 時之後 12 個月 Fed 升息的比例約六成（全部月份約四成）；2Y − Fed ≤ −0.25 時之後降息約八成半，是三把尺裡對 Fed 下一步最準的；但三把尺對 S&P、加權之後 12 個月報酬都沒有穩定的分組差異——它們回答的是「Fed 接下來往哪走」，不是「股市往哪走」，不計分。
+        「通膨預期與薪資」卡看通膨會不會黏住：密大 1 年通膨預期是家庭問卷（跟著油價和日常物價跳，每月第二個週五公布初值）；5Y5Y 是債市押的「5 年後的 5 年」平均通膨，Fed 用它看長期預期有沒有鬆動；平均時薪年增是服務類通膨的源頭，3～3.5% 大致和 2% 通膨相容。回測：三個讀數對 Fed 下一步與股市都沒有穩定的分組差異，只用來理解 Fed 為什麼不敢降（或敢降），不計分。兩個預期都偏高才算「脫錨」，只有密大高通常是油價。
         美債 10Y（粉紅線，預設關）是長天期利率的定價錨：房貸、企業借款與股票估值都拿它折現，10Y 急升最傷高本益比的科技股；2Y 看 Fed 預期、10Y 還多了成長、通膨預期與美債供給。讀數列的 10Y−2Y 是殖利率曲線斜率：小於 0 叫倒掛，1978 年起每次美國衰退前都倒掛過，但領先 6～24 個月、2022～2024 長期倒掛也沒衰退，只當背景、不當進出場訊號；利差依規則審查不計分。
         第五格可切「GDP 成長率」：美國實質 GDP 的年增率（季資料，由 BEA 的年化季增連乘四季換算，和官方年增差 0.1pp 內；不畫年化季增是因為 2020 年單季 −28%／+35% 會把刻度撐爆）；線畫在該季期間，但實際公布晚約一個月、之後還會修正，是落後指標，只用來確認「擴張還是衰退」的大背景。橘色虛線段是亞特蘭大 Fed 的 GDPNow 對當季的即時估計，配上前三季實際值換算成推估年增；GDPNow 季初波動大、越接近公布越準。讀數列的 GDP 一律常駐顯示。
         第五格「油價」是 WTI 原油（美元／桶；2000-08 前接 FRED 現貨價，1986 起；2020-04-20 期貨跌到 −37 美元是真實紀錄，刻度下限固定 0、那天的線會掉出窗格）。油價先推整體 CPI（汽油、運費），約 1～3 個月反映，核心 CPI 才慢慢跟（2022 年油價衝到 120 美元、整體 CPI 9.1%，Fed 一年升息 425bp）；所以整體 CPI 和核心 CPI 拉開時先看油價。讀數列 WTI 一律常駐：年增超過 +30% 時整體 CPI 通常跟著上去、Fed 較難降息；油價急跌（2014～2015、2020）多半是需求或供給衝擊，對台股不一定是好消息。依規則審查油價觸發樣本太少，不計分。
@@ -1030,6 +1048,8 @@ export function PolicyInflationPanel({ version, themeKey, foreign = null }: Prop
       {stance && (
         <FedStanceCard now={stance.now} stats={stance.stats} baseline={stance.baseline} fromYear={STANCE_FROM.slice(0, 4)} hasTaiex={stance.hasTaiex} />
       )}
+
+      {infl && <InflExpectCard now={infl.now} stats={infl.stats} baselines={infl.baselines} hasTaiex={infl.hasTaiex} />}
 
       {cutRegime && (
         <CutRegimeCard
