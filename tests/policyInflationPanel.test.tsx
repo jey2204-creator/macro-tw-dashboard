@@ -403,4 +403,26 @@ describe('政策利率 vs 通膨面板', () => {
       delete FILES.wti_legacy;
     }
   });
+  it('第五格「就業」：非農月增階梯＋3 個月均線＋失業率，讀數列常駐非農／失業率，選擇記住', async () => {
+    // 就業人數水準（千人）：最後三個月各 +100、+50、+165 → 3 個月平均 +10.5 萬
+    FILES.nfp = series('nfp', [flat('2025-06-01', 150000), flat('2025-07-01', 150100), flat('2025-08-01', 150150), flat('2025-09-01', 150315)]);
+    try {
+      render(<PolicyInflationPanel version="v1" themeKey="auto-false-tw" />);
+      await waitFor(() => expect(chartLog.series.length).toBe(6));
+      const legend = () => document.querySelector('.cm-legend')!.textContent ?? '';
+      // 第五格沒開，讀數仍在
+      expect(legend()).toMatch(/非農 \+16\.5萬（9月） ｜ 3月均 \+10\.5萬 ｜ 失業率 4\.2%/);
+      const before = chartLog.series.length;
+      fireEvent.click(screen.getByRole('button', { name: '就業' }));
+      await waitFor(() => expect(chartLog.watermarks.at(-1)).toBe('非農月增（萬人）｜主線＝3月均、藍線＝失業率'));
+      expect(window.localStorage.getItem('pi-p5')).toBe('jobs');
+      expect(document.querySelector('.pi-host')!.className).toMatch(/pi-host-fc/);
+      expect(document.body.textContent).toMatch(/非農＋失業率，2025 起/);
+      // 重建後多三條：月增階梯、3 個月均線、失業率；線尾標 3 個月均與失業率
+      expect(chartLog.series.length - before).toBe(6 + 3);
+      expect(chartLog.labels.at(-1)).toEqual(['+10.5', '4.2%']);
+    } finally {
+      delete FILES.nfp;
+    }
+  });
 });

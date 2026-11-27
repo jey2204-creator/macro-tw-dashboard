@@ -36,6 +36,11 @@ export interface LineLabel {
    * 沒給的標籤（例如固定的目標線）照原樣標
    */
   at?: (time: string) => { price: number; text: string; color?: string } | null;
+  /**
+   * stack 排法：這個標籤的價位屬於同一窗格裡的另一條序列（不同刻度，例如疊在同一格的失業率）；
+   * 有給就用它換算 y，仍和同一個 primitive 的其他標籤一起上下錯開
+   */
+  series?: ISeriesApi<SeriesType>;
 }
 
 export interface LineLabelStyle {
@@ -176,7 +181,7 @@ export class LineLabels implements ISeriesPrimitive<Time> {
         for (const l of this.labels) {
           const r = l.at ? l.at(follow.time) : l;
           if (!r) continue;
-          const y0 = s.priceToCoordinate(r.price);
+          const y0 = (l.series ?? s).priceToCoordinate(r.price);
           if (y0 === null) continue;
           // 這條線在那一根之前就結束了（月資料最新一筆較早）：細線從線的終點連過來，和沒拖曳時一樣
           const xLine = typeof l.endTime === 'string' && l.endTime < follow.time ? ts.timeToCoordinate(l.endTime) : null;
@@ -195,7 +200,7 @@ export class LineLabels implements ISeriesPrimitive<Time> {
         if (!items.length) return;
       } else {
         for (const l of this.labels) {
-          const y0 = s.priceToCoordinate(l.price);
+          const y0 = (l.series ?? s).priceToCoordinate(l.price);
           const xEnd = l.endTime === undefined ? null : ts.timeToCoordinate(l.endTime);
           if (xEnd === null || xEnd > mediaSize.width + 1) return;
           if (y0 !== null) items.push({ l, y0, xEnd });
